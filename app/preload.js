@@ -24,9 +24,20 @@ async function getJson(path) {
   return data;
 }
 
+async function delJson(path) {
+  const res = await fetch(`${BASE_URL}${path}`, { method: 'DELETE' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Erreur serveur (${res.status})`);
+  return data;
+}
+
 contextBridge.exposeInMainWorld('aura', {
   version: '0.1.0',
   getStatus: () => getJson('/api/status'),
   setApiKey: (key) => postJson('/api/config/api-key', { key }),
-  sendMessage: (text) => postJson('/api/message', { text })
+  sendMessage: (text) => postJson('/api/message', { text }),
+  getJournal: () => getJson('/api/journal'),
+  getPreferences: () => getJson('/api/preferences'),
+  setPreference: (key, value) => postJson('/api/preferences', { key, value }),
+  clearMemory: () => delJson('/api/memory')
 });

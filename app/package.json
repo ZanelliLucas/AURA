@@ -29,6 +29,7 @@
       "preload.js",
       "core.js",
       "server.js",
+      "store.js",
       "renderer/**/*",
       "assets/**/*"
     ],

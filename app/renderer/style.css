@@ -175,6 +175,37 @@ html, body {
 .side-panel-right { right: 0; border-right: none; border-left: 1px solid rgba(245, 246, 247, 0.12); transform: translateX(100%); }
 .side-panel-right.open { transform: translateX(0); }
 
+#journal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: calc(100vh - 190px);
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+.journal-entry {
+  border-left: 2px solid var(--red-dim);
+  padding-left: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.journal-entry.echoue { border-left-color: var(--red); }
+.journal-time { color: var(--dim); font-size: 10px; letter-spacing: 0.5px; }
+
+.danger-link {
+  background: none;
+  border: 1px solid var(--red-glow);
+  color: var(--red);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  width: 100%;
+}
+.danger-link:hover { background: var(--red-dim); }
+
 /* Arret d'urgence (§5.9, §22) - toujours visible */
 #estop {
   position: fixed;

@@ -147,12 +147,49 @@ function startClock() {
   setInterval(tick, 1000);
 }
 
+function renderJournal(entries) {
+  const list = document.getElementById('journal-list');
+  if (!entries.length) {
+    list.textContent = 'Aucune action enregistrée pour l’instant.';
+    return;
+  }
+  list.innerHTML = '';
+  entries.forEach((entry) => {
+    const div = document.createElement('div');
+    div.className = `journal-entry ${entry.statut}`;
+    const time = new Date(entry.date).toLocaleTimeString('fr-FR');
+    div.innerHTML = `<div class="journal-time">${time} · ${entry.statut}</div>${entry.typeAction}`;
+    list.appendChild(div);
+  });
+}
+
+async function loadJournal() {
+  try {
+    const entries = await window.aura.getJournal();
+    renderJournal(entries);
+  } catch {
+    document.getElementById('journal-list').textContent = 'Journal indisponible.';
+  }
+}
+
 function wirePanels() {
   document.getElementById('toggle-projects').addEventListener('click', () => {
     document.getElementById('panel-projects').classList.toggle('open');
   });
   document.getElementById('toggle-context').addEventListener('click', () => {
-    document.getElementById('panel-context').classList.toggle('open');
+    const panel = document.getElementById('panel-context');
+    const opening = panel.classList.toggle('open');
+    if (opening) loadJournal();
+  });
+
+  document.getElementById('clear-memory').addEventListener('click', async () => {
+    if (!confirm('Effacer toutes les préférences mémorisées par AURA ? Cette action est irréversible.')) return;
+    try {
+      await window.aura.clearMemory();
+      journal('MEMOIRE_EFFACEE : préférences remises à zéro');
+    } catch (err) {
+      journal(`MEMOIRE_EFFACEE_ECHEC : ${err.message}`);
+    }
   });
 }
 

@@ -8,6 +8,7 @@ const { app } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
+const store = require('./store');
 
 const MODEL = 'claude-sonnet-5';
 const MAX_HISTORY = 40;
@@ -15,8 +16,6 @@ const MAX_HISTORY = 40;
 const SYSTEM_PROMPT = `Tu es AURA (Assistant Universel Reactif et Autonome), l'assistant IA personnel de Lucas.
 Reponds en francais, de maniere directe et concise. Adapte ton ton au contexte (plus professionnel pour le developpement, plus detendu pour le gaming/streaming).
 Tu n'as pour l'instant aucune capacite d'action reelle (pas de connecteurs branches) : tu es un coeur conversationnel seul. Si on te demande d'agir sur un systeme, un fichier ou un service externe, explique clairement que cette capacite n'est pas encore disponible plutot que d'inventer un resultat.`;
-
-let history = [];
 
 function configPath() {
   return path.join(app.getPath('userData'), 'config.json');
@@ -70,13 +69,19 @@ function setApiKey(key) {
   return { configured: true };
 }
 
+function apiMessages() {
+  return store.getInteractions()
+    .slice(-MAX_HISTORY)
+    .map(({ role, content }) => ({ role, content }));
+}
+
 async function sendMessage(text) {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('Aucune clé API Anthropic configurée.');
 
   const client = new Anthropic({ apiKey });
 
-  history.push({ role: 'user', content: text });
+  const messages = [...apiMessages(), { role: 'user', content: text }];
 
   let response;
   try {
@@ -84,11 +89,17 @@ async function sendMessage(text) {
       model: MODEL,
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
-      messages: history
+      messages
     });
   } catch (err) {
-    history.pop();
-    throw new Error(friendlyErrorMessage(err));
+    const message = friendlyErrorMessage(err);
+    store.logAction({
+      typeAction: 'core.send_message',
+      sensibilite: 'lecture',
+      statut: 'echoue',
+      details: { error: message }
+    });
+    throw new Error(message);
   }
 
   const replyText = response.content
@@ -96,10 +107,14 @@ async function sendMessage(text) {
     .map((block) => block.text)
     .join('\n');
 
-  history.push({ role: 'assistant', content: replyText });
-  if (history.length > MAX_HISTORY) {
-    history = history.slice(-MAX_HISTORY);
-  }
+  store.appendInteraction('user', text);
+  store.appendInteraction('assistant', replyText);
+  store.logAction({
+    typeAction: 'core.send_message',
+    sensibilite: 'lecture',
+    statut: 'execute',
+    details: { length: replyText.length }
+  });
 
   return { text: replyText };
 }

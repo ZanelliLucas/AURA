@@ -6,6 +6,7 @@
 // maniere. Ne demarre qu'au lancement de l'app (F-22).
 const express = require('express');
 const core = require('./core');
+const store = require('./store');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -33,6 +34,28 @@ function startServer() {
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
+  });
+
+  // Memory Layer (§12) - alimente les panneaux Projets/Contexte de la toile.
+  server.get('/api/journal', (req, res) => {
+    res.json(store.getJournal(20));
+  });
+
+  server.get('/api/preferences', (req, res) => {
+    res.json(store.getPreferences());
+  });
+
+  server.post('/api/preferences', (req, res) => {
+    const { key, value } = req.body || {};
+    if (!key) return res.status(400).json({ error: 'Clé de préférence manquante.' });
+    res.json(store.setPreference(key, value));
+  });
+
+  // F-06 : l'utilisateur doit pouvoir tout effacer. La confirmation
+  // explicite (§14.1) est geree cote UI avant cet appel.
+  server.delete('/api/memory', (req, res) => {
+    store.clearPreferences();
+    res.json({ cleared: true });
   });
 
   return new Promise((resolve, reject) => {
