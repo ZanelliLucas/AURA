@@ -20,6 +20,11 @@
   <button id="toggle-context" class="edge-tab edge-tab-right" type="button">Contexte</button>
   <aside id="panel-context" class="side-panel side-panel-right">
     <h2>Contexte</h2>
+
+    <h3>Fournisseurs IA</h3>
+    <div id="provider-list"></div>
+
+    <h3>Journal</h3>
     <div id="journal-list" class="muted">Aucune action enregistrée pour l’instant.</div>
     <button id="clear-memory" type="button" class="danger-link">Effacer tout</button>
   </aside>
@@ -40,7 +45,7 @@
     <div id="thread" aria-live="polite"></div>
 
     <form id="setup-key" hidden>
-      <input id="api-key" type="password" placeholder="Colle ta clé API Anthropic (sk-ant-...)" autocomplete="off">
+      <input id="api-key" type="password" placeholder="Colle ta clé API Google Gemini" autocomplete="off">
       <button id="save-key" type="submit">Enregistrer</button>
     </form>
 

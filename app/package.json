@@ -30,6 +30,8 @@
       "core.js",
       "server.js",
       "store.js",
+      "router.js",
+      "providers/**/*",
       "renderer/**/*",
       "assets/**/*"
     ],
@@ -61,6 +63,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
+    "@google/genai": "^2.21.0",
     "electron-updater": "^6.8.9",
     "express": "^5.2.1"
   }

@@ -1,16 +1,16 @@
-// AURA CORE minimal : coeur conversationnel (F-01 a F-04) branche sur
-// l'API Claude (Anthropic). Le reste (routage vers agents, connecteurs,
-// permissions) viendra se greffer ici plus tard sans reecrire ce module
-// (§13.1). Module pur, sans dependance a Electron IPC : expose via
-// server.js (API HTTP locale) pour que d'autres clients (fenetre
-// applicative, futur bot Discord F-13...) puissent s'y brancher.
+// AURA CORE minimal : coeur conversationnel (F-01 a F-04) + routage
+// multi-fournisseurs (F-03, §5.1) vers l'agent le plus adapte a la
+// demande. Le reste (connecteurs, permissions) viendra se greffer ici
+// plus tard sans reecrire ce module (§13.1). Module pur, sans dependance
+// a Electron IPC : expose via server.js (API HTTP locale) pour que
+// d'autres clients (fenetre applicative, futur bot Discord F-13...)
+// puissent s'y brancher.
 const { app } = require('electron');
 const fs = require('fs');
 const path = require('path');
-const Anthropic = require('@anthropic-ai/sdk');
 const store = require('./store');
+const { routeFor, ROUTES } = require('./router');
 
-const MODEL = 'claude-sonnet-5';
 const MAX_HISTORY = 40;
 
 const SYSTEM_PROMPT = `Tu es AURA (Assistant Universel Reactif et Autonome), l'assistant IA personnel de Lucas.
@@ -34,39 +34,56 @@ function saveConfig(config) {
   fs.writeFileSync(configPath(), JSON.stringify(config, null, 2));
 }
 
-// La cle API n'est jamais embarquee dans l'app packagee (publiee
-// publiquement sur GitHub Releases) : elle vient soit d'un .env local de
-// dev (non inclus dans le build, voir build.files du package.json), soit
-// saisie par l'utilisateur au premier lancement et stockee dans le
+// Les cles API ne sont jamais embarquees dans l'app packagee (publiee
+// publiquement sur GitHub Releases) : elles viennent soit d'un .env
+// local de dev (non inclus dans le build, voir build.files du
+// package.json), soit saisies par l'utilisateur et stockees dans le
 // dossier utilisateur (config.json, hors depot, hors build).
-function getApiKey() {
+function getKey(keyName, envVar) {
   const config = loadConfig();
-  return config.anthropicApiKey || process.env.ANTHROPIC_API_KEY || null;
+  return config[keyName] || process.env[envVar] || null;
 }
 
-function friendlyErrorMessage(err) {
-  switch (err.status) {
-    case 401: return 'Clé API invalide ou révoquée.';
-    case 429: return 'Trop de requêtes ou crédit insuffisant sur le compte Anthropic.';
-    case 529: return 'API Claude momentanément surchargée, réessaie dans un instant.';
-    default:
-      return err.status
-        ? `Erreur API Claude (${err.status}).`
-        : `Erreur réseau : ${err.message}`;
-  }
+function providerKeys() {
+  return {
+    anthropicApiKey: getKey('anthropicApiKey', 'ANTHROPIC_API_KEY'),
+    googleApiKey: getKey('googleApiKey', 'GOOGLE_API_KEY')
+  };
 }
 
+function friendlyErrorMessage(err, providerLabel) {
+  const status = err.status;
+  if (status === 401 || status === 400) return `Clé ${providerLabel} invalide ou révoquée.`;
+  if (status === 429) return `Trop de requêtes ou crédit insuffisant sur le compte ${providerLabel}.`;
+  if (status && status >= 500) return `${providerLabel} momentanément surchargé, réessaie dans un instant.`;
+  return status ? `Erreur ${providerLabel} (${status}).` : `Erreur réseau : ${err.message}`;
+}
+
+// getStatus : "configured" reste vrai des que la route par defaut
+// (general -> Gemini) a une cle, pour piloter l'ecran de premiere
+// configuration ; le detail par fournisseur alimente le panneau Contexte.
 function getStatus() {
-  return { configured: !!getApiKey() };
+  const keys = providerKeys();
+  return {
+    configured: !!keys.googleApiKey,
+    providers: {
+      google: !!keys.googleApiKey,
+      anthropic: !!keys.anthropicApiKey
+    }
+  };
 }
 
-function setApiKey(key) {
+const PROVIDER_KEY_NAMES = { google: 'googleApiKey', anthropic: 'anthropicApiKey' };
+
+function setApiKey(provider, key) {
+  const keyName = PROVIDER_KEY_NAMES[provider];
+  if (!keyName) throw new Error(`Fournisseur inconnu : ${provider}.`);
   const trimmed = String(key || '').trim();
   if (!trimmed) throw new Error('Clé vide.');
   const config = loadConfig();
-  config.anthropicApiKey = trimmed;
+  config[keyName] = trimmed;
   saveConfig(config);
-  return { configured: true };
+  return getStatus();
 }
 
 function apiMessages() {
@@ -76,47 +93,48 @@ function apiMessages() {
 }
 
 async function sendMessage(text) {
-  const apiKey = getApiKey();
-  if (!apiKey) throw new Error('Aucune clé API Anthropic configurée.');
+  const routeName = routeFor(text);
+  const route = ROUTES[routeName];
+  const keys = providerKeys();
+  const apiKey = keys[route.keyName];
 
-  const client = new Anthropic({ apiKey });
+  if (!apiKey) {
+    throw new Error(
+      `Cette demande a été orientée vers ${route.agent} (${route.providerLabel}), mais aucune clé n’est configurée pour ce fournisseur.`
+    );
+  }
 
   const messages = [...apiMessages(), { role: 'user', content: text }];
 
-  let response;
+  let result;
   try {
-    response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+    result = await route.provider.complete({
+      apiKey,
+      model: route.model,
+      systemPrompt: SYSTEM_PROMPT,
       messages
     });
   } catch (err) {
-    const message = friendlyErrorMessage(err);
+    const message = friendlyErrorMessage(err, route.providerLabel);
     store.logAction({
       typeAction: 'core.send_message',
       sensibilite: 'lecture',
       statut: 'echoue',
-      details: { error: message }
+      details: { error: message, route: routeName, agent: route.agent }
     });
     throw new Error(message);
   }
 
-  const replyText = response.content
-    .filter((block) => block.type === 'text')
-    .map((block) => block.text)
-    .join('\n');
-
   store.appendInteraction('user', text);
-  store.appendInteraction('assistant', replyText);
+  store.appendInteraction('assistant', result.text);
   store.logAction({
     typeAction: 'core.send_message',
     sensibilite: 'lecture',
     statut: 'execute',
-    details: { length: replyText.length }
+    details: { route: routeName, agent: route.agent, model: route.model, length: result.text.length }
   });
 
-  return { text: replyText };
+  return { text: result.text, agent: route.agent };
 }
 
 module.exports = { getStatus, setApiKey, sendMessage };

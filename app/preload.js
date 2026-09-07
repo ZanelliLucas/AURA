@@ -34,7 +34,7 @@ async function delJson(path) {
 contextBridge.exposeInMainWorld('aura', {
   version: '0.1.0',
   getStatus: () => getJson('/api/status'),
-  setApiKey: (key) => postJson('/api/config/api-key', { key }),
+  setApiKey: (provider, key) => postJson('/api/config/api-key', { provider, key }),
   sendMessage: (text) => postJson('/api/message', { text }),
   getJournal: () => getJson('/api/journal'),
   getPreferences: () => getJson('/api/preferences'),

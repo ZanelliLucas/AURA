@@ -21,7 +21,7 @@ function startServer() {
 
   server.post('/api/config/api-key', (req, res) => {
     try {
-      res.json(core.setApiKey(req.body.key));
+      res.json(core.setApiKey(req.body.provider, req.body.key));
     } catch (err) {
       res.status(400).json({ error: err.message });
     }
