@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>AURA</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="grid"></div>
+
+  <div id="clock">--:--:--</div>
+
+  <button id="toggle-projects" class="edge-tab edge-tab-left" type="button">Projets</button>
+  <aside id="panel-projects" class="side-panel side-panel-left">
+    <h2>Projets actifs</h2>
+    <p class="muted">Aucun projet suivi pour l’instant.</p>
+  </aside>
+
+  <button id="toggle-context" class="edge-tab edge-tab-right" type="button">Contexte</button>
+  <aside id="panel-context" class="side-panel side-panel-right">
+    <h2>Contexte</h2>
+    <p class="muted">Préférences appliquées et dernières actions du journal apparaîtront ici.</p>
+  </aside>
+
+  <main id="stage">
+    <svg id="web" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid meet"></svg>
+  </main>
+
+  <div id="estop-banner" hidden>
+    <span class="estop-dot"></span> AURA EN PAUSE — ARRÊT D’URGENCE ACTIF — toile et conversation gelées
+  </div>
+
+  <button id="estop" type="button" title="Arrêt d’urgence global">
+    <span class="estop-dot"></span> <span id="estop-label">ARRÊT D’URGENCE</span>
+  </button>
+
+  <form id="conversation">
+    <input id="message" type="text" placeholder="Écrire un message..." autocomplete="off">
+    <button id="send" type="submit" aria-label="Envoyer">
+      <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 11.5 21 3l-6.5 18-3-7.5L3 11.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    </button>
+  </form>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -3,3 +3,5 @@ node_modules/
 backend/data/
 frontend/dist/
 *.log
+app/dist/
+app/out/

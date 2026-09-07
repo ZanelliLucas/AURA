@@ -1,0 +1,59 @@
+{
+  "name": "aura-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AURA - fenetre applicative (toile maillee & conversation)",
+  "main": "main.js",
+  "author": "Lucas Zanelli",
+  "bin": {
+    "aura": "./bin/aura.js"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "org.les-z.aura",
+    "productName": "AURA",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "executableName": "aura",
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "include": "installer.nsh"
+    },
+    "publish": {
+      "provider": "generic",
+      "url": "https://TODO-choisir-un-hebergement.example/aura-releases/"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}

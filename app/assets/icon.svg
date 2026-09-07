@@ -1,0 +1,23 @@
+
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="#050505"/>
+  <line x1="256" y1="256" x2="256.0" y2="106.0" stroke="#A51706" stroke-width="9" stroke-linecap="round" opacity="1"/>
+<circle cx="256.0" cy="106.0" r="15" fill="#A51706" opacity="1"/>
+<line x1="256" y1="256" x2="339.4" y2="172.6" stroke="#A51706" stroke-width="9" stroke-linecap="round" opacity="0.55"/>
+<circle cx="339.4" cy="172.6" r="15" fill="#A51706" opacity="0.55"/>
+<line x1="256" y1="256" x2="406.0" y2="256.0" stroke="#A51706" stroke-width="9" stroke-linecap="round" opacity="0.85"/>
+<circle cx="406.0" cy="256.0" r="15" fill="#A51706" opacity="0.85"/>
+<line x1="256" y1="256" x2="339.4" y2="339.4" stroke="#A51706" stroke-width="9" stroke-linecap="round" opacity="0.55"/>
+<circle cx="339.4" cy="339.4" r="15" fill="#A51706" opacity="0.55"/>
+<line x1="256" y1="256" x2="256.0" y2="406.0" stroke="#A51706" stroke-width="9" stroke-linecap="round" opacity="1"/>
+<circle cx="256.0" cy="406.0" r="15" fill="#A51706" opacity="1"/>
+<line x1="256" y1="256" x2="172.6" y2="339.4" stroke="#A51706" stroke-width="9" stroke-linecap="round" opacity="0.55"/>
+<circle cx="172.6" cy="339.4" r="15" fill="#A51706" opacity="0.55"/>
+<line x1="256" y1="256" x2="106.0" y2="256.0" stroke="#A51706" stroke-width="9" stroke-linecap="round" opacity="0.85"/>
+<circle cx="106.0" cy="256.0" r="15" fill="#A51706" opacity="0.85"/>
+<line x1="256" y1="256" x2="172.6" y2="172.6" stroke="#A51706" stroke-width="9" stroke-linecap="round" opacity="0.55"/>
+<circle cx="172.6" cy="172.6" r="15" fill="#A51706" opacity="0.55"/>
+
+  <circle cx="256" cy="256" r="58" fill="#050505" stroke="#A51706" stroke-width="7"/>
+  <circle cx="256" cy="256" r="30" fill="#A51706"/>
+</svg>
