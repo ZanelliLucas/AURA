@@ -1,6 +1,6 @@
 {
   "name": "aura-app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "AURA - fenetre applicative (toile maillee & conversation)",
   "main": "main.js",
@@ -10,7 +10,8 @@
   },
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "release": "node scripts/publish-release.js"
   },
   "devDependencies": {
     "electron": "^32.0.0",
