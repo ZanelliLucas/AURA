@@ -27,6 +27,8 @@
     "files": [
       "main.js",
       "preload.js",
+      "core.js",
+      "server.js",
       "renderer/**/*",
       "assets/**/*"
     ],
@@ -58,6 +60,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
-    "electron-updater": "^6.8.9"
+    "electron-updater": "^6.8.9",
+    "express": "^5.2.1"
   }
 }

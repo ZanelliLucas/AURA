@@ -1,7 +1,7 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
-const { registerCore } = require('./core');
+const { startServer } = require('./server');
 
 // .env local de dev uniquement (cle API pour tester sans passer par
 // l'ecran de configuration) - jamais inclus dans le build packagee, voir
@@ -13,6 +13,7 @@ try {
 }
 
 let mainWindow = null;
+let apiServer = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -43,8 +44,12 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
-  registerCore();
+app.whenReady().then(async () => {
+  try {
+    apiServer = await startServer();
+  } catch (err) {
+    console.error('[server] echec du demarrage de l\'API locale :', err.message);
+  }
   createWindow();
   checkForUpdates();
 });
@@ -65,5 +70,6 @@ function checkForUpdates() {
 // ferme, le processus se termine entierement - aucune icone ni tache de
 // fond ne doit survivre a la session.
 app.on('window-all-closed', () => {
+  if (apiServer) apiServer.close();
   app.quit();
 });
