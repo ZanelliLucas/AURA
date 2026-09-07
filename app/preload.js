@@ -1,8 +1,8 @@
-const { contextBridge } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
-// Point d'entree pour les futurs echanges renderer <-> AURA CORE
-// (orchestrateur, connecteurs). Vide pour l'instant : l'ecran principal
-// ne fait encore que du rendu statique.
 contextBridge.exposeInMainWorld('aura', {
-  version: '0.1.0'
+  version: '0.1.0',
+  getStatus: () => ipcRenderer.invoke('aura:get-status'),
+  setApiKey: (key) => ipcRenderer.invoke('aura:set-api-key', key),
+  sendMessage: (text) => ipcRenderer.invoke('aura:send-message', text)
 });

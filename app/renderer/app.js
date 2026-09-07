@@ -186,22 +186,110 @@ function wireEmergencyStop() {
   });
 }
 
+function addMessage(role, text) {
+  const thread = document.getElementById('thread');
+  const bubble = document.createElement('div');
+  bubble.className = `msg msg-${role}`;
+  bubble.textContent = text;
+  thread.appendChild(bubble);
+  thread.scrollTop = thread.scrollHeight;
+  return bubble;
+}
+
+function addPendingMessage() {
+  const thread = document.getElementById('thread');
+  const bubble = document.createElement('div');
+  bubble.className = 'msg msg-aura msg-pending';
+  bubble.innerHTML = 'AURA réfléchit<span class="dots"></span>';
+  thread.appendChild(bubble);
+  thread.scrollTop = thread.scrollHeight;
+  return bubble;
+}
+
 function wireConversation() {
   const form = document.getElementById('conversation');
   const input = document.getElementById('message');
-  form.addEventListener('submit', (e) => {
+  const send = document.getElementById('send');
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (document.body.classList.contains('estopped')) return;
-    if (!input.value.trim()) return;
+    const text = input.value.trim();
+    if (!text) return;
+
     setActive('__hub', true);
-    setTimeout(() => setActive('__hub', false), 500);
     input.value = '';
+    input.disabled = true;
+    send.disabled = true;
+
+    addMessage('user', text);
+    const pending = addPendingMessage();
+
+    try {
+      const result = await window.aura.sendMessage(text);
+      pending.remove();
+      addMessage('aura', result.text);
+      journal(`MESSAGE_ECHANGE : "${text.slice(0, 60)}"`);
+    } catch (err) {
+      pending.remove();
+      addMessage('error', `AURA ne peut pas répondre : ${err.message}`);
+      journal(`MESSAGE_ECHEC : ${err.message}`);
+    } finally {
+      setActive('__hub', false);
+      input.disabled = false;
+      send.disabled = false;
+      input.focus();
+    }
   });
+}
+
+async function initConversation() {
+  const setupForm = document.getElementById('setup-key');
+  const conversationForm = document.getElementById('conversation');
+  const apiKeyInput = document.getElementById('api-key');
+
+  const showConversation = () => {
+    setupForm.hidden = true;
+    conversationForm.hidden = false;
+    document.getElementById('message').focus();
+  };
+  const showSetup = () => {
+    setupForm.hidden = false;
+    conversationForm.hidden = true;
+    apiKeyInput.focus();
+  };
+
+  wireConversation();
+
+  setupForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const key = apiKeyInput.value.trim();
+    if (!key) return;
+    try {
+      await window.aura.setApiKey(key);
+      apiKeyInput.value = '';
+      showConversation();
+      addMessage('aura', 'Clé API enregistrée. Je t’écoute.');
+    } catch (err) {
+      addMessage('error', `Impossible d’enregistrer la clé : ${err.message}`);
+    }
+  });
+
+  try {
+    const status = await window.aura.getStatus();
+    if (status.configured) {
+      showConversation();
+    } else {
+      showSetup();
+    }
+  } catch {
+    showSetup();
+  }
 }
 
 render();
 startClock();
 wirePanels();
 wireEmergencyStop();
-wireConversation();
+initConversation();
 setInterval(pulseRandomActivity, 2600);

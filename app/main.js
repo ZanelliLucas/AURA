@@ -1,6 +1,16 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
+const { registerCore } = require('./core');
+
+// .env local de dev uniquement (cle API pour tester sans passer par
+// l'ecran de configuration) - jamais inclus dans le build packagee, voir
+// build.files dans package.json.
+try {
+  require('dotenv').config({ path: path.join(__dirname, '.env'), quiet: true });
+} catch {
+  // dotenv n'est present qu'en dev (devDependency) - absent en prod, sans consequence
+}
 
 let mainWindow = null;
 
@@ -34,6 +44,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  registerCore();
   createWindow();
   checkForUpdates();
 });
