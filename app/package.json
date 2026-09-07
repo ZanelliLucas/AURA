@@ -49,8 +49,9 @@
       "include": "installer.nsh"
     },
     "publish": {
-      "provider": "generic",
-      "url": "https://TODO-choisir-un-hebergement.example/aura-releases/"
+      "provider": "github",
+      "owner": "ZanelliLucas",
+      "repo": "AURA"
     }
   },
   "dependencies": {
