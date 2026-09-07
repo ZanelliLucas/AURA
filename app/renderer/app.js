@@ -173,8 +173,8 @@ async function loadJournal() {
 }
 
 const PROVIDER_LABELS = {
-  google: 'Gemini (général)',
-  anthropic: 'Claude (code)'
+  google: 'Gemini (image/vidéo — bientôt)',
+  anthropic: 'Claude (conversation & code)'
 };
 
 function toggleProviderForm(provider, container) {
@@ -359,7 +359,7 @@ async function initConversation() {
     const key = apiKeyInput.value.trim();
     if (!key) return;
     try {
-      await window.aura.setApiKey('google', key);
+      await window.aura.setApiKey('anthropic', key);
       apiKeyInput.value = '';
       showConversation();
       addMessage('aura', 'Clé API enregistrée. Je t’écoute.');

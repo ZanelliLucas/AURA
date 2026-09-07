@@ -60,12 +60,12 @@ function friendlyErrorMessage(err, providerLabel) {
 }
 
 // getStatus : "configured" reste vrai des que la route par defaut
-// (general -> Gemini) a une cle, pour piloter l'ecran de premiere
+// (general -> Claude) a une cle, pour piloter l'ecran de premiere
 // configuration ; le detail par fournisseur alimente le panneau Contexte.
 function getStatus() {
   const keys = providerKeys();
   return {
-    configured: !!keys.googleApiKey,
+    configured: !!keys.anthropicApiKey,
     providers: {
       google: !!keys.googleApiKey,
       anthropic: !!keys.anthropicApiKey
