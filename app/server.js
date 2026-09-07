@@ -51,6 +51,10 @@ function startServer() {
     res.json(store.setPreference(key, value));
   });
 
+  server.delete('/api/preferences/:key', (req, res) => {
+    res.json(store.deletePreference(req.params.key));
+  });
+
   // F-06 : l'utilisateur doit pouvoir tout effacer. La confirmation
   // explicite (§14.1) est geree cote UI avant cet appel.
   server.delete('/api/memory', (req, res) => {

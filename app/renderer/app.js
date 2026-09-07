@@ -238,15 +238,6 @@ function wirePanels() {
     }
   });
 
-  document.getElementById('clear-memory').addEventListener('click', async () => {
-    if (!confirm('Effacer toutes les préférences mémorisées par AURA ? Cette action est irréversible.')) return;
-    try {
-      await window.aura.clearMemory();
-      journal('MEMOIRE_EFFACEE : préférences remises à zéro');
-    } catch (err) {
-      journal(`MEMOIRE_EFFACEE_ECHEC : ${err.message}`);
-    }
-  });
 }
 
 function journal(action) {
@@ -380,9 +371,92 @@ async function initConversation() {
   }
 }
 
+// --- Ecrans internes (§16.2 a §16.5) ---------------------------------
+// Toutes les vues vivent dans la meme fenetre applicative, jamais une
+// page ou fenetre separee (§13.2). showScreen(null) revient a la toile.
+
+function showScreen(name) {
+  document.querySelectorAll('.app-screen').forEach((el) => {
+    el.hidden = el.id !== `screen-${name}`;
+  });
+  document.getElementById('panel-projects').classList.remove('open');
+  if (name === 'memory') loadMemoryScreen();
+}
+
+function closeScreen() {
+  document.querySelectorAll('.app-screen').forEach((el) => { el.hidden = true; });
+}
+
+function wireScreens() {
+  document.querySelectorAll('.module-link').forEach((btn) => {
+    btn.addEventListener('click', () => showScreen(btn.dataset.screen));
+  });
+  document.querySelectorAll('[data-close-screen]').forEach((btn) => {
+    btn.addEventListener('click', closeScreen);
+  });
+}
+
+function renderMemoryPrefs(prefs) {
+  const list = document.getElementById('memory-prefs-list');
+  const keys = Object.keys(prefs);
+  if (!keys.length) {
+    list.textContent = 'Aucune préférence mémorisée.';
+    return;
+  }
+  list.innerHTML = '';
+  keys.forEach((key) => {
+    const { value, updatedAt } = prefs[key];
+    const row = document.createElement('div');
+    row.className = 'pref-row';
+    row.innerHTML = `
+      <div class="pref-key">${key}</div>
+      <input class="pref-value" type="text" value="${String(value).replace(/"/g, '&quot;')}">
+      <span class="pref-updated">${new Date(updatedAt).toLocaleDateString('fr-FR')}</span>
+      <button type="button" class="pref-save" title="Enregistrer">✓</button>
+      <button type="button" class="pref-delete" title="Supprimer">✕</button>
+    `;
+    row.querySelector('.pref-save').addEventListener('click', async () => {
+      const newValue = row.querySelector('.pref-value').value;
+      await window.aura.setPreference(key, newValue);
+      journal(`PREFERENCE_MODIFIEE : ${key}`);
+      loadMemoryScreen();
+    });
+    row.querySelector('.pref-delete').addEventListener('click', async () => {
+      await window.aura.deletePreference(key);
+      journal(`PREFERENCE_SUPPRIMEE : ${key}`);
+      loadMemoryScreen();
+    });
+    list.appendChild(row);
+  });
+}
+
+async function loadMemoryScreen() {
+  try {
+    const prefs = await window.aura.getPreferences();
+    renderMemoryPrefs(prefs);
+  } catch {
+    document.getElementById('memory-prefs-list').textContent = 'Préférences indisponibles.';
+  }
+}
+
+function wireMemoryScreen() {
+  document.getElementById('memory-clear-all').addEventListener('click', async () => {
+    if (!confirm('Effacer toutes les préférences mémorisées par AURA ? Cette action est irréversible.')) return;
+    try {
+      await window.aura.clearMemory();
+      journal('MEMOIRE_EFFACEE : préférences remises à zéro');
+      loadMemoryScreen();
+    } catch (err) {
+      journal(`MEMOIRE_EFFACEE_ECHEC : ${err.message}`);
+    }
+  });
+}
+
 render();
 startClock();
 wirePanels();
+wireScreens();
+wireMemoryScreen();
 wireEmergencyStop();
 initConversation();
 setInterval(pulseRandomActivity, 2600);

@@ -15,6 +15,14 @@
   <aside id="panel-projects" class="side-panel side-panel-left">
     <h2>Projets actifs</h2>
     <p class="muted">Aucun projet suivi pour l’instant.</p>
+
+    <h3>Modules</h3>
+    <nav id="module-nav">
+      <button type="button" class="module-link" data-screen="memory">Mémoire &amp; préférences</button>
+      <button type="button" class="module-link" data-screen="gaming">Gaming &amp; Streaming</button>
+      <button type="button" class="module-link" data-screen="world">Carte du monde</button>
+      <button type="button" class="module-link" data-screen="imagelab">Image Lab</button>
+    </nav>
   </aside>
 
   <button id="toggle-context" class="edge-tab edge-tab-right" type="button">Contexte</button>
@@ -26,12 +34,46 @@
 
     <h3>Journal</h3>
     <div id="journal-list" class="muted">Aucune action enregistrée pour l’instant.</div>
-    <button id="clear-memory" type="button" class="danger-link">Effacer tout</button>
   </aside>
 
   <main id="stage">
     <svg id="web" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid meet"></svg>
   </main>
+
+  <div id="screen-memory" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>Mémoire &amp; préférences</h1>
+
+    <section>
+      <h2>Préférences</h2>
+      <div id="memory-prefs-list" class="muted">Aucune préférence mémorisée.</div>
+    </section>
+
+    <section>
+      <h2>Historique des projets</h2>
+      <p class="muted">Pas encore disponible — l’entité Projet (§12.1) reste à construire.</p>
+    </section>
+
+    <button id="memory-clear-all" type="button" class="danger-link">Effacer tout</button>
+  </div>
+
+  <div id="screen-gaming" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>Gaming &amp; Streaming</h1>
+    <p class="muted">Écran pas encore construit — connecteurs Riot / Steam / OBS non branchés (§8).</p>
+  </div>
+
+  <div id="screen-world" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>AURA WORLD</h1>
+    <p class="muted">Écran pas encore construit — carte 2D Leaflet / OpenStreetMap à intégrer (§9).</p>
+  </div>
+
+  <div id="screen-imagelab" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>AURA Image Lab</h1>
+    <p class="muted">Écran pas encore construit — traitement d’image (§10) à intégrer.</p>
+  </div>
 
   <div id="estop-banner" hidden>
     <span class="estop-dot"></span> AURA EN PAUSE — ARRÊT D’URGENCE ACTIF — toile et conversation gelées

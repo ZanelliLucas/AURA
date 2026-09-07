@@ -177,6 +177,20 @@ html, body {
 }
 .side-panel h3:first-of-type { margin-top: 0; }
 
+#module-nav { display: flex; flex-direction: column; gap: 6px; }
+.module-link {
+  text-align: left;
+  background: rgba(245, 246, 247, 0.05);
+  border: 1px solid rgba(245, 246, 247, 0.12);
+  color: var(--white);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.module-link:hover { border-color: var(--red-glow); color: var(--red); }
+
 .provider-row {
   display: flex;
   align-items: center;
@@ -444,4 +458,77 @@ body.estopped #conversation-panel {
   font-size: 12px;
   cursor: pointer;
 }
+
+/* Ecrans internes (§16.2-16.5) - toujours dans la meme fenetre, jamais
+   une page separee. */
+.app-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  background: var(--bg);
+  overflow-y: auto;
+  padding: 70px 60px 60px;
+}
+
+.app-screen h1 {
+  font-size: 20px;
+  letter-spacing: 1px;
+  margin: 0 0 24px;
+}
+.app-screen h2 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--red);
+  margin: 0 0 14px;
+}
+.app-screen section { margin-bottom: 32px; max-width: 640px; }
+.app-screen .muted { color: var(--dim); font-size: 13px; line-height: 1.6; }
+
+.screen-back {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: none;
+  border: 1px solid rgba(245, 246, 247, 0.18);
+  color: var(--white);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.screen-back:hover { border-color: var(--red-glow); color: var(--red); }
+
+.pref-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 90px auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(245, 246, 247, 0.08);
+  font-size: 12px;
+}
+.pref-key { color: var(--dim); }
+.pref-value {
+  background: rgba(245, 246, 247, 0.06);
+  border: 1px solid rgba(245, 246, 247, 0.14);
+  border-radius: 5px;
+  color: var(--white);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  padding: 5px 8px;
+}
+.pref-updated { color: var(--dim); font-size: 10px; }
+.pref-save, .pref-delete {
+  background: none;
+  border: 1px solid rgba(245, 246, 247, 0.16);
+  color: var(--white);
+  border-radius: 5px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+}
+.pref-save:hover { border-color: #3fb950; color: #3fb950; }
+.pref-delete:hover { border-color: var(--red); color: var(--red); }
 #save-key:hover { background: var(--red-hover); }

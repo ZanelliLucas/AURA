@@ -46,6 +46,13 @@ function setPreference(key, value) {
   return prefs;
 }
 
+function deletePreference(key) {
+  const prefs = getPreferences();
+  delete prefs[key];
+  writeJson('preferences.json', prefs);
+  return prefs;
+}
+
 function clearPreferences() {
   writeJson('preferences.json', {});
   return {};
@@ -87,6 +94,7 @@ function logAction({ typeAction, sensibilite, statut, details }) {
 module.exports = {
   getPreferences,
   setPreference,
+  deletePreference,
   clearPreferences,
   getInteractions,
   appendInteraction,

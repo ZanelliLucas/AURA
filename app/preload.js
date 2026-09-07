@@ -39,5 +39,6 @@ contextBridge.exposeInMainWorld('aura', {
   getJournal: () => getJson('/api/journal'),
   getPreferences: () => getJson('/api/preferences'),
   setPreference: (key, value) => postJson('/api/preferences', { key, value }),
+  deletePreference: (key) => delJson(`/api/preferences/${encodeURIComponent(key)}`),
   clearMemory: () => delJson('/api/memory')
 });
