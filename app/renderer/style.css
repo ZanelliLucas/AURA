@@ -129,7 +129,8 @@ html, body {
   pointer-events: none;
 }
 
-/* Flux lumineux voyageant le long des branches - le reseau "respire". */
+/* Flux lumineux voyageant le long des branches, dans les deux sens - le
+   reseau "respire" et echange reellement, pas un aller simple. */
 .branch-pulse {
   fill: var(--red);
   opacity: 0.85;
@@ -137,6 +138,7 @@ html, body {
   pointer-events: none;
 }
 .branch-pulse-agent { fill: var(--white); opacity: 0.55; filter: drop-shadow(0 0 2px rgba(245, 246, 247, 0.6)); }
+.branch-pulse-in { fill: var(--white); opacity: 0.4; filter: drop-shadow(0 0 2px rgba(245, 246, 247, 0.45)); }
 
 /* Champ de fond : poussiere + glyphes techniques, purement decoratifs. */
 .bg-field { pointer-events: none; }

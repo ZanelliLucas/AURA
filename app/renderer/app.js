@@ -20,36 +20,57 @@ function seededUnit(seed) {
   return s - Math.floor(s);
 }
 
-// Point d'une courbe cubique de Bezier a t (0..1).
-function cubicPoint(p0, c1, c2, p1, t) {
-  const mt = 1 - t;
-  return {
-    x: mt * mt * mt * p0.x + 3 * mt * mt * t * c1.x + 3 * mt * t * t * c2.x + t * t * t * p1.x,
-    y: mt * mt * mt * p0.y + 3 * mt * mt * t * c1.y + 3 * mt * t * t * c2.y + t * t * t * p1.y
-  };
+// Chemin lisse (Catmull-Rom -> Bezier) passant par une suite de points -
+// contrairement a une seule courbe en S, un trace qui serpente vraiment
+// (inflexions multiples, comme un tendon ou une riviere), a la maniere
+// des references fournies.
+function catmullRomPath(points) {
+  let d = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] || points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] || p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2.x} ${p2.y}`;
+  }
+  return d;
 }
 
-// Branche organique (tendon incurve) entre deux points : une legere
-// courbure en S, deterministe par seed, plutot qu'un rayon rectiligne -
-// inspire des references fournies (dendrites/plexus, pas d'etoile a
-// rayons droits).
-function organicBranch(p0, p1, seed) {
+// Branche organique (tendon serpentant) entre deux points : plusieurs
+// points intermediaires ecartes de part et d'autre de l'axe direct, en
+// alternance, pour un trace a inflexions multiples plutot qu'un simple
+// arc - inspire des references fournies (dendrites/plexus, pas de rayons
+// rectilignes ni de simples arcs en S).
+function organicBranch(p0, p1, seed, waypointCount = 4) {
   const dx = p1.x - p0.x;
   const dy = p1.y - p0.y;
   const dist = Math.hypot(dx, dy) || 1;
   const nx = -dy / dist;
   const ny = dx / dist;
-  const bend1 = seededOffset(seed, dist * 0.16);
-  const bend2 = seededOffset(seed + 41, dist * 0.16);
-  const c1 = { x: p0.x + dx * 0.32 + nx * bend1, y: p0.y + dy * 0.32 + ny * bend1 };
-  const c2 = { x: p0.x + dx * 0.68 + nx * bend2, y: p0.y + dy * 0.68 + ny * bend2 };
-  return { d: `M ${p0.x} ${p0.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${p1.x} ${p1.y}`, p0, c1, c2, p1 };
+
+  const points = [p0];
+  for (let i = 1; i <= waypointCount; i++) {
+    const t = i / (waypointCount + 1);
+    const baseX = p0.x + dx * t;
+    const baseY = p0.y + dy * t;
+    const taper = Math.sin(t * Math.PI); // attenue pres des deux extremites
+    const swing = seededUnit(seed + i * 5.13) < 0.5 ? -1 : 1;
+    const wobble = (0.10 + seededUnit(seed + i * 3.7) * 0.16) * dist * taper * swing;
+    points.push({ x: baseX + nx * wobble, y: baseY + ny * wobble });
+  }
+  points.push(p1);
+
+  return { d: catmullRomPath(points), points };
 }
 
-function branchSamplePoints(branch, count) {
-  const pts = [];
-  for (let i = 1; i < count; i++) pts.push(cubicPoint(branch.p0, branch.c1, branch.c2, branch.p1, i / count));
-  return pts;
+function branchSamplePoints(branch) {
+  // Les points intermediaires (hub et noeud exclus) suffisent a tisser
+  // le maillage - inutile de resampler la courbe elle-meme.
+  return branch.points.slice(1, -1);
 }
 
 // Maillage fin entre points voisins issus de branches differentes : la
@@ -146,14 +167,21 @@ function el(tag, attrs) {
 
 // Petite pastille lumineuse qui parcourt une branche en boucle, pour
 // donner l'impression d'un flux de donnees circulant reellement dans
-// le reseau plutot qu'un graphe statique.
-function addFlowPulse(svg, pathId, seed, kind) {
-  const dot = el('circle', { r: kind === 'core' ? 2.2 : 1.6, class: `branch-pulse branch-pulse-${kind}` });
+// le reseau plutot qu'un graphe statique. direction 'out' = hub -> agent
+// (donnees envoyees), 'in' = agent -> hub (donnees remontees) : les deux
+// tournent en meme temps sur chaque branche, comme un flux dans les deux
+// sens plutot qu'un aller simple.
+function addFlowPulse(svg, pathId, seed, kind, direction) {
+  const isOut = direction === 'out';
+  const dot = el('circle', {
+    r: kind === 'core' ? 2.2 : 1.6,
+    class: `branch-pulse branch-pulse-${kind} branch-pulse-${direction}`
+  });
   const duration = (5.5 + seededUnit(seed) * 4.5).toFixed(2);
   const beginDelay = (seededUnit(seed + 71) * 6).toFixed(2);
   const anim = el('animateMotion', {
     dur: `${duration}s`, begin: `${beginDelay}s`, repeatCount: 'indefinite',
-    keyPoints: '0;1', keyTimes: '0;1', calcMode: 'linear'
+    keyPoints: isOut ? '0;1' : '1;0', keyTimes: '0;1', calcMode: 'linear'
   });
   const mpath = el('mpath', {});
   mpath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${pathId}`);
@@ -178,7 +206,7 @@ function render() {
   nodeList.forEach((p, i) => {
     const branch = organicBranch(CENTER, p, i * 13.7 + 5);
     branches[p.id] = branch;
-    branchSamplePoints(branch, 5).forEach((pt) => samplePoints.push({ ...pt, branch: p.id }));
+    branchSamplePoints(branch).forEach((pt) => samplePoints.push({ ...pt, branch: p.id }));
   });
   svg.appendChild(buildMeshFilaments(samplePoints));
 
@@ -214,10 +242,9 @@ function render() {
   nodeList.forEach((p) => {
     const group = el('g', { class: 'node-group', 'data-node': p.id });
 
-    p.toolPositions.forEach((tool) => {
-      group.appendChild(el('line', {
-        x1: p.x, y1: p.y, x2: tool.x, y2: tool.y, class: 'link-tool'
-      }));
+    p.toolPositions.forEach((tool, ti) => {
+      const twig = organicBranch(p, tool, p.angle * 400 + ti * 19 + 3, 2);
+      group.appendChild(el('path', { d: twig.d, class: 'link-tool' }));
       group.appendChild(el('circle', { cx: tool.x, cy: tool.y, r: 3, class: 'node-tool' }));
       const label = el('text', { x: tool.x + 7, y: tool.y + 3, class: 'label label-tool' });
       label.textContent = tool.label;
@@ -248,7 +275,10 @@ function render() {
   // dynamique" - un reseau qui respire, pas un graphe fige).
   const pulseGroup = el('g', { class: 'pulse-layer' });
   svg.appendChild(pulseGroup);
-  nodeList.forEach((p, i) => addFlowPulse(pulseGroup, `branch-${p.id}`, i * 3.3, p.kind));
+  nodeList.forEach((p, i) => {
+    addFlowPulse(pulseGroup, `branch-${p.id}`, i * 3.3, p.kind, 'out');
+    addFlowPulse(pulseGroup, `branch-${p.id}`, i * 3.3 + 97, p.kind, 'in');
+  });
 
   // Hub central
   const hub = el('g', { class: 'node-group', 'data-node': '__hub' });
