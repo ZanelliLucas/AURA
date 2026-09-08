@@ -12,6 +12,7 @@ const productivity = require('./productivity');
 const dev = require('./dev');
 const communication = require('./communication');
 const systemMonitor = require('./systemMonitor');
+const analytics = require('./analytics');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -304,6 +305,28 @@ function startServer() {
 
   server.post('/api/system/alerts/:id/ack', (req, res) => {
     res.json(systemMonitor.acknowledgeAlert(req.params.id));
+  });
+
+  // AURA ANALYTICS (§5.5, §15) - lecture seule, jamais de confirmation.
+  server.get('/api/analytics/summary', (req, res) => {
+    res.json(analytics.summary());
+  });
+
+  server.get('/api/analytics/anomalies', (req, res) => {
+    res.json(analytics.anomalies());
+  });
+
+  server.get('/api/analytics/forecast', (req, res) => {
+    try {
+      const stepsAhead = Number(req.query.stepsAhead) || 5;
+      res.json(analytics.forecastMetric(req.query.metric, stepsAhead));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.get('/api/analytics/predictions', (req, res) => {
+    res.json(analytics.getPredictions());
   });
 
   return new Promise((resolve, reject) => {

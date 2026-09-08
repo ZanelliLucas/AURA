@@ -154,6 +154,45 @@ function deleteReminder(id) {
   return reminders;
 }
 
+// --- Historique de metriques (AURA ANALYTICS, §5.5) ------------------
+// Serie temporelle legere alimentee par un echantillonnage periodique
+// (main.js) pendant qu'une session est ouverte (F-22) - pas de
+// surveillance hors session.
+
+const MAX_METRIC_SAMPLES = 2880; // ~24h a un echantillon/30s
+
+function appendMetricSample(sample) {
+  const history = readJson('metrics.json', []);
+  history.push({ ...sample, at: new Date().toISOString() });
+  writeJson('metrics.json', history.slice(-MAX_METRIC_SAMPLES));
+}
+
+function getMetricHistory(limit = MAX_METRIC_SAMPLES) {
+  return readJson('metrics.json', []).slice(-limit);
+}
+
+// --- Predictions (§12.2 Prediction : sources, probabilite, confiance) --
+
+function getPredictions(limit = 50) {
+  return readJson('predictions.json', []).slice(-limit).reverse();
+}
+
+function createPrediction({ metric, sourceCount, predictedValue, confidence, horizon }) {
+  const predictions = readJson('predictions.json', []);
+  const prediction = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    metric,
+    sourceCount,
+    predictedValue,
+    confidence,
+    horizon,
+    date: new Date().toISOString()
+  };
+  predictions.push(prediction);
+  writeJson('predictions.json', predictions.slice(-200));
+  return prediction;
+}
+
 // --- Alertes (§12.2 Alert : niveau, cause, statut) -------------------
 
 const MAX_ALERTS = 200;
@@ -223,6 +262,10 @@ module.exports = {
   getAlerts,
   createAlert,
   acknowledgeAlert,
+  appendMetricSample,
+  getMetricHistory,
+  getPredictions,
+  createPrediction,
   getJournal,
   logAction
 };

@@ -81,5 +81,10 @@ contextBridge.exposeInMainWorld('aura', {
   getSystemThresholds: () => getJson('/api/system/thresholds'),
   setSystemThreshold: (key, value) => postJson('/api/system/thresholds', { key, value }),
   getSystemAlerts: () => getJson('/api/system/alerts'),
-  acknowledgeAlert: (id) => postJson(`/api/system/alerts/${encodeURIComponent(id)}/ack`)
+  acknowledgeAlert: (id) => postJson(`/api/system/alerts/${encodeURIComponent(id)}/ack`),
+
+  getAnalyticsSummary: () => getJson('/api/analytics/summary'),
+  getAnalyticsAnomalies: () => getJson('/api/analytics/anomalies'),
+  getForecast: (metric, stepsAhead) => getJson(`/api/analytics/forecast?metric=${metric}&stepsAhead=${stepsAhead}`),
+  getPredictions: () => getJson('/api/analytics/predictions')
 });

@@ -49,6 +49,7 @@
       <button type="button" class="module-link" data-screen="dev">AURA CODE</button>
       <button type="button" class="module-link" data-screen="comm">Communication</button>
       <button type="button" class="module-link" data-screen="sysmon">System Monitor</button>
+      <button type="button" class="module-link" data-screen="analytics">Analytics</button>
     </nav>
   </aside>
 
@@ -344,6 +345,61 @@
       <section>
         <h2>Alertes</h2>
         <div id="sysmon-alerts" class="muted small">Aucune alerte.</div>
+      </section>
+    </div>
+  </div>
+
+  <div id="screen-analytics" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>AURA ANALYTICS</h1>
+    <p class="muted small" style="max-width:640px; margin-top:-14px; margin-bottom:26px;">Fusionne les données déjà collectées par les autres modules (System Monitor, Productivité, journal d’actions). Les prévisions affichent toujours un niveau de confiance — jamais présentées comme certaines.</p>
+
+    <div class="sysmon-grid">
+      <div class="sysmon-card">
+        <h3>CPU (tendance)</h3>
+        <div id="analytics-cpu" class="muted small">—</div>
+      </div>
+      <div class="sysmon-card">
+        <h3>RAM (tendance)</h3>
+        <div id="analytics-ram" class="muted small">—</div>
+      </div>
+      <div class="sysmon-card">
+        <h3>GPU (tendance)</h3>
+        <div id="analytics-gpu" class="muted small">—</div>
+      </div>
+      <div class="sysmon-card">
+        <h3>Corrélation CPU / GPU</h3>
+        <div id="analytics-correlation" class="muted small">—</div>
+      </div>
+      <div class="sysmon-card">
+        <h3>Productivité</h3>
+        <div id="analytics-productivity" class="muted small">—</div>
+      </div>
+      <div class="sysmon-card">
+        <h3>Journal d’actions</h3>
+        <div id="analytics-journal" class="muted small">—</div>
+      </div>
+    </div>
+
+    <div class="sysmon-bottom">
+      <section>
+        <h2>Anomalies détectées</h2>
+        <div id="analytics-anomalies" class="muted small">Aucune.</div>
+      </section>
+
+      <section>
+        <h2>Prévision</h2>
+        <form id="forecast-form" class="inline-form">
+          <select id="forecast-metric">
+            <option value="cpu">CPU</option>
+            <option value="ram">RAM</option>
+            <option value="gpu">GPU</option>
+          </select>
+          <input id="forecast-steps" type="number" min="1" max="50" value="5" title="Nombre de pas">
+          <button type="submit">Prévoir</button>
+        </form>
+        <div id="forecast-result" class="comm-preview" hidden></div>
+        <div id="predictions-history" class="muted small"></div>
       </section>
     </div>
   </div>

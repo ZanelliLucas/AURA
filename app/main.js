@@ -3,6 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 const { startServer } = require('./server');
+const store = require('./store');
+const sysinfo = require('./connectors/systemMonitor');
 
 // .env local de dev uniquement (cle API pour tester sans passer par
 // l'ecran de configuration) - jamais inclus dans le build packagee, voir
@@ -61,6 +63,28 @@ ipcMain.handle('dialog:save-image', async (event, dataUrl) => {
   return { saved: true, filePath };
 });
 
+// Echantillonnage periodique pour AURA ANALYTICS (§5.5) : alimente
+// l'historique reel exploite pour les tendances/anomalies/previsions.
+// Ne tourne que pendant la session (F-22), jamais en tache de fond.
+let metricsSamplerInterval = null;
+
+function startMetricsSampler() {
+  const sample = async () => {
+    try {
+      const snap = await sysinfo.getSnapshot();
+      store.appendMetricSample({
+        cpuPercent: snap.cpu.loadPercent,
+        ramPercent: snap.memory.usedPercent,
+        gpuPercent: snap.gpu[0]?.loadPercent ?? null
+      });
+    } catch (err) {
+      console.log('[analytics] echantillonnage echoue :', err.message);
+    }
+  };
+  sample();
+  metricsSamplerInterval = setInterval(sample, 30000);
+}
+
 app.whenReady().then(async () => {
   try {
     apiServer = await startServer();
@@ -69,6 +93,7 @@ app.whenReady().then(async () => {
   }
   createWindow();
   checkForUpdates();
+  startMetricsSampler();
 });
 
 // Auto-update (electron-updater). Inactif tant qu'aucune source de
@@ -88,5 +113,6 @@ function checkForUpdates() {
 // fond ne doit survivre a la session.
 app.on('window-all-closed', () => {
   if (apiServer) apiServer.close();
+  if (metricsSamplerInterval) clearInterval(metricsSamplerInterval);
   app.quit();
 });

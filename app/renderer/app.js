@@ -386,6 +386,7 @@ function showScreen(name) {
   if (name === 'dev') loadDevScreen();
   if (name === 'comm') loadCommScreen();
   if (name === 'sysmon') startSysmonPolling();
+  if (name === 'analytics') loadAnalyticsScreen();
   if (name === 'world') {
     initWorldMap();
     setTimeout(() => worldMap && worldMap.invalidateSize(), 0);
@@ -1400,6 +1401,118 @@ function wireSysmonScreen() {
   });
 }
 
+// --- AURA ANALYTICS (§5.5) ---------------------------------------------
+// Fusionne des donnees deja reelles d'autres modules. Toute prevision
+// affiche sa confiance et un rappel explicite qu'il ne s'agit pas d'une
+// certitude (§5.5).
+
+function trendLabel(t) {
+  if (!t) return '—';
+  const arrow = t.direction === 'hausse' ? '↗' : t.direction === 'baisse' ? '↘' : '→';
+  return `${arrow} ${t.direction} (ajustement ${Math.round(t.confidence * 100)}%)`;
+}
+
+function renderMetricCard(elId, data) {
+  const el = document.getElementById(elId);
+  if (!data) { el.textContent = 'Pas assez de données.'; return; }
+  el.innerHTML = `
+    <div>Moyenne : ${data.mean}% (${data.min}–${data.max}%)</div>
+    <div>Écart-type : ${data.stdDev}</div>
+    <div>Tendance : ${trendLabel(data.trend)}</div>
+    <div style="font-size:10px; margin-top:4px;">${data.count} échantillons</div>
+  `;
+}
+
+function renderCorrelation(value) {
+  const el = document.getElementById('analytics-correlation');
+  if (value === null) { el.textContent = 'Pas assez de données.'; return; }
+  const abs = Math.abs(value);
+  const interp = abs < 0.2 ? 'aucun lien apparent' : abs < 0.5 ? 'lien faible' : abs < 0.8 ? 'lien modéré' : 'lien fort';
+  const sign = value > 0 ? ' (positif)' : value < 0 ? ' (négatif)' : '';
+  el.innerHTML = `<div>Coefficient : ${value}</div><div>${interp}${sign}</div>`;
+}
+
+function renderProductivity(p) {
+  document.getElementById('analytics-productivity').innerHTML = p.totalTasks
+    ? `<div>${p.completedTasks}/${p.totalTasks} tâches terminées</div><div>${p.completionRatePercent}% de complétion</div>`
+    : 'Aucune tâche enregistrée.';
+}
+
+function renderJournalStats(j) {
+  const top = Object.entries(j.byType).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  document.getElementById('analytics-journal').innerHTML = `
+    <div>${j.totalActions} actions · ${j.failureRatePercent}% d’échec</div>
+    ${top.map(([type, count]) => `<div>${type} : ${count}</div>`).join('')}
+  `;
+}
+
+function renderAnomaliesList(anoms) {
+  const el = document.getElementById('analytics-anomalies');
+  const all = [
+    ...anoms.cpu.map((a) => ({ ...a, metric: 'CPU' })),
+    ...anoms.ram.map((a) => ({ ...a, metric: 'RAM' })),
+    ...anoms.gpu.map((a) => ({ ...a, metric: 'GPU' }))
+  ].sort((a, b) => new Date(b.at) - new Date(a.at));
+  if (!all.length) { el.textContent = 'Aucune anomalie détectée.'; return; }
+  el.innerHTML = all.slice(0, 10)
+    .map((a) => `<div>${new Date(a.at).toLocaleTimeString('fr-FR')} — ${a.metric} à ${a.value}% (z=${a.zScore})</div>`)
+    .join('');
+}
+
+function renderPredictionsHistory(predictions) {
+  const el = document.getElementById('predictions-history');
+  if (!predictions.length) { el.textContent = ''; return; }
+  el.innerHTML = '<div style="margin-top:10px; color:var(--dim);">Historique récent :</div>' +
+    predictions.slice(0, 5)
+      .map((p) => `<div>${p.metric} → ${p.predictedValue}% (confiance ${Math.round(p.confidence * 100)}%, ${new Date(p.date).toLocaleString('fr-FR')})</div>`)
+      .join('');
+}
+
+async function loadAnalyticsScreen() {
+  try {
+    const summary = await window.aura.getAnalyticsSummary();
+    renderMetricCard('analytics-cpu', summary.system.cpu);
+    renderMetricCard('analytics-ram', summary.system.ram);
+    renderMetricCard('analytics-gpu', summary.system.gpu);
+    renderCorrelation(summary.system.cpuGpuCorrelation);
+    renderProductivity(summary.productivity);
+    renderJournalStats(summary.journal);
+  } catch {
+    document.getElementById('analytics-cpu').textContent = 'Analytics indisponible.';
+  }
+  try {
+    renderAnomaliesList(await window.aura.getAnalyticsAnomalies());
+  } catch {
+    // pas grave, section laissee vide
+  }
+  try {
+    renderPredictionsHistory(await window.aura.getPredictions());
+  } catch {
+    // pas grave, section laissee vide
+  }
+}
+
+function wireAnalyticsScreen() {
+  document.getElementById('forecast-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const metric = document.getElementById('forecast-metric').value;
+    const steps = document.getElementById('forecast-steps').value;
+    const result = document.getElementById('forecast-result');
+    result.hidden = false;
+    result.innerHTML = 'Calcul…';
+    try {
+      const prediction = await window.aura.getForecast(metric, steps);
+      result.innerHTML = `<span class="preview-label">Prévision (${metric}, +${steps})</span>` +
+        `${prediction.predictedValue}% — confiance ${Math.round(prediction.confidence * 100)}%\n` +
+        `Basé sur ${prediction.sourceCount} échantillons. À prendre avec prudence, pas une certitude.`;
+      journal(`ANALYTICS_FORECAST : ${metric} = ${prediction.predictedValue}%`);
+      renderPredictionsHistory(await window.aura.getPredictions());
+    } catch (err) {
+      result.innerHTML = err.message;
+    }
+  });
+}
+
 render();
 startClock();
 wirePanels();
@@ -1412,6 +1525,7 @@ wireProductivity();
 wireDevScreen();
 wireCommScreen();
 wireSysmonScreen();
+wireAnalyticsScreen();
 wireEmergencyStop();
 initConversation();
 loadTasks();
