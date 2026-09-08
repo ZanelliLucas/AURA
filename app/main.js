@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
@@ -100,12 +100,23 @@ function startAutonomyTicker() {
   autonomyTickerInterval = setInterval(tick, 15000);
 }
 
+// AURA VOICE (§5.2) a besoin du micro. Refus par defaut de toute autre
+// permission (camera/notifications/etc. non utilisees par le contenu
+// charge - meme posture restrictive que le CSP et le serveur local
+// borne a 127.0.0.1).
+function setupPermissions() {
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    callback(permission === 'media');
+  });
+}
+
 app.whenReady().then(async () => {
   try {
     apiServer = await startServer();
   } catch (err) {
     console.error('[server] echec du demarrage de l\'API locale :', err.message);
   }
+  setupPermissions();
   createWindow();
   checkForUpdates();
   startMetricsSampler();

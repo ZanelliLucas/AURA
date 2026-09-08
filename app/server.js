@@ -15,6 +15,7 @@ const systemMonitor = require('./systemMonitor');
 const analytics = require('./analytics');
 const security = require('./security');
 const autonomy = require('./autonomy');
+const voice = require('./voice');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -391,6 +392,39 @@ function startServer() {
 
   server.post('/api/autonomy/estop', (req, res) => {
     res.json(autonomy.setEstop(!!req.body.active));
+  });
+
+  // AURA VOICE (§5.2, §15)
+  server.get('/api/voice/config', (req, res) => {
+    res.json(voice.getConfig());
+  });
+
+  server.post('/api/voice/config', (req, res) => {
+    try {
+      res.json(voice.setConfigField(req.body.key, req.body.value));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/voice/listen', (req, res) => {
+    try {
+      res.json(voice.recordListen(req.body || {}));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/voice/speak', (req, res) => {
+    try {
+      res.json(voice.recordSpeak(req.body || {}));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/voice/stop', (req, res) => {
+    res.json(voice.recordStop(req.body || {}));
   });
 
   return new Promise((resolve, reject) => {

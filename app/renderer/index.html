@@ -52,6 +52,7 @@
       <button type="button" class="module-link" data-screen="analytics">Analytics</button>
       <button type="button" class="module-link" data-screen="security">AURA SECURITY</button>
       <button type="button" class="module-link" data-screen="autonomy">AURA AUTONOMY</button>
+      <button type="button" class="module-link" data-screen="voice">AURA VOICE</button>
     </nav>
   </aside>
 
@@ -516,6 +517,54 @@
         <section>
           <h2>Règles actives</h2>
           <div id="rules-list" class="muted small">Chargement…</div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-voice" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>AURA VOICE</h1>
+    <p class="muted small" style="max-width:640px; margin-top:-14px; margin-bottom:26px;">La synthèse vocale (TTS) utilise les voix Windows en local, sans clé API. La reconnaissance vocale (STT) n’a pour l’instant aucun fournisseur branché : la capture micro est réelle, mais la transcription reste indisponible — comme le build Unity du connecteur Développement, en attente d’un choix de fournisseur.</p>
+
+    <div class="gaming-columns">
+      <div class="gaming-col">
+        <section>
+          <h2>Préférences</h2>
+          <label class="muted small">Mot d’activation</label>
+          <input id="voice-wakeword" type="text" placeholder="AURA">
+
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-top:10px;">
+            <input id="voice-mic-enabled" type="checkbox" style="width:auto;"> Microphone activé
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-top:6px;">
+            <input id="voice-hands-free" type="checkbox" style="width:auto;"> Mode mains libres <span class="muted small">(sans effet tant que le STT n’est pas branché)</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-top:6px;">
+            <input id="voice-speak-alerts" type="checkbox" style="width:auto;"> Lire à voix haute les alertes système importantes
+          </label>
+
+          <label class="muted small" style="margin-top:10px; display:block;">Voix de synthèse</label>
+          <select id="voice-tts-select"></select>
+
+          <div id="voice-stt-status" class="muted small" style="margin-top:10px;">Fournisseur STT : non configuré.</div>
+        </section>
+      </div>
+
+      <div class="gaming-col">
+        <section>
+          <h2>Synthèse vocale (test réel)</h2>
+          <form id="voice-speak-form" class="inline-form" style="flex-direction:column; align-items:stretch;">
+            <input id="voice-speak-text" type="text" placeholder="Texte à faire lire par AURA" value="Bonjour, je suis AURA.">
+            <button type="submit" class="module-link">Faire parler AURA</button>
+          </form>
+          <div id="voice-speak-status" class="muted small"></div>
+        </section>
+
+        <section>
+          <h2>Écoute (capture micro réelle)</h2>
+          <button id="voice-listen-btn" type="button" class="module-link">Écouter</button>
+          <div id="voice-listen-status" class="muted small"></div>
         </section>
       </div>
     </div>

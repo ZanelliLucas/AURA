@@ -264,6 +264,8 @@ function wireEmergencyStop() {
     if (stopped) {
       document.querySelectorAll('.link.active, .link-relation.active')
         .forEach((el) => el.classList.remove('active'));
+      stopSpeaking('arret_urgence');
+      stopVoiceListening('arret_urgence');
     }
 
     journal(stopped ? 'ARRET_URGENCE_ACTIVE : toile et conversation gelees' : 'ARRET_URGENCE_LEVE : reprise normale');
@@ -402,6 +404,7 @@ function showScreen(name) {
   if (name === 'sysmon') startSysmonPolling();
   if (name === 'analytics') loadAnalyticsScreen();
   if (name === 'autonomy') loadAutonomyScreen();
+  if (name === 'voice') loadVoiceScreen();
   if (name === 'world') {
     initWorldMap();
     setTimeout(() => worldMap && worldMap.invalidateSize(), 0);
@@ -1376,7 +1379,7 @@ async function pollSysmon() {
   try {
     const { snapshot, newAlerts } = await window.aura.getSystemSnapshot();
     renderSysmon(snapshot);
-    if (newAlerts.length) loadSysmonAlerts();
+    if (newAlerts.length) { loadSysmonAlerts(); speakNewAlerts(newAlerts); }
   } catch {
     document.getElementById('sysmon-cpu').textContent = 'Système indisponible.';
   }
@@ -1734,6 +1737,157 @@ function wireAutonomyScreen() {
   });
 }
 
+// --- AURA VOICE (§5.2, §15) --------------------------------------------
+// TTS reel (voix Windows locales, Web Speech API). STT sans fournisseur
+// branche : la capture micro (MediaRecorder) est reelle, la transcription
+// ne l'est pas encore - voir voice.js cote backend.
+
+let voiceMicStream = null;
+let voiceMediaRecorder = null;
+let voiceListenStartedAt = null;
+
+function populateVoiceSelect(selected) {
+  const select = document.getElementById('voice-tts-select');
+  const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  const frenchFirst = [...voices].sort((a, b) => (b.lang.startsWith('fr') ? 1 : 0) - (a.lang.startsWith('fr') ? 1 : 0));
+  select.innerHTML = '<option value="">Voix par défaut du système</option>' +
+    frenchFirst.map((v) => `<option value="${v.name}">${v.name} (${v.lang})</option>`).join('');
+  if (selected) select.value = selected;
+}
+
+// Interrompt une synthese en cours (§5.2 "detection des interruptions") :
+// utilisee avant toute nouvelle parole, qu'elle vienne d'un test manuel
+// ou d'une alerte prioritaire.
+function stopSpeaking(reason) {
+  if (!window.speechSynthesis || !window.speechSynthesis.speaking) return;
+  window.speechSynthesis.cancel();
+  window.aura.logVoiceStop(reason || 'interruption_barge_in').catch(() => {});
+}
+
+function speak(text) {
+  if (!window.speechSynthesis || !text || !text.trim()) return;
+  stopSpeaking('nouvelle_synthese');
+  window.aura.getVoiceConfig().then((cfg) => {
+    const utter = new SpeechSynthesisUtterance(text.trim());
+    if (cfg.ttsVoice) {
+      const voice = window.speechSynthesis.getVoices().find((v) => v.name === cfg.ttsVoice);
+      if (voice) utter.voice = voice;
+    }
+    utter.lang = 'fr-FR';
+    window.speechSynthesis.speak(utter);
+  });
+  window.aura.logVoiceSpeak(text.trim()).catch(() => {});
+}
+
+async function speakNewAlerts(alerts) {
+  try {
+    const cfg = await window.aura.getVoiceConfig();
+    if (!cfg.speakAlerts || !alerts.length) return;
+    speak(alerts.map((a) => a.cause).join('. '));
+  } catch { /* preferences indisponibles, pas de lecture vocale */ }
+}
+
+async function loadVoiceScreen() {
+  populateVoiceSelect();
+  if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => populateVoiceSelect(document.getElementById('voice-tts-select').value);
+
+  try {
+    const cfg = await window.aura.getVoiceConfig();
+    document.getElementById('voice-wakeword').value = cfg.wakeWord;
+    document.getElementById('voice-mic-enabled').checked = cfg.micEnabled;
+    document.getElementById('voice-hands-free').checked = cfg.handsFree;
+    document.getElementById('voice-speak-alerts').checked = cfg.speakAlerts;
+    populateVoiceSelect(cfg.ttsVoice);
+    document.getElementById('voice-stt-status').textContent =
+      `Fournisseur STT : ${cfg.sttProvider === 'non_configure' ? 'non configuré.' : cfg.sttProvider}`;
+    document.getElementById('voice-listen-btn').disabled = !cfg.micEnabled;
+  } catch {
+    document.getElementById('voice-stt-status').textContent = 'Préférences vocales indisponibles.';
+  }
+}
+
+async function stopVoiceListening(reason) {
+  if (!voiceMediaRecorder) return;
+  voiceMediaRecorder.stop();
+  if (reason) {
+    try { await window.aura.logVoiceStop(reason); } catch { /* pas bloquant */ }
+  }
+}
+
+function wireVoiceScreen() {
+  document.getElementById('voice-wakeword').addEventListener('change', async (e) => {
+    await window.aura.setVoiceConfig('wakeWord', e.target.value.trim() || 'AURA');
+    journal(`VOICE_MOT_ACTIVATION : ${e.target.value.trim()}`);
+  });
+
+  document.getElementById('voice-mic-enabled').addEventListener('change', async (e) => {
+    await window.aura.setVoiceConfig('micEnabled', e.target.checked);
+    document.getElementById('voice-listen-btn').disabled = !e.target.checked;
+    if (!e.target.checked) stopVoiceListening('micro_desactive');
+    journal(`VOICE_MICRO_${e.target.checked ? 'ACTIVE' : 'DESACTIVE'}`);
+  });
+
+  document.getElementById('voice-hands-free').addEventListener('change', (e) => {
+    window.aura.setVoiceConfig('handsFree', e.target.checked);
+  });
+
+  document.getElementById('voice-speak-alerts').addEventListener('change', (e) => {
+    window.aura.setVoiceConfig('speakAlerts', e.target.checked);
+  });
+
+  document.getElementById('voice-tts-select').addEventListener('change', (e) => {
+    window.aura.setVoiceConfig('ttsVoice', e.target.value);
+  });
+
+  document.getElementById('voice-speak-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = document.getElementById('voice-speak-text').value;
+    speak(text);
+    document.getElementById('voice-speak-status').textContent = 'AURA parle…';
+  });
+
+  document.getElementById('voice-listen-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('voice-listen-btn');
+    const status = document.getElementById('voice-listen-status');
+
+    if (voiceMediaRecorder && voiceMediaRecorder.state === 'recording') {
+      await stopVoiceListening('utilisateur');
+      return;
+    }
+
+    stopSpeaking('nouvelle_ecoute');
+    status.textContent = 'Demande d’accès au microphone…';
+    try {
+      voiceMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      status.textContent = `Micro indisponible : ${err.message}`;
+      try { await window.aura.logVoiceListen({ error: `Accès micro refusé : ${err.message}` }); } catch { /* pas bloquant */ }
+      return;
+    }
+
+    voiceMediaRecorder = new MediaRecorder(voiceMicStream);
+    const chunks = [];
+    voiceListenStartedAt = Date.now();
+    voiceMediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+    voiceMediaRecorder.onstop = async () => {
+      const durationMs = Date.now() - voiceListenStartedAt;
+      voiceMicStream.getTracks().forEach((t) => t.stop());
+      voiceMicStream = null;
+      voiceMediaRecorder = null;
+      btn.textContent = 'Écouter';
+      status.textContent = `Capture reçue (${(durationMs / 1000).toFixed(1)} s) — aucun fournisseur STT configuré, transcription indisponible.`;
+      try {
+        await window.aura.logVoiceListen({ durationMs, error: 'Aucun fournisseur STT configuré — capture reçue, non transcrite.' });
+      } catch (err) {
+        status.textContent = err.message;
+      }
+    };
+    voiceMediaRecorder.start();
+    btn.textContent = 'Arrêter l’écoute';
+    status.textContent = 'En écoute…';
+  });
+}
+
 render();
 startClock();
 wirePanels();
@@ -1749,6 +1903,7 @@ wireSysmonScreen();
 wireAnalyticsScreen();
 wireSecurityScreen();
 wireAutonomyScreen();
+wireVoiceScreen();
 wireEmergencyStop();
 initConversation();
 loadTasks();

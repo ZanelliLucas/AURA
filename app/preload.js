@@ -98,5 +98,11 @@ contextBridge.exposeInMainWorld('aura', {
   toggleRule: (id) => postJson(`/api/autonomy/rules/${encodeURIComponent(id)}/toggle`),
   deleteRule: (id) => delJson(`/api/autonomy/rules/${encodeURIComponent(id)}`),
   getEstop: () => getJson('/api/autonomy/estop'),
-  setEstop: (active) => postJson('/api/autonomy/estop', { active })
+  setEstop: (active) => postJson('/api/autonomy/estop', { active }),
+
+  getVoiceConfig: () => getJson('/api/voice/config'),
+  setVoiceConfig: (key, value) => postJson('/api/voice/config', { key, value }),
+  logVoiceListen: (entry) => postJson('/api/voice/listen', entry),
+  logVoiceSpeak: (text) => postJson('/api/voice/speak', { text }),
+  logVoiceStop: (reason) => postJson('/api/voice/stop', { reason })
 });
