@@ -412,6 +412,9 @@ body.estopped #conversation-panel {
   padding: 6px 6px 6px 18px;
 }
 #setup-key { border-color: var(--red-glow); }
+/* Masque temporairement pendant la refonte de la toile - reste
+   fonctionnel en arriere-plan (JS/hidden inchanges), juste invisible. */
+#setup-key { display: none !important; }
 
 #message,
 #api-key {
