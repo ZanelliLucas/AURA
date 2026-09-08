@@ -53,6 +53,7 @@
       <button type="button" class="module-link" data-screen="security">AURA SECURITY</button>
       <button type="button" class="module-link" data-screen="autonomy">AURA AUTONOMY</button>
       <button type="button" class="module-link" data-screen="voice">AURA VOICE</button>
+      <button type="button" class="module-link" data-screen="education">AURA EDUCATION</button>
     </nav>
   </aside>
 
@@ -565,6 +566,60 @@
           <h2>Écoute (capture micro réelle)</h2>
           <button id="voice-listen-btn" type="button" class="module-link">Écouter</button>
           <div id="voice-listen-status" class="muted small"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-education" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>AURA EDUCATION</h1>
+    <p class="muted small" style="max-width:640px; margin-top:-14px; margin-bottom:26px;">Explications pédagogiques, traduction et tutorat personnalisé (§11.2), appuyés sur Claude — même clé API que la conversation générale.</p>
+
+    <div class="gaming-columns">
+      <div class="gaming-col">
+        <section>
+          <h2>Explications pédagogiques</h2>
+          <form id="edu-explain-form" class="inline-form" style="flex-direction:column; align-items:stretch;">
+            <input id="edu-explain-topic" type="text" placeholder="Notion à expliquer" required>
+            <select id="edu-explain-level">
+              <option value="débutant">Débutant</option>
+              <option value="intermédiaire" selected>Intermédiaire</option>
+              <option value="avancé">Avancé</option>
+            </select>
+            <button type="submit" class="module-link">Expliquer</button>
+          </form>
+          <div id="edu-explain-result" class="comm-preview" hidden></div>
+        </section>
+
+        <section>
+          <h2>Traduction</h2>
+          <form id="edu-translate-form" class="inline-form" style="flex-direction:column; align-items:stretch;">
+            <input id="edu-translate-text" type="text" placeholder="Texte à traduire" required>
+            <input id="edu-translate-target" type="text" placeholder="Langue cible (ex. anglais)" required>
+            <input id="edu-translate-source" type="text" placeholder="Langue source (optionnel)">
+            <button type="submit" class="module-link">Traduire</button>
+          </form>
+          <div id="edu-translate-result" class="comm-preview" hidden></div>
+        </section>
+      </div>
+
+      <div class="gaming-col">
+        <section>
+          <h2>Tutorat personnalisé</h2>
+          <form id="edu-tutor-form" class="inline-form" style="flex-direction:column; align-items:stretch;">
+            <input id="edu-tutor-topic" type="text" placeholder="Sujet" required>
+            <select id="edu-tutor-level">
+              <option value="débutant">Débutant</option>
+              <option value="intermédiaire" selected>Intermédiaire</option>
+              <option value="avancé">Avancé</option>
+            </select>
+            <input id="edu-tutor-note" type="text" placeholder="Note de suivi (ce qui a été vu, difficultés…)" required>
+            <button type="submit" class="module-link">Enregistrer le suivi</button>
+          </form>
+          <div id="edu-tutor-status" class="muted small"></div>
+          <h2 style="margin-top:16px;">Historique de suivi</h2>
+          <div id="edu-progress-list" class="muted small">Chargement…</div>
         </section>
       </div>
     </div>

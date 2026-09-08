@@ -104,5 +104,10 @@ contextBridge.exposeInMainWorld('aura', {
   setVoiceConfig: (key, value) => postJson('/api/voice/config', { key, value }),
   logVoiceListen: (entry) => postJson('/api/voice/listen', entry),
   logVoiceSpeak: (text) => postJson('/api/voice/speak', { text }),
-  logVoiceStop: (reason) => postJson('/api/voice/stop', { reason })
+  logVoiceStop: (reason) => postJson('/api/voice/stop', { reason }),
+
+  explainConcept: (topic, level) => postJson('/api/education/explain', { topic, level }),
+  translateText: (text, targetLang, sourceLang) => postJson('/api/education/translate', { text, targetLang, sourceLang }),
+  logTutorEntry: (topic, level, note) => postJson('/api/education/tutor', { topic, level, note }),
+  getProgress: (topic) => getJson(`/api/education/progress${topic ? `?topic=${encodeURIComponent(topic)}` : ''}`)
 });

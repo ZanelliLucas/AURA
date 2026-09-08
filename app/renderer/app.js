@@ -405,6 +405,7 @@ function showScreen(name) {
   if (name === 'analytics') loadAnalyticsScreen();
   if (name === 'autonomy') loadAutonomyScreen();
   if (name === 'voice') loadVoiceScreen();
+  if (name === 'education') loadEducationScreen();
   if (name === 'world') {
     initWorldMap();
     setTimeout(() => worldMap && worldMap.invalidateSize(), 0);
@@ -1888,6 +1889,84 @@ function wireVoiceScreen() {
   });
 }
 
+// --- AURA EDUCATION (§11.2) --------------------------------------------
+// Explications pedagogiques, traduction, tutorat personnalise - tous
+// appuyes sur Claude (meme cle que la conversation generale, §5.1).
+
+function renderProgressList(entries) {
+  const list = document.getElementById('edu-progress-list');
+  if (!entries.length) { list.textContent = 'Aucun suivi enregistré.'; return; }
+  list.innerHTML = '';
+  [...entries].reverse().forEach((entry) => {
+    const row = document.createElement('div');
+    row.className = 'task-row';
+    const when = new Date(entry.createdAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+    row.innerHTML = `<span class="task-title">${entry.topic} <span class="muted small">[${entry.level || '—'}]</span> — ${entry.note}</span><span class="task-due">${when}</span>`;
+    list.appendChild(row);
+  });
+}
+
+async function loadEducationScreen() {
+  try {
+    renderProgressList(await window.aura.getProgress());
+  } catch {
+    document.getElementById('edu-progress-list').textContent = 'Historique indisponible.';
+  }
+}
+
+function wireEducationScreen() {
+  document.getElementById('edu-explain-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const topic = document.getElementById('edu-explain-topic').value.trim();
+    const level = document.getElementById('edu-explain-level').value;
+    const result = document.getElementById('edu-explain-result');
+    result.hidden = false;
+    result.textContent = 'AURA réfléchit…';
+    try {
+      const { text } = await window.aura.explainConcept(topic, level);
+      result.textContent = text;
+      journal(`EDUCATION_EXPLICATION : ${topic}`);
+    } catch (err) {
+      result.textContent = err.message;
+    }
+  });
+
+  document.getElementById('edu-translate-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = document.getElementById('edu-translate-text').value.trim();
+    const targetLang = document.getElementById('edu-translate-target').value.trim();
+    const sourceLang = document.getElementById('edu-translate-source').value.trim();
+    const result = document.getElementById('edu-translate-result');
+    result.hidden = false;
+    result.textContent = 'Traduction en cours…';
+    try {
+      const { text: translated } = await window.aura.translateText(text, targetLang, sourceLang);
+      result.textContent = translated;
+      journal(`EDUCATION_TRADUCTION : vers ${targetLang}`);
+    } catch (err) {
+      result.textContent = err.message;
+    }
+  });
+
+  document.getElementById('edu-tutor-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const topic = document.getElementById('edu-tutor-topic').value.trim();
+    const level = document.getElementById('edu-tutor-level').value;
+    const note = document.getElementById('edu-tutor-note').value.trim();
+    const status = document.getElementById('edu-tutor-status');
+    try {
+      await window.aura.logTutorEntry(topic, level, note);
+      status.textContent = 'Suivi enregistré.';
+      journal(`EDUCATION_TUTORAT : ${topic}`);
+      e.target.reset();
+      document.getElementById('edu-tutor-level').value = 'intermédiaire';
+      loadEducationScreen();
+    } catch (err) {
+      status.textContent = err.message;
+    }
+  });
+}
+
 render();
 startClock();
 wirePanels();
@@ -1904,6 +1983,7 @@ wireAnalyticsScreen();
 wireSecurityScreen();
 wireAutonomyScreen();
 wireVoiceScreen();
+wireEducationScreen();
 wireEmergencyStop();
 initConversation();
 loadTasks();

@@ -193,6 +193,29 @@ function createPrediction({ metric, sourceCount, predictedValue, confidence, hor
   return prediction;
 }
 
+// --- Progression pedagogique (AURA EDUCATION §11.2 : tutorat -----------
+// personnalise appuye sur la memoire de projet) -------------------------
+
+const MAX_PROGRESS = 300;
+
+function getProgress() {
+  return readJson('progress.json', []);
+}
+
+function addProgressEntry({ topic, level, note }) {
+  const entries = getProgress();
+  const entry = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    topic,
+    level: level || null,
+    note: note || null,
+    createdAt: new Date().toISOString()
+  };
+  entries.push(entry);
+  writeJson('progress.json', entries.slice(-MAX_PROGRESS));
+  return entry;
+}
+
 // --- Regles d'automatisation (§12.2 Policy, AURA AUTONOMY §5.9) ------
 
 function getRules() {
@@ -307,6 +330,8 @@ module.exports = {
   createReminder,
   markReminderFired,
   deleteReminder,
+  getProgress,
+  addProgressEntry,
   getRules,
   createRule,
   toggleRule,

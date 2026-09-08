@@ -41,6 +41,7 @@
       "security.js",
       "autonomy.js",
       "voice.js",
+      "education.js",
       "connectors/**/*",
       "providers/**/*",
       "renderer/**/*",

@@ -16,6 +16,7 @@ const analytics = require('./analytics');
 const security = require('./security');
 const autonomy = require('./autonomy');
 const voice = require('./voice');
+const education = require('./education');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -425,6 +426,35 @@ function startServer() {
 
   server.post('/api/voice/stop', (req, res) => {
     res.json(voice.recordStop(req.body || {}));
+  });
+
+  // AURA EDUCATION (§11.2)
+  server.post('/api/education/explain', async (req, res) => {
+    try {
+      res.json(await education.explainConcept(req.body || {}));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/education/translate', async (req, res) => {
+    try {
+      res.json(await education.translateText(req.body || {}));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/education/tutor', (req, res) => {
+    try {
+      res.json(education.logTutorEntry(req.body || {}));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.get('/api/education/progress', (req, res) => {
+    res.json(education.getProgress(req.query.topic));
   });
 
   return new Promise((resolve, reject) => {
