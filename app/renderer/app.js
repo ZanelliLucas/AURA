@@ -39,13 +39,6 @@ function render() {
   nodeList.forEach((p) => {
     const group = el('g', { class: 'node-group', 'data-node': p.id });
 
-    const label = el('text', {
-      x: p.x, y: p.y + 4,
-      class: 'label', 'text-anchor': 'middle'
-    });
-    label.textContent = p.label;
-    group.appendChild(label);
-
     group.addEventListener('mouseenter', () => setActive(p.id, true));
     group.addEventListener('mouseleave', () => setActive(p.id, false));
 
@@ -54,11 +47,6 @@ function render() {
 
   // Hub central
   const hub = el('g', { class: 'node-group', 'data-node': '__hub' });
-  const hubLabel = el('text', {
-    x: CENTER.x, y: CENTER.y + 5, class: 'label-hub', 'text-anchor': 'middle'
-  });
-  hubLabel.textContent = 'AURA';
-  hub.appendChild(hubLabel);
   svg.appendChild(hub);
 }
 

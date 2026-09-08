@@ -82,26 +82,7 @@ html, body {
   height: 100%;
 }
 
-.label {
-  fill: var(--white);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.5px;
-  pointer-events: none;
-  transition: fill 0.2s ease;
-}
-
-.label-hub {
-  fill: var(--white);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  pointer-events: none;
-}
-
 .node-group { cursor: pointer; }
-.node-group:hover .label { fill: var(--red); }
 
 /* Panneaux retractables (F-21 / §16.1) */
 .edge-tab {
