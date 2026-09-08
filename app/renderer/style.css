@@ -264,19 +264,17 @@ html, body {
   justify-content: center;
   width: 38px;
   height: 38px;
-  background-color: rgba(165, 23, 6, 0.10);
-  border: 1px solid var(--red-dim);
-  border-radius: 50%;
+  background: none;
+  border: none;
   color: var(--red);
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+  transition: color 0.2s ease, filter 0.2s ease;
 }
-#estop svg { width: 20px; height: 20px; display: block; }
+#estop svg { width: 22px; height: 22px; display: block; }
 
 #estop:hover {
-  background-color: rgba(165, 23, 6, 0.22);
-  border-color: var(--red-glow);
-  box-shadow: 0 0 16px rgba(165, 23, 6, 0.25);
+  color: var(--red-hover);
+  filter: drop-shadow(0 0 6px rgba(165, 23, 6, 0.5));
 }
 
 .estop-dot {
@@ -289,10 +287,8 @@ html, body {
 }
 
 body.estopped #estop {
-  background-color: var(--red);
   color: var(--white);
-  border-color: var(--white);
-  box-shadow: 0 0 22px var(--red-glow);
+  filter: drop-shadow(0 0 8px var(--red-glow));
 }
 body.estopped .estop-dot { background: var(--white); box-shadow: 0 0 6px rgba(255, 255, 255, 0.85); animation: estop-blink 1s ease-in-out infinite; }
 @keyframes estop-blink { 50% { opacity: 0.25; } }
