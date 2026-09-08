@@ -187,12 +187,6 @@ html, body {
   0%, 100% { opacity: 0.08; }
   50% { opacity: 0.32; }
 }
-.bg-glyph path, .bg-glyph rect, .bg-glyph line, .bg-glyph circle {
-  stroke: var(--line-dim);
-  stroke-width: 1;
-  fill: none;
-  opacity: 0.5;
-}
 
 .label {
   fill: var(--white);

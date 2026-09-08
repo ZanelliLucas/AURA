@@ -197,32 +197,6 @@ function buildBackgroundField() {
     group.appendChild(star);
   }
 
-  // Glyphes techniques disperses : coins de reticule, petits carres,
-  // croix de visee - ambiance "capteur/HUD" comme dans les references,
-  // sans jamais empieter sur le graphe (marge exclue autour du centre).
-  for (let i = 0; i < 26; i++) {
-    const margin = 60;
-    const x = margin + seededUnit(i * 4.4 + 3) * (VIEW_W - margin * 2);
-    const y = margin + seededUnit(i * 8.8 + 5) * (VIEW_H - margin * 2);
-    const rotation = Math.floor(seededUnit(i * 1.7 + 9) * 4) * 90;
-    const size = 6 + seededUnit(i * 6.6) * 7;
-    const variant = Math.floor(seededUnit(i * 2.9 + 11) * 3);
-    const glyph = el('g', {
-      class: 'bg-glyph',
-      transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rotation})`
-    });
-    if (variant === 0) {
-      glyph.appendChild(el('path', { d: `M 0 ${size.toFixed(1)} L 0 0 L ${size.toFixed(1)} 0` }));
-    } else if (variant === 1) {
-      glyph.appendChild(el('rect', { x: -size / 2, y: -size / 2, width: size, height: size }));
-    } else {
-      glyph.appendChild(el('line', { x1: -size / 2, y1: 0, x2: size / 2, y2: 0 }));
-      glyph.appendChild(el('line', { x1: 0, y1: -size / 2, x2: 0, y2: size / 2 }));
-      glyph.appendChild(el('circle', { cx: 0, cy: 0, r: size / 2, fill: 'none' }));
-    }
-    group.appendChild(glyph);
-  }
-
   return group;
 }
 
