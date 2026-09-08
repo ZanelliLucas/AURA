@@ -132,16 +132,20 @@ function braidBranch2(p0, p1, seed) {
   return organicBranch(p0, p1, seed + 761, 4);
 }
 
-// Petits barreaux entre la branche principale et son fil torsade, a
-// intervalles reguliers - la texture de cable/fibre croisee visible sur
-// les tendons des references, pas seulement deux traits paralleles.
+// Petits barreaux entre la branche principale et son fil torsade, sur
+// le trace fin (pas les seuls points de controle, trop espaces) - une
+// vraie texture de fibres croisees continue le long du tendon, comme
+// le tressage visible sur toute la longueur des tendrilles des
+// references, plutot que 3-4 barreaux isoles.
 function buildCableRungs(branchPoints, braidPoints) {
   const group = el('g', { class: 'cable-rungs' });
-  const count = Math.min(branchPoints.length, braidPoints.length);
+  const fineA = sampleCurveFine(branchPoints, 5);
+  const fineB = sampleCurveFine(braidPoints, 5);
+  const count = Math.min(fineA.length, fineB.length);
   for (let i = 1; i < count - 1; i++) {
-    const a = branchPoints[i];
-    const b = braidPoints[i];
-    group.appendChild(el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: 'cable-rung' }));
+    const a = fineA[i];
+    const b = fineB[i];
+    group.appendChild(el('line', { x1: a.x.toFixed(1), y1: a.y.toFixed(1), x2: b.x.toFixed(1), y2: b.y.toFixed(1), class: 'cable-rung' }));
   }
   return group;
 }
