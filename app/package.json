@@ -42,6 +42,7 @@
       "autonomy.js",
       "voice.js",
       "education.js",
+      "office.js",
       "connectors/**/*",
       "providers/**/*",
       "renderer/**/*",
@@ -76,10 +77,14 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
     "@google/genai": "^2.21.0",
+    "docx": "^9.7.1",
     "electron-updater": "^6.8.9",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "nodemailer": "^10.0.1",
     "obs-websocket-js": "^5.0.8",
+    "pdf-lib": "^1.17.1",
+    "pptxgenjs": "^4.0.1",
     "systeminformation": "^5.33.9"
   }
 }

@@ -17,6 +17,7 @@ const security = require('./security');
 const autonomy = require('./autonomy');
 const voice = require('./voice');
 const education = require('./education');
+const officeConnector = require('./office');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -455,6 +456,63 @@ function startServer() {
 
   server.get('/api/education/progress', (req, res) => {
     res.json(education.getProgress(req.query.topic));
+  });
+
+  // AURA OFFICE (§11.3)
+  server.post('/api/office/word', async (req, res) => {
+    try {
+      res.json(await officeConnector.createWord(req.body || {}));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/office/excel', async (req, res) => {
+    try {
+      res.json(await officeConnector.createExcel(req.body || {}));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/office/excel/financial-template', async (req, res) => {
+    try {
+      res.json(await officeConnector.createFinancialTemplate(req.body || {}));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/office/pptx', async (req, res) => {
+    try {
+      res.json(await officeConnector.createPresentation(req.body || {}));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/office/pdf/merge', async (req, res) => {
+    try {
+      res.json(await officeConnector.mergePdfs(req.body?.paths || []));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/office/pdf/info', async (req, res) => {
+    try {
+      res.json(await officeConnector.readPdf(req.body?.filePath));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/office/pdf/fill-form', async (req, res) => {
+    try {
+      res.json(await officeConnector.fillPdfForm(req.body || {}));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
   });
 
   return new Promise((resolve, reject) => {

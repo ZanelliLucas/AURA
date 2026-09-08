@@ -64,6 +64,33 @@ ipcMain.handle('dialog:save-image', async (event, dataUrl) => {
   return { saved: true, filePath };
 });
 
+// Boites de dialogue natives generiques pour AURA OFFICE (§11.3) : les
+// documents (Word/Excel/PowerPoint/PDF) sont generes cote backend (Node
+// pur, bibliotheques docx/exceljs/pptxgenjs/pdf-lib) puis renvoyes en
+// base64 - seule l'ecriture disque et la selection des PDF sources
+// necessitent une interaction OS directe, donc de l'IPC plutot que
+// l'API HTTP locale (meme principe que dialog:save-image ci-dessus).
+ipcMain.handle('dialog:save-binary', async (event, { base64, defaultPath, filters, title }) => {
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: title || 'Enregistrer sous',
+    defaultPath: defaultPath || 'document',
+    filters: filters && filters.length ? filters : [{ name: 'Tous les fichiers', extensions: ['*'] }]
+  });
+  if (canceled || !filePath) return { saved: false };
+  fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
+  return { saved: true, filePath };
+});
+
+ipcMain.handle('dialog:pick-files', async (event, { multi, filters, title }) => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title: title || 'Sélectionner un ou plusieurs fichiers',
+    properties: multi ? ['openFile', 'multiSelections'] : ['openFile'],
+    filters: filters && filters.length ? filters : [{ name: 'Tous les fichiers', extensions: ['*'] }]
+  });
+  if (canceled) return { paths: [] };
+  return { paths: filePaths };
+});
+
 // Echantillonnage periodique pour AURA ANALYTICS (§5.5) : alimente
 // l'historique reel exploite pour les tendances/anomalies/previsions.
 // Ne tourne que pendant la session (F-22), jamais en tache de fond.

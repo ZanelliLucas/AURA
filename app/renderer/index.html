@@ -54,6 +54,7 @@
       <button type="button" class="module-link" data-screen="autonomy">AURA AUTONOMY</button>
       <button type="button" class="module-link" data-screen="voice">AURA VOICE</button>
       <button type="button" class="module-link" data-screen="education">AURA EDUCATION</button>
+      <button type="button" class="module-link" data-screen="office">AURA OFFICE</button>
     </nav>
   </aside>
 
@@ -620,6 +621,83 @@
           <div id="edu-tutor-status" class="muted small"></div>
           <h2 style="margin-top:16px;">Historique de suivi</h2>
           <div id="edu-progress-list" class="muted small">Chargement…</div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-office" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>AURA OFFICE</h1>
+    <p class="muted small" style="max-width:640px; margin-top:-14px; margin-bottom:26px;">Création de documents Word/Excel/PowerPoint et lecture/fusion/remplissage de PDF (§11.3) — entièrement en local, sans Microsoft Office installé.</p>
+
+    <div class="gaming-columns">
+      <div class="gaming-col">
+        <section>
+          <h2>Document Word</h2>
+          <form id="office-word-form" class="inline-form" style="flex-direction:column; align-items:stretch;">
+            <input id="office-word-title" type="text" placeholder="Titre du document" required>
+            <textarea id="office-word-paragraphs" rows="4" placeholder="Un paragraphe par ligne"></textarea>
+            <button type="submit" class="module-link">Créer le document Word</button>
+          </form>
+          <div id="office-word-status" class="muted small"></div>
+        </section>
+
+        <section>
+          <h2>Tableur Excel</h2>
+          <form id="office-excel-form" class="inline-form" style="flex-direction:column; align-items:stretch;">
+            <input id="office-excel-sheet" type="text" placeholder="Nom de la feuille" value="Feuille 1">
+            <input id="office-excel-headers" type="text" placeholder="En-têtes, séparés par des virgules">
+            <textarea id="office-excel-rows" rows="4" placeholder="Une ligne par ligne de texte, cellules séparées par des virgules"></textarea>
+            <button type="submit" class="module-link">Créer le tableur</button>
+          </form>
+          <div id="office-excel-status" class="muted small"></div>
+        </section>
+
+        <section>
+          <h2>Modèle financier réutilisable</h2>
+          <form id="office-financial-form" class="inline-form" style="flex-direction:column; align-items:stretch;">
+            <input id="office-financial-title" type="text" placeholder="Titre du modèle" value="Budget">
+            <textarea id="office-financial-categories" rows="3" placeholder="Une catégorie par ligne (ex. Loyer, Courses, Transport)"></textarea>
+            <input id="office-financial-months" type="text" placeholder="Colonnes, séparées par des virgules (ex. Janvier,Février,Mars)">
+            <button type="submit" class="module-link">Générer le modèle (avec formules)</button>
+          </form>
+          <div id="office-financial-status" class="muted small"></div>
+        </section>
+      </div>
+
+      <div class="gaming-col">
+        <section>
+          <h2>Présentation PowerPoint</h2>
+          <form id="office-pptx-form" class="inline-form" style="flex-direction:column; align-items:stretch;">
+            <input id="office-pptx-title" type="text" placeholder="Titre de la présentation" required>
+            <textarea id="office-pptx-slides" rows="6" placeholder="Titre de diapo&#10;- puce&#10;- puce&#10;&#10;Titre de diapo 2&#10;- puce"></textarea>
+            <button type="submit" class="module-link">Créer la présentation</button>
+          </form>
+          <div id="office-pptx-status" class="muted small"></div>
+        </section>
+
+        <section>
+          <h2>PDF — fusion</h2>
+          <button id="office-pdf-pick-merge" type="button" class="module-link">Choisir des PDF à fusionner</button>
+          <div id="office-pdf-merge-selection" class="muted small">Aucun fichier sélectionné.</div>
+          <button id="office-pdf-merge-btn" type="button" class="module-link" disabled>Fusionner</button>
+          <div id="office-pdf-merge-status" class="muted small"></div>
+        </section>
+
+        <section>
+          <h2>PDF — lecture</h2>
+          <button id="office-pdf-pick-read" type="button" class="module-link">Choisir un PDF à lire</button>
+          <div id="office-pdf-read-result" class="muted small"></div>
+        </section>
+
+        <section>
+          <h2>PDF — remplissage de formulaire</h2>
+          <button id="office-pdf-pick-fill" type="button" class="module-link">Choisir un PDF à formulaire</button>
+          <div id="office-pdf-fill-selection" class="muted small">Aucun fichier sélectionné.</div>
+          <textarea id="office-pdf-fill-fields" rows="3" placeholder="champ=valeur, un par ligne"></textarea>
+          <button id="office-pdf-fill-btn" type="button" class="module-link" disabled>Remplir et exporter</button>
+          <div id="office-pdf-fill-status" class="muted small"></div>
         </section>
       </div>
     </div>

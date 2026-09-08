@@ -406,6 +406,7 @@ function showScreen(name) {
   if (name === 'autonomy') loadAutonomyScreen();
   if (name === 'voice') loadVoiceScreen();
   if (name === 'education') loadEducationScreen();
+  if (name === 'office') resetOfficeScreen();
   if (name === 'world') {
     initWorldMap();
     setTimeout(() => worldMap && worldMap.invalidateSize(), 0);
@@ -1967,6 +1968,172 @@ function wireEducationScreen() {
   });
 }
 
+// --- AURA OFFICE (§11.3) ------------------------------------------------
+// Generation de documents Word/Excel/PowerPoint et lecture/fusion/
+// remplissage de PDF, entierement en local (docx/exceljs/pptxgenjs/
+// pdf-lib cote backend), sans Microsoft Office installe.
+
+let officePdfMergePaths = [];
+let officePdfFillPath = null;
+
+async function saveGeneratedFile({ base64, suggestedName }, filters, statusEl) {
+  try {
+    const result = await window.aura.saveBinaryFile(base64, suggestedName, filters, 'Enregistrer sous');
+    statusEl.textContent = result.saved ? `Enregistré : ${result.filePath}` : 'Export annulé.';
+    if (result.saved) journal(`OFFICE_EXPORT : ${result.filePath}`);
+  } catch (err) {
+    statusEl.textContent = err.message;
+  }
+}
+
+function parseCsvLine(line) {
+  return line.split(',').map((cell) => cell.trim());
+}
+
+function parsePptxSlides(text) {
+  return text.split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean).map((block) => {
+    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+    const [heading, ...rest] = lines;
+    return { heading, bullets: rest.map((l) => l.replace(/^-\s*/, '')) };
+  });
+}
+
+function resetOfficeScreen() {
+  officePdfMergePaths = [];
+  officePdfFillPath = null;
+  document.getElementById('office-pdf-merge-selection').textContent = 'Aucun fichier sélectionné.';
+  document.getElementById('office-pdf-merge-btn').disabled = true;
+  document.getElementById('office-pdf-fill-selection').textContent = 'Aucun fichier sélectionné.';
+  document.getElementById('office-pdf-fill-btn').disabled = true;
+}
+
+function wireOfficeScreen() {
+  document.getElementById('office-word-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('office-word-title').value.trim();
+    const paragraphs = document.getElementById('office-word-paragraphs').value.split('\n').map((p) => p.trim()).filter(Boolean);
+    const status = document.getElementById('office-word-status');
+    status.textContent = 'Génération…';
+    try {
+      const doc = await window.aura.createWordDoc(title, paragraphs);
+      journal(`OFFICE_WORD_CREE : ${title}`);
+      await saveGeneratedFile(doc, [{ name: 'Document Word', extensions: ['docx'] }], status);
+    } catch (err) {
+      status.textContent = err.message;
+    }
+  });
+
+  document.getElementById('office-excel-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const sheetName = document.getElementById('office-excel-sheet').value.trim() || 'Feuille 1';
+    const headersRaw = document.getElementById('office-excel-headers').value.trim();
+    const headers = headersRaw ? parseCsvLine(headersRaw) : [];
+    const rows = document.getElementById('office-excel-rows').value.split('\n').map((l) => l.trim()).filter(Boolean).map(parseCsvLine);
+    const status = document.getElementById('office-excel-status');
+    status.textContent = 'Génération…';
+    try {
+      const doc = await window.aura.createExcelSheet(sheetName, headers, rows);
+      journal(`OFFICE_EXCEL_CREE : ${sheetName}`);
+      await saveGeneratedFile(doc, [{ name: 'Classeur Excel', extensions: ['xlsx'] }], status);
+    } catch (err) {
+      status.textContent = err.message;
+    }
+  });
+
+  document.getElementById('office-financial-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('office-financial-title').value.trim() || 'Budget';
+    const categories = document.getElementById('office-financial-categories').value.split('\n').map((l) => l.trim()).filter(Boolean);
+    const monthLabels = parseCsvLine(document.getElementById('office-financial-months').value.trim()).filter(Boolean);
+    const status = document.getElementById('office-financial-status');
+    status.textContent = 'Génération…';
+    try {
+      const doc = await window.aura.createFinancialTemplate(title, categories, monthLabels);
+      journal(`OFFICE_MODELE_FINANCIER_CREE : ${title}`);
+      await saveGeneratedFile(doc, [{ name: 'Classeur Excel', extensions: ['xlsx'] }], status);
+    } catch (err) {
+      status.textContent = err.message;
+    }
+  });
+
+  document.getElementById('office-pptx-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('office-pptx-title').value.trim();
+    const slides = parsePptxSlides(document.getElementById('office-pptx-slides').value);
+    const status = document.getElementById('office-pptx-status');
+    status.textContent = 'Génération…';
+    try {
+      const doc = await window.aura.createPresentation(title, slides);
+      journal(`OFFICE_PPTX_CREE : ${title}`);
+      await saveGeneratedFile(doc, [{ name: 'Présentation PowerPoint', extensions: ['pptx'] }], status);
+    } catch (err) {
+      status.textContent = err.message;
+    }
+  });
+
+  const pdfFilters = [{ name: 'Document PDF', extensions: ['pdf'] }];
+
+  document.getElementById('office-pdf-pick-merge').addEventListener('click', async () => {
+    const { paths } = await window.aura.pickFiles(true, pdfFilters, 'Choisir des PDF à fusionner');
+    if (paths.length) officePdfMergePaths = paths;
+    document.getElementById('office-pdf-merge-selection').textContent =
+      officePdfMergePaths.length ? `${officePdfMergePaths.length} fichier(s) sélectionné(s).` : 'Aucun fichier sélectionné.';
+    document.getElementById('office-pdf-merge-btn').disabled = officePdfMergePaths.length < 2;
+  });
+
+  document.getElementById('office-pdf-merge-btn').addEventListener('click', async () => {
+    const status = document.getElementById('office-pdf-merge-status');
+    status.textContent = 'Fusion en cours…';
+    try {
+      const doc = await window.aura.mergePdfs(officePdfMergePaths);
+      journal(`OFFICE_PDF_FUSIONNE : ${officePdfMergePaths.length} fichiers`);
+      await saveGeneratedFile(doc, pdfFilters, status);
+    } catch (err) {
+      status.textContent = err.message;
+    }
+  });
+
+  document.getElementById('office-pdf-pick-read').addEventListener('click', async () => {
+    const result = document.getElementById('office-pdf-read-result');
+    const { paths } = await window.aura.pickFiles(false, pdfFilters, 'Choisir un PDF à lire');
+    if (!paths.length) return;
+    result.textContent = 'Lecture…';
+    try {
+      const info = await window.aura.readPdfInfo(paths[0]);
+      result.innerHTML = `<div>${paths[0]}</div><div>${info.pageCount} page(s)${info.title ? ` — "${info.title}"` : ''}${info.author ? ` — ${info.author}` : ''}</div>`;
+      journal(`OFFICE_PDF_LU : ${info.pageCount} page(s)`);
+    } catch (err) {
+      result.textContent = err.message;
+    }
+  });
+
+  document.getElementById('office-pdf-pick-fill').addEventListener('click', async () => {
+    const { paths } = await window.aura.pickFiles(false, pdfFilters, 'Choisir un PDF à formulaire');
+    if (paths.length) officePdfFillPath = paths[0];
+    document.getElementById('office-pdf-fill-selection').textContent = officePdfFillPath || 'Aucun fichier sélectionné.';
+    document.getElementById('office-pdf-fill-btn').disabled = !officePdfFillPath;
+  });
+
+  document.getElementById('office-pdf-fill-btn').addEventListener('click', async () => {
+    const status = document.getElementById('office-pdf-fill-status');
+    const fields = {};
+    document.getElementById('office-pdf-fill-fields').value.split('\n').forEach((line) => {
+      const idx = line.indexOf('=');
+      if (idx > 0) fields[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+    });
+    if (!Object.keys(fields).length) { status.textContent = 'Aucun champ à remplir.'; return; }
+    status.textContent = 'Remplissage…';
+    try {
+      const doc = await window.aura.fillPdfForm(officePdfFillPath, fields);
+      journal(`OFFICE_PDF_FORMULAIRE_REMPLI : ${doc.filled.length} champ(s)`);
+      if (doc.skipped.length) status.textContent = `Champs introuvables ignorés : ${doc.skipped.join(', ')}`;
+      await saveGeneratedFile(doc, pdfFilters, status);
+    } catch (err) {
+      status.textContent = err.message;
+    }
+  });
+}
+
 render();
 startClock();
 wirePanels();
@@ -1984,6 +2151,7 @@ wireSecurityScreen();
 wireAutonomyScreen();
 wireVoiceScreen();
 wireEducationScreen();
+wireOfficeScreen();
 wireEmergencyStop();
 initConversation();
 loadTasks();

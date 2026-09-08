@@ -109,5 +109,15 @@ contextBridge.exposeInMainWorld('aura', {
   explainConcept: (topic, level) => postJson('/api/education/explain', { topic, level }),
   translateText: (text, targetLang, sourceLang) => postJson('/api/education/translate', { text, targetLang, sourceLang }),
   logTutorEntry: (topic, level, note) => postJson('/api/education/tutor', { topic, level, note }),
-  getProgress: (topic) => getJson(`/api/education/progress${topic ? `?topic=${encodeURIComponent(topic)}` : ''}`)
+  getProgress: (topic) => getJson(`/api/education/progress${topic ? `?topic=${encodeURIComponent(topic)}` : ''}`),
+
+  createWordDoc: (title, paragraphs) => postJson('/api/office/word', { title, paragraphs }),
+  createExcelSheet: (sheetName, headers, rows) => postJson('/api/office/excel', { sheetName, headers, rows }),
+  createFinancialTemplate: (title, categories, monthLabels) => postJson('/api/office/excel/financial-template', { title, categories, monthLabels }),
+  createPresentation: (title, slides) => postJson('/api/office/pptx', { title, slides }),
+  mergePdfs: (paths) => postJson('/api/office/pdf/merge', { paths }),
+  readPdfInfo: (filePath) => postJson('/api/office/pdf/info', { filePath }),
+  fillPdfForm: (filePath, fields) => postJson('/api/office/pdf/fill-form', { filePath, fields }),
+  pickFiles: (multi, filters, title) => ipcRenderer.invoke('dialog:pick-files', { multi, filters, title }),
+  saveBinaryFile: (base64, defaultPath, filters, title) => ipcRenderer.invoke('dialog:save-binary', { base64, defaultPath, filters, title })
 });
