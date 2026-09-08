@@ -10,6 +10,7 @@ const store = require('./store');
 const gaming = require('./gaming');
 const productivity = require('./productivity');
 const dev = require('./dev');
+const communication = require('./communication');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -241,6 +242,35 @@ function startServer() {
   server.post('/api/dev/unity/build', async (req, res) => {
     try {
       res.json(await dev.unityBuildAction(req.body));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Connecteur Communication (§3 : mail/Discord)
+  server.get('/api/comm/status', (req, res) => {
+    res.json(communication.getCommStatus());
+  });
+
+  server.post('/api/comm/config', (req, res) => {
+    try {
+      res.json(communication.setCommField(req.body.key, req.body.value));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/comm/mail/send', async (req, res) => {
+    try {
+      res.json(await communication.mailSend(req.body));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/comm/discord/send', async (req, res) => {
+    try {
+      res.json(await communication.discordSend(req.body.content));
     } catch (err) {
       res.status(400).json({ error: err.message });
     }

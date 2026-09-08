@@ -383,6 +383,7 @@ function showScreen(name) {
   if (name === 'memory') loadMemoryScreen();
   if (name === 'gaming') loadGamingScreen();
   if (name === 'dev') loadDevScreen();
+  if (name === 'comm') loadCommScreen();
   if (name === 'world') {
     initWorldMap();
     setTimeout(() => worldMap && worldMap.invalidateSize(), 0);
@@ -1156,6 +1157,119 @@ function wireDevScreen() {
   });
 }
 
+// --- Communication (§3 : mail/Discord) --------------------------------
+// Apercu obligatoire avant tout envoi (F-09) : toute modification du
+// texte apres l'apercu l'invalide et desactive "Envoyer" jusqu'au
+// prochain apercu, pour garantir qu'on n'envoie jamais autre chose que
+// ce qui a ete relu.
+
+const COMMFIELD_LABELS = {
+  smtpHost: 'Hôte SMTP (ex. smtp.gmail.com)',
+  smtpPort: 'Port SMTP (ex. 587)',
+  smtpUser: 'Adresse email',
+  smtpPass: 'Mot de passe (application) SMTP',
+  discordWebhookUrl: 'URL du webhook Discord'
+};
+
+function renderCommStatus(status) {
+  document.getElementById('dot-comm-mail').classList.toggle('ok', status.mail);
+  document.getElementById('label-comm-mail').textContent = status.mail ? 'Configuré' : 'Non configuré';
+  document.getElementById('dot-comm-discord').classList.toggle('ok', status.discord);
+  document.getElementById('label-comm-discord').textContent = status.discord ? 'Configuré' : 'Non configuré';
+}
+
+async function loadCommScreen() {
+  try {
+    renderCommStatus(await window.aura.getCommStatus());
+  } catch {
+    // API locale indisponible
+  }
+}
+
+function invalidatePreview(previewId, buttonId) {
+  document.getElementById(previewId).hidden = true;
+  document.getElementById(buttonId).disabled = true;
+}
+
+function wireCommScreen() {
+  document.querySelectorAll('[data-commfield]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const key = btn.dataset.commfield;
+      const value = prompt(COMMFIELD_LABELS[key] || key);
+      if (value === null) return;
+      try {
+        renderCommStatus(await window.aura.setCommConfig(key, value));
+        journal(`COMM_CONFIG : ${key}`);
+      } catch (err) {
+        journal(`COMM_CONFIG_ECHEC : ${err.message}`);
+      }
+    });
+  });
+
+  document.getElementById('mail-preview-btn').addEventListener('click', () => {
+    const to = document.getElementById('mail-to').value.trim();
+    const subject = document.getElementById('mail-subject').value.trim();
+    const body = document.getElementById('mail-body').value;
+    const status = document.getElementById('mail-status');
+    if (!to) { status.textContent = 'Destinataire manquant.'; return; }
+    status.textContent = '';
+    const preview = document.getElementById('mail-preview');
+    preview.innerHTML = `<span class="preview-label">Aperçu</span><strong>À :</strong> ${to}\n<strong>Objet :</strong> ${subject}\n\n${body}`;
+    preview.hidden = false;
+    document.getElementById('mail-send-btn').disabled = false;
+  });
+
+  document.getElementById('mail-send-btn').addEventListener('click', async () => {
+    const to = document.getElementById('mail-to').value.trim();
+    const subject = document.getElementById('mail-subject').value.trim();
+    const body = document.getElementById('mail-body').value;
+    if (!confirm(`Envoyer cet email à ${to} ?`)) return;
+    const status = document.getElementById('mail-status');
+    status.textContent = 'Envoi…';
+    try {
+      await window.aura.mailSend({ to, subject, body });
+      status.textContent = 'Email envoyé.';
+      journal(`MAIL_ENVOYE : ${to}`);
+      invalidatePreview('mail-preview', 'mail-send-btn');
+    } catch (err) {
+      status.textContent = err.message;
+      journal(`MAIL_ECHEC : ${err.message}`);
+    }
+  });
+
+  document.getElementById('discord-preview-btn').addEventListener('click', () => {
+    const content = document.getElementById('discord-content').value;
+    const status = document.getElementById('discord-status');
+    if (!content.trim()) { status.textContent = 'Message vide.'; return; }
+    status.textContent = '';
+    const preview = document.getElementById('discord-preview');
+    preview.innerHTML = `<span class="preview-label">Aperçu</span>${content}`;
+    preview.hidden = false;
+    document.getElementById('discord-send-btn').disabled = false;
+  });
+
+  document.getElementById('discord-send-btn').addEventListener('click', async () => {
+    const content = document.getElementById('discord-content').value;
+    if (!confirm('Envoyer ce message sur Discord ?')) return;
+    const status = document.getElementById('discord-status');
+    status.textContent = 'Envoi…';
+    try {
+      await window.aura.discordSend(content);
+      status.textContent = 'Message envoyé.';
+      journal('DISCORD_ENVOYE');
+      invalidatePreview('discord-preview', 'discord-send-btn');
+    } catch (err) {
+      status.textContent = err.message;
+      journal(`DISCORD_ECHEC : ${err.message}`);
+    }
+  });
+
+  ['mail-to', 'mail-subject', 'mail-body'].forEach((id) => {
+    document.getElementById(id).addEventListener('input', () => invalidatePreview('mail-preview', 'mail-send-btn'));
+  });
+  document.getElementById('discord-content').addEventListener('input', () => invalidatePreview('discord-preview', 'discord-send-btn'));
+}
+
 render();
 startClock();
 wirePanels();
@@ -1166,6 +1280,7 @@ wireImageLab();
 wireGamingScreen();
 wireProductivity();
 wireDevScreen();
+wireCommScreen();
 wireEmergencyStop();
 initConversation();
 loadTasks();

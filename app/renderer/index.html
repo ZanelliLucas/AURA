@@ -47,6 +47,7 @@
       <button type="button" class="module-link" data-screen="world">Carte du monde</button>
       <button type="button" class="module-link" data-screen="imagelab">Image Lab</button>
       <button type="button" class="module-link" data-screen="dev">AURA CODE</button>
+      <button type="button" class="module-link" data-screen="comm">Communication</button>
     </nav>
   </aside>
 
@@ -250,6 +251,53 @@
             <button type="submit">Lancer le build</button>
           </form>
           <p id="unity-status" class="muted small"></p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-comm" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>Communication</h1>
+
+    <div class="gaming-columns">
+      <div class="gaming-col">
+        <section>
+          <h2>Email</h2>
+          <div class="conn-row"><span class="conn-dot" id="dot-comm-mail"></span> <span id="label-comm-mail">Non configuré</span></div>
+          <div class="inline-form">
+            <button type="button" class="mini-link" data-commfield="smtpHost">hôte</button>
+            <button type="button" class="mini-link" data-commfield="smtpPort">port</button>
+            <button type="button" class="mini-link" data-commfield="smtpUser">adresse</button>
+            <button type="button" class="mini-link" data-commfield="smtpPass">mot de passe</button>
+          </div>
+          <form id="mail-form" class="inline-form" style="flex-direction:column; align-items:stretch;">
+            <input id="mail-to" type="text" placeholder="Destinataire">
+            <input id="mail-subject" type="text" placeholder="Objet">
+            <textarea id="mail-body" rows="4" placeholder="Message…"></textarea>
+          </form>
+          <div id="mail-preview" class="comm-preview" hidden></div>
+          <div class="comm-actions">
+            <button id="mail-preview-btn" type="button" class="module-link">Aperçu</button>
+            <button id="mail-send-btn" type="button" class="danger-link" disabled>Envoyer</button>
+          </div>
+          <p id="mail-status" class="muted small"></p>
+        </section>
+      </div>
+
+      <div class="gaming-col">
+        <section>
+          <h2>Discord</h2>
+          <div class="conn-row"><span class="conn-dot" id="dot-comm-discord"></span> <span id="label-comm-discord">Non configuré</span> <button type="button" class="mini-link" data-commfield="discordWebhookUrl">webhook</button></div>
+          <form id="discord-form" class="inline-form" style="flex-direction:column; align-items:stretch;">
+            <textarea id="discord-content" rows="4" placeholder="Message…"></textarea>
+          </form>
+          <div id="discord-preview" class="comm-preview" hidden></div>
+          <div class="comm-actions">
+            <button id="discord-preview-btn" type="button" class="module-link">Aperçu</button>
+            <button id="discord-send-btn" type="button" class="danger-link" disabled>Envoyer</button>
+          </div>
+          <p id="discord-status" class="muted small"></p>
         </section>
       </div>
     </div>

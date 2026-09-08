@@ -841,3 +841,32 @@ body.estopped #conversation-panel {
 }
 .file-status-code { color: var(--red); width: 24px; flex-shrink: 0; }
 .file-status-path { color: var(--dim); }
+
+/* Communication (§3, mail/Discord) - apercu obligatoire avant envoi */
+.inline-form textarea {
+  width: 100%;
+  background: rgba(245, 246, 247, 0.06);
+  border: 1px solid rgba(245, 246, 247, 0.16);
+  border-radius: 5px;
+  color: var(--white);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  padding: 8px;
+  resize: vertical;
+  margin-bottom: 6px;
+}
+
+.comm-preview {
+  background: rgba(245, 246, 247, 0.04);
+  border: 1px dashed rgba(245, 246, 247, 0.2);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  margin-bottom: 10px;
+}
+.comm-preview .preview-label { color: var(--red); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
+
+.comm-actions { display: flex; gap: 8px; margin-bottom: 8px; }
+.comm-actions .module-link, .comm-actions .danger-link { width: auto; flex: 1; }
+.comm-actions button:disabled { opacity: 0.4; cursor: default; }

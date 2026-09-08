@@ -70,5 +70,10 @@ contextBridge.exposeInMainWorld('aura', {
   gitStatus: () => getJson('/api/dev/git/status'),
   gitCommit: (message, files) => postJson('/api/dev/git/commit', { message, files }),
   gitPush: (remote, branch) => postJson('/api/dev/git/push', { remote, branch }),
-  unityBuild: (options) => postJson('/api/dev/unity/build', options)
+  unityBuild: (options) => postJson('/api/dev/unity/build', options),
+
+  getCommStatus: () => getJson('/api/comm/status'),
+  setCommConfig: (key, value) => postJson('/api/comm/config', { key, value }),
+  mailSend: (mail) => postJson('/api/comm/mail/send', mail),
+  discordSend: (content) => postJson('/api/comm/discord/send', { content })
 });
