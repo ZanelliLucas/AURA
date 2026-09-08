@@ -67,6 +67,34 @@ function organicBranch(p0, p1, seed, waypointCount = 4) {
   return { d: catmullRomPath(points), points };
 }
 
+// Insere une veritable boucle (pas seulement un balancement lateral) a
+// hauteur d'un point intermediaire : quelques points supplementaires
+// disposes en cercle, pour un tendon qui se nouerait sur lui-meme comme
+// sur les references (le simple "wobble" ne peut jamais revenir en
+// arriere sur l'axe direct, une boucle si).
+function insertLoop(points, atIndex, seed, radius) {
+  const center = points[atIndex];
+  const startAngle = seededUnit(seed) * Math.PI * 2;
+  const steps = 5;
+  const loopPts = [];
+  for (let i = 1; i <= steps; i++) {
+    const a = startAngle + (i / steps) * Math.PI * 2;
+    loopPts.push({ x: center.x + Math.cos(a) * radius, y: center.y + Math.sin(a) * radius });
+  }
+  return points.slice(0, atIndex + 1).concat(loopPts, points.slice(atIndex + 1));
+}
+
+// Ajoute une boucle sur une partie des branches seulement (toutes ne
+// bouclent pas dans les references non plus) - decision deterministe
+// par seed, pas aleatoire a chaque rendu.
+function maybeAddLoop(branch, seed, dist) {
+  if (seededUnit(seed + 811) > 0.4) return branch;
+  const idx = 2 + Math.floor(seededUnit(seed + 233) * Math.max(branch.points.length - 4, 1));
+  const radius = dist * (0.05 + seededUnit(seed + 611) * 0.05);
+  const points = insertLoop(branch.points, idx, seed + 917, radius);
+  return { d: catmullRomPath(points), points };
+}
+
 function branchSamplePoints(branch) {
   // Les points intermediaires (hub et noeud exclus) suffisent a tisser
   // le maillage - inutile de resampler la courbe elle-meme.
@@ -92,6 +120,35 @@ function branchSegments(points, count) {
 // simple trait unique, comme dans les references.
 function braidBranch(p0, p1, seed) {
   return organicBranch(p0, p1, seed + 503, 5);
+}
+
+// Trame d'ambiance couvrant tout le canevas, independante de la
+// structure du graphe (points aleatoires relies a leurs 2 plus proches
+// voisins) : la densite de fond presente sur toute la surface des
+// references, meme loin de la toile elle-meme - a peine visible, mais
+// evite les zones vides.
+function buildAmbientMesh() {
+  const group = el('g', { class: 'ambient-mesh' });
+  const count = 90;
+  const points = [];
+  for (let i = 0; i < count; i++) {
+    points.push({ x: seededUnit(i * 17.3 + 41) * VIEW_W, y: seededUnit(i * 23.9 + 53) * VIEW_H });
+  }
+  const drawn = new Set();
+  points.forEach((a, i) => {
+    points
+      .map((b, j) => ({ b, j, d: Math.hypot(a.x - b.x, a.y - b.y) }))
+      .filter((e) => e.j !== i)
+      .sort((e1, e2) => e1.d - e2.d)
+      .slice(0, 2)
+      .forEach(({ b, j }) => {
+        const key = i < j ? `${i}-${j}` : `${j}-${i}`;
+        if (drawn.has(key)) return;
+        drawn.add(key);
+        group.appendChild(el('line', { x1: a.x.toFixed(1), y1: a.y.toFixed(1), x2: b.x.toFixed(1), y2: b.y.toFixed(1), class: 'ambient-filament' }));
+      });
+  });
+  return group;
 }
 
 // Maillage entre points voisins issus de branches differentes : la
@@ -249,6 +306,7 @@ function render() {
   const positioned = layout();
   const nodeList = Object.values(positioned);
 
+  svg.appendChild(buildAmbientMesh());
   svg.appendChild(buildBackgroundField());
 
   // Branches organiques (tendons courbes) du hub vers chaque agent, et
@@ -256,7 +314,9 @@ function render() {
   const branches = {};
   const samplePoints = [];
   nodeList.forEach((p, i) => {
-    const branch = organicBranch(CENTER, p, i * 13.7 + 5);
+    const seed = i * 13.7 + 5;
+    const dist = Math.hypot(p.x - CENTER.x, p.y - CENTER.y);
+    const branch = maybeAddLoop(organicBranch(CENTER, p, seed), seed, dist);
     branches[p.id] = branch;
     branchSamplePoints(branch).forEach((pt) => samplePoints.push({ ...pt, branch: p.id }));
   });
