@@ -30,21 +30,11 @@
   SendMessage 0xFFFF 0x1A 0 "STR:Environment" /TIMEOUT=5000
 
   ; --- Lanceur "launched AURA" -----------------------------------------
-  FileOpen $0 "$INSTDIR\launched-profile.ps1" w
-  FileWrite $0 "# AURA - lanceur personnel (F-12/F-22), genere par l'installateur.$\r$\n"
-  FileWrite $0 "function launched {$\r$\n"
-  FileWrite $0 "    param([string]$$App)$\r$\n"
-  FileWrite $0 "    if ($$App -ieq 'AURA') {$\r$\n"
-  FileWrite $0 "        $$psi = New-Object System.Diagnostics.ProcessStartInfo$\r$\n"
-  FileWrite $0 "        $$psi.FileName = '$INSTDIR\aura.exe'$\r$\n"
-  FileWrite $0 "        $$psi.UseShellExecute = $$true$\r$\n"
-  FileWrite $0 "        [System.Diagnostics.Process]::Start($$psi) | Out-Null$\r$\n"
-  FileWrite $0 "        exit$\r$\n"
-  FileWrite $0 "    } else {$\r$\n"
-  FileWrite $0 "        Write-Host 'Usage : launched AURA'$\r$\n"
-  FileWrite $0 "    }$\r$\n"
-  FileWrite $0 "}$\r$\n"
-  FileClose $0
+  ; launched-profile.ps1 est deja present dans $INSTDIR a ce stade : copie
+  ; par electron-builder via build.extraFiles (package.json), pas par ce
+  ; script NSIS (${__FILEDIR__} pointe vers le dossier de template interne
+  ; d'electron-builder au moment de la compilation, pas vers app/ - une
+  ; resolution manuelle ici serait fragile).
 
   CreateDirectory "$DOCUMENTS\WindowsPowerShell"
   StrCpy $1 "$DOCUMENTS\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
