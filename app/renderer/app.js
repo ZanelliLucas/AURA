@@ -420,7 +420,18 @@ function render() {
     braidGroup.appendChild(el('path', { d: braid2.d, class: 'link-braid' }));
     rungGroup.appendChild(buildCableRungs(branch.basePoints, braid.points));
     rungGroup.appendChild(buildCableRungs(branch.basePoints, braid2.points));
-    trunkGroup.appendChild(el('path', { d: branch.d, id: `branch-${p.id}`, class: 'link', 'data-node': p.id }));
+    // Trace invisible, uniquement support du flux (animateMotion exige
+    // un seul <path> continu de bout en bout pour le mpath).
+    trunkGroup.appendChild(el('path', { d: branch.d, id: `branch-${p.id}`, class: 'link-pulse-path' }));
+    // Trait visible en 3 segments, plus epais pres du hub et plus fin
+    // pres de l'agent : le corps du tendon lui-meme s'amincit, pas
+    // seulement son halo, comme la silhouette fuselee des tendrilles
+    // des references plutot qu'un simple fil d'epaisseur constante.
+    branchSegments(branch.points, 3).forEach((seg, si) => {
+      trunkGroup.appendChild(el('path', {
+        d: catmullRomPath(seg), class: `link link-taper-${si}`, 'data-node': p.id
+      }));
+    });
 
     // Ganglions : quelques points plus gros et lumineux a meme la
     // branche (pas seulement dans le maillage), comme les renflements
