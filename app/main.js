@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 const { startServer } = require('./server');
 
@@ -43,6 +44,22 @@ function createWindow() {
     mainWindow = null;
   });
 }
+
+// Boite de dialogue native "Enregistrer sous" pour l'export d'image
+// (AURA IMAGE LAB, §10.4 : l'original n'est jamais ecrase, l'export
+// demande toujours un nouvel emplacement). Interaction OS directe, pas
+// une action d'AURA CORE : IPC plutot que l'API HTTP locale.
+ipcMain.handle('dialog:save-image', async (event, dataUrl) => {
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: 'Exporter l’image améliorée',
+    defaultPath: 'aura-image-amelioree.png',
+    filters: [{ name: 'Image PNG', extensions: ['png'] }]
+  });
+  if (canceled || !filePath) return { saved: false };
+  const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+  fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
+  return { saved: true, filePath };
+});
 
 app.whenReady().then(async () => {
   try {

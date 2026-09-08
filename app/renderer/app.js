@@ -383,7 +383,7 @@ function showScreen(name) {
   if (name === 'memory') loadMemoryScreen();
   if (name === 'world') {
     initWorldMap();
-    requestAnimationFrame(() => worldMap && worldMap.invalidateSize());
+    setTimeout(() => worldMap && worldMap.invalidateSize(), 0);
   }
 }
 
@@ -507,12 +507,239 @@ function wireWorldMap() {
   });
 }
 
+// --- AURA Image Lab (§10, §16.5) --------------------------------------
+// Traitement local (Canvas 2D), aucune IA requise pour ces fonctions de
+// base : agrandissement (reechantillonnage, pas de super-resolution IA),
+// nettete, reduction de bruit, lumiere/couleur. L'original n'est jamais
+// ecrase (§10.4) - le fichier source n'est jamais reouvert en ecriture,
+// l'export demande toujours un nouvel emplacement.
+
+const IL_MAX_DIM = 1400;
+const IL_IDENTITY_KERNEL = [0, 0, 0, 0, 1, 0, 0, 0, 0];
+const IL_SHARPEN_KERNEL = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+const IL_BLUR_KERNEL = [1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9];
+
+let ilBaseCanvas = null;
+
+function ilClamp(v) { return Math.max(0, Math.min(255, v)); }
+
+function ilLerpKernel(from, to, t) {
+  return from.map((v, i) => v + (to[i] - v) * t);
+}
+
+function ilConvolve3x3(imageData, kernel) {
+  const { width, height, data } = imageData;
+  const src = new Uint8ClampedArray(data);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let r = 0, g = 0, b = 0, k = 0;
+      for (let ky = -1; ky <= 1; ky++) {
+        for (let kx = -1; kx <= 1; kx++) {
+          const sx = Math.min(width - 1, Math.max(0, x + kx));
+          const sy = Math.min(height - 1, Math.max(0, y + ky));
+          const idx = (sy * width + sx) * 4;
+          const kv = kernel[k++];
+          r += src[idx] * kv; g += src[idx + 1] * kv; b += src[idx + 2] * kv;
+        }
+      }
+      const idx = (y * width + x) * 4;
+      data[idx] = ilClamp(r); data[idx + 1] = ilClamp(g); data[idx + 2] = ilClamp(b);
+    }
+  }
+  return imageData;
+}
+
+function ilAdjustColor(imageData, brightness, contrast, saturation) {
+  const data = imageData.data;
+  const cf = (259 * (contrast + 255)) / (255 * (259 - contrast));
+  const sf = 1 + saturation / 100;
+  for (let i = 0; i < data.length; i += 4) {
+    let r = data[i] + brightness, g = data[i + 1] + brightness, b = data[i + 2] + brightness;
+    r = cf * (r - 128) + 128; g = cf * (g - 128) + 128; b = cf * (b - 128) + 128;
+    const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+    r = gray + (r - gray) * sf; g = gray + (g - gray) * sf; b = gray + (b - gray) * sf;
+    data[i] = ilClamp(r); data[i + 1] = ilClamp(g); data[i + 2] = ilClamp(b);
+  }
+  return imageData;
+}
+
+function ilGetControls() {
+  return {
+    scale: Number(document.getElementById('ctl-scale').value),
+    sharpen: Number(document.getElementById('ctl-sharpen').value),
+    denoise: Number(document.getElementById('ctl-denoise').value),
+    brightness: Number(document.getElementById('ctl-brightness').value),
+    contrast: Number(document.getElementById('ctl-contrast').value),
+    saturation: Number(document.getElementById('ctl-saturation').value)
+  };
+}
+
+function ilSyncLabels() {
+  const ctl = ilGetControls();
+  document.getElementById('val-scale').textContent = `${ctl.scale} %`;
+  document.getElementById('val-sharpen').textContent = ctl.sharpen;
+  document.getElementById('val-denoise').textContent = ctl.denoise;
+  document.getElementById('val-brightness').textContent = ctl.brightness;
+  document.getElementById('val-contrast').textContent = ctl.contrast;
+  document.getElementById('val-saturation').textContent = ctl.saturation;
+}
+
+function ilSetImage(img) {
+  let w = img.naturalWidth, h = img.naturalHeight;
+  const scale = Math.min(1, IL_MAX_DIM / Math.max(w, h));
+  w = Math.round(w * scale); h = Math.round(h * scale);
+
+  ilBaseCanvas = document.createElement('canvas');
+  ilBaseCanvas.width = w;
+  ilBaseCanvas.height = h;
+  ilBaseCanvas.getContext('2d').drawImage(img, 0, 0, w, h);
+
+  const original = document.getElementById('imagelab-canvas-original');
+  original.width = w;
+  original.height = h;
+  original.getContext('2d').drawImage(ilBaseCanvas, 0, 0);
+
+  document.getElementById('imagelab-empty').hidden = true;
+  document.getElementById('imagelab-workspace').hidden = false;
+  document.getElementById('imagelab-status').textContent = '';
+
+  ['ctl-scale', 'ctl-sharpen', 'ctl-denoise', 'ctl-brightness', 'ctl-contrast', 'ctl-saturation']
+    .forEach((id) => { document.getElementById(id).value = id === 'ctl-scale' ? 100 : 0; });
+  ilSyncLabels();
+  ilApply('vision.enhance_image', { reason: 'chargement initial' });
+}
+
+function ilApply(actionType, extraDetails) {
+  if (!ilBaseCanvas) return;
+  const status = document.getElementById('imagelab-status');
+  status.textContent = 'Traitement en cours…';
+
+  // setTimeout plutot que requestAnimationFrame : rAF peut etre fortement
+  // retarde/suspendu quand la fenetre n'a pas le focus ou est masquee
+  // (throttling par occlusion de Chromium), ce qui laisserait le
+  // traitement bloque indefiniment si l'utilisateur change de fenetre.
+  setTimeout(() => {
+    const ctl = ilGetControls();
+    const resultCanvas = document.getElementById('imagelab-canvas-result');
+    const outW = Math.round(ilBaseCanvas.width * ctl.scale / 100);
+    const outH = Math.round(ilBaseCanvas.height * ctl.scale / 100);
+    resultCanvas.width = outW;
+    resultCanvas.height = outH;
+
+    const rctx = resultCanvas.getContext('2d', { willReadFrequently: true });
+    rctx.imageSmoothingEnabled = true;
+    rctx.imageSmoothingQuality = 'high';
+    rctx.drawImage(ilBaseCanvas, 0, 0, outW, outH);
+
+    let imageData = rctx.getImageData(0, 0, outW, outH);
+    if (ctl.denoise > 0) {
+      imageData = ilConvolve3x3(imageData, ilLerpKernel(IL_IDENTITY_KERNEL, IL_BLUR_KERNEL, ctl.denoise / 100));
+    }
+    if (ctl.sharpen > 0) {
+      imageData = ilConvolve3x3(imageData, ilLerpKernel(IL_IDENTITY_KERNEL, IL_SHARPEN_KERNEL, ctl.sharpen / 100));
+    }
+    if (ctl.brightness || ctl.contrast || ctl.saturation) {
+      imageData = ilAdjustColor(imageData, ctl.brightness, ctl.contrast, ctl.saturation);
+    }
+    rctx.putImageData(imageData, 0, 0);
+
+    status.textContent = `Terminé (${outW}×${outH}px).`;
+
+    if (actionType) {
+      window.aura.logAction({
+        typeAction: actionType,
+        sensibilite: 'reversible',
+        statut: 'execute',
+        details: { ...ctl, ...extraDetails }
+      }).catch(() => {});
+    }
+  }, 0);
+}
+
+function ilReset() {
+  ['ctl-scale', 'ctl-sharpen', 'ctl-denoise', 'ctl-brightness', 'ctl-contrast', 'ctl-saturation']
+    .forEach((id) => { document.getElementById(id).value = id === 'ctl-scale' ? 100 : 0; });
+  ilSyncLabels();
+  ilApply(null);
+  document.getElementById('imagelab-status').textContent = 'Réinitialisé à l’original.';
+}
+
+function ilAutoPreset() {
+  document.getElementById('ctl-sharpen').value = 25;
+  document.getElementById('ctl-denoise').value = 15;
+  document.getElementById('ctl-contrast').value = 8;
+  ilSyncLabels();
+  ilApply('vision.enhance_image', { mode: 'automatique (preset fixe)' });
+}
+
+async function ilExport() {
+  const resultCanvas = document.getElementById('imagelab-canvas-result');
+  const dataUrl = resultCanvas.toDataURL('image/png');
+  const status = document.getElementById('imagelab-status');
+  try {
+    const { saved, filePath } = await window.aura.saveImage(dataUrl);
+    status.textContent = saved ? `Exporté vers ${filePath}` : 'Export annulé.';
+    if (saved) {
+      window.aura.logAction({
+        typeAction: 'vision.export_image',
+        sensibilite: 'reversible',
+        statut: 'execute',
+        details: { filePath }
+      }).catch(() => {});
+    }
+  } catch (err) {
+    status.textContent = `Échec de l’export : ${err.message}`;
+  }
+}
+
+function wireImageLab() {
+  document.getElementById('imagelab-file').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => ilSetImage(img);
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('imagelab-slider').addEventListener('input', (e) => {
+    const pct = e.target.value;
+    document.getElementById('imagelab-canvas-result').style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+    document.getElementById('imagelab-divider').style.left = `${pct}%`;
+  });
+
+  ['ctl-scale', 'ctl-sharpen', 'ctl-denoise', 'ctl-brightness', 'ctl-contrast', 'ctl-saturation']
+    .forEach((id) => document.getElementById(id).addEventListener('input', ilSyncLabels));
+
+  document.getElementById('imagelab-preview').addEventListener('click', () => {
+    const ctl = ilGetControls();
+    const actions = [];
+    if (ctl.sharpen > 0) actions.push('vision.sharpen_image');
+    if (ctl.denoise > 0) actions.push('vision.denoise_image');
+    if (ctl.scale !== 100) actions.push('vision.upscale_image');
+    ilApply(actions[0] || 'vision.enhance_image');
+  });
+  document.getElementById('imagelab-auto').addEventListener('click', ilAutoPreset);
+  document.getElementById('imagelab-reset').addEventListener('click', ilReset);
+  document.getElementById('imagelab-export').addEventListener('click', ilExport);
+  document.getElementById('imagelab-new').addEventListener('click', () => {
+    ilBaseCanvas = null;
+    document.getElementById('imagelab-file').value = '';
+    document.getElementById('imagelab-workspace').hidden = true;
+    document.getElementById('imagelab-empty').hidden = false;
+  });
+}
+
 render();
 startClock();
 wirePanels();
 wireScreens();
 wireMemoryScreen();
 wireWorldMap();
+wireImageLab();
 wireEmergencyStop();
 initConversation();
 setInterval(pulseRandomActivity, 2600);

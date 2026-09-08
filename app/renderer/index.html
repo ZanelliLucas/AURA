@@ -76,7 +76,49 @@
   <div id="screen-imagelab" class="app-screen" hidden>
     <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
     <h1>AURA Image Lab</h1>
-    <p class="muted">Écran pas encore construit — traitement d’image (§10) à intégrer.</p>
+
+    <div id="imagelab-empty">
+      <p class="muted">Charge une image pour commencer. L’original n’est jamais écrasé.</p>
+      <label class="file-picker" for="imagelab-file">Choisir une image</label>
+      <input type="file" id="imagelab-file" accept="image/png,image/jpeg,image/webp" hidden>
+    </div>
+
+    <div id="imagelab-workspace" hidden>
+      <div id="imagelab-compare">
+        <canvas id="imagelab-canvas-original"></canvas>
+        <canvas id="imagelab-canvas-result"></canvas>
+        <div id="imagelab-divider"></div>
+        <input type="range" id="imagelab-slider" min="0" max="100" value="50">
+        <span class="imagelab-tag imagelab-tag-left">Original</span>
+        <span class="imagelab-tag imagelab-tag-right">Résultat</span>
+      </div>
+
+      <div id="imagelab-controls">
+        <section>
+          <h2>Mode automatique</h2>
+          <button id="imagelab-auto" type="button" class="module-link">Appliquer le préréglage automatique</button>
+          <p class="muted small">Chaîne fixe (netteté légère + réduction de bruit + contraste). Pas encore d’analyse IA réelle du défaut de l’image — nécessite une clé fournisseur configurée.</p>
+        </section>
+
+        <section>
+          <h2>Mode manuel</h2>
+          <label class="imagelab-slider-row">Agrandissement <input type="range" id="ctl-scale" min="100" max="300" value="100" step="25"><span id="val-scale">100 %</span></label>
+          <label class="imagelab-slider-row">Netteté <input type="range" id="ctl-sharpen" min="0" max="100" value="0"><span id="val-sharpen">0</span></label>
+          <label class="imagelab-slider-row">Réduction de bruit <input type="range" id="ctl-denoise" min="0" max="100" value="0"><span id="val-denoise">0</span></label>
+          <label class="imagelab-slider-row">Luminosité <input type="range" id="ctl-brightness" min="-100" max="100" value="0"><span id="val-brightness">0</span></label>
+          <label class="imagelab-slider-row">Contraste <input type="range" id="ctl-contrast" min="-100" max="100" value="0"><span id="val-contrast">0</span></label>
+          <label class="imagelab-slider-row">Saturation <input type="range" id="ctl-saturation" min="-100" max="100" value="0"><span id="val-saturation">0</span></label>
+        </section>
+
+        <div id="imagelab-actions">
+          <button id="imagelab-preview" type="button">Aperçu</button>
+          <button id="imagelab-reset" type="button">Réinitialiser</button>
+          <button id="imagelab-export" type="button">Exporter</button>
+          <button id="imagelab-new" type="button">Changer d’image</button>
+        </div>
+        <p id="imagelab-status" class="muted small"></p>
+      </div>
+    </div>
   </div>
 
   <div id="estop-banner" hidden>

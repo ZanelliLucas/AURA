@@ -1,4 +1,4 @@
-const { contextBridge } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 // Constantes dupliquees depuis server.js (volontairement, pas un require) :
 // en mode sandbox:true, le preload ne peut pas charger des modules Node
@@ -40,5 +40,7 @@ contextBridge.exposeInMainWorld('aura', {
   getPreferences: () => getJson('/api/preferences'),
   setPreference: (key, value) => postJson('/api/preferences', { key, value }),
   deletePreference: (key) => delJson(`/api/preferences/${encodeURIComponent(key)}`),
-  clearMemory: () => delJson('/api/memory')
+  clearMemory: () => delJson('/api/memory'),
+  logAction: (entry) => postJson('/api/journal', entry),
+  saveImage: (dataUrl) => ipcRenderer.invoke('dialog:save-image', dataUrl)
 });

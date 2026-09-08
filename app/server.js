@@ -41,6 +41,21 @@ function startServer() {
     res.json(store.getJournal(20));
   });
 
+  // Actions locales (AURA IMAGE LAB, §10.3) journalisees sans passer par
+  // AURA CORE : traitement fait cote renderer (Canvas), pas d'appel IA.
+  const ALLOWED_LOCAL_ACTIONS = new Set([
+    'vision.enhance_image', 'vision.upscale_image', 'vision.denoise_image',
+    'vision.sharpen_image', 'vision.export_image'
+  ]);
+  server.post('/api/journal', (req, res) => {
+    const { typeAction, sensibilite, statut, details } = req.body || {};
+    if (!ALLOWED_LOCAL_ACTIONS.has(typeAction)) {
+      return res.status(400).json({ error: 'Action inconnue.' });
+    }
+    store.logAction({ typeAction, sensibilite, statut, details });
+    res.json({ logged: true });
+  });
+
   server.get('/api/preferences', (req, res) => {
     res.json(store.getPreferences());
   });
