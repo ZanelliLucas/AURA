@@ -138,35 +138,6 @@ function buildCableRungs(branchPoints, braidPoints) {
   return group;
 }
 
-// Trame d'ambiance couvrant tout le canevas, independante de la
-// structure du graphe (points aleatoires relies a leurs 2 plus proches
-// voisins) : la densite de fond presente sur toute la surface des
-// references, meme loin de la toile elle-meme - a peine visible, mais
-// evite les zones vides.
-function buildAmbientMesh() {
-  const group = el('g', { class: 'ambient-mesh' });
-  const count = 90;
-  const points = [];
-  for (let i = 0; i < count; i++) {
-    points.push({ x: seededUnit(i * 17.3 + 41) * VIEW_W, y: seededUnit(i * 23.9 + 53) * VIEW_H });
-  }
-  const drawn = new Set();
-  points.forEach((a, i) => {
-    points
-      .map((b, j) => ({ b, j, d: Math.hypot(a.x - b.x, a.y - b.y) }))
-      .filter((e) => e.j !== i)
-      .sort((e1, e2) => e1.d - e2.d)
-      .slice(0, 2)
-      .forEach(({ b, j }) => {
-        const key = i < j ? `${i}-${j}` : `${j}-${i}`;
-        if (drawn.has(key)) return;
-        drawn.add(key);
-        group.appendChild(el('line', { x1: a.x.toFixed(1), y1: a.y.toFixed(1), x2: b.x.toFixed(1), y2: b.y.toFixed(1), class: 'ambient-filament' }));
-      });
-  });
-  return group;
-}
-
 // Maillage entre points voisins issus de branches differentes : la
 // membrane connective qui tisse les tendons entre eux, comme dans les
 // references (texture de plexus dense plutot que des rayons isoles).
@@ -322,7 +293,6 @@ function render() {
   const positioned = layout();
   const nodeList = Object.values(positioned);
 
-  svg.appendChild(buildAmbientMesh());
   svg.appendChild(buildBackgroundField());
 
   // Branches organiques (tendons courbes) du hub vers chaque agent, et

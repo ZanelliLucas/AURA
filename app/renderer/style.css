@@ -113,14 +113,6 @@ html, body {
 .link-glow-0 { stroke: var(--red-dim); stroke-width: 11; opacity: 0.30; }
 .link-glow-1 { stroke: var(--red-dim); stroke-width: 6.5; opacity: 0.22; }
 .link-glow-2 { stroke: var(--red-dim); stroke-width: 3.5; opacity: 0.14; }
-
-/* Trame d'ambiance sur tout le canevas - presque invisible, evite les
-   zones totalement vides loin de la toile. */
-.ambient-filament {
-  stroke: rgba(245, 246, 247, 0.06);
-  stroke-width: 0.5;
-  pointer-events: none;
-}
 .link-braid {
   stroke: rgba(245, 246, 247, 0.14);
   stroke-width: 0.6;
