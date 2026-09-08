@@ -181,15 +181,26 @@ function buildMeshFilaments(points) {
   return group;
 }
 
-// Champ de fond : poussiere stellaire et quelques glyphes techniques
-// discrets (coins de reticule), purement decoratifs - meme ambiance
-// "capteur" que les references, sans distraire du graphe lui-meme.
-function buildBackgroundField() {
+// Champ de fond : poussiere stellaire, purement decorative - alignee sur
+// le reseau (uniquement a proximite des tendons/du maillage), jamais
+// eparpillee au hasard dans le vide du canevas, comme la poussiere
+// concentree autour de la structure dans les references.
+function buildBackgroundField(samplePoints) {
   const group = el('g', { class: 'bg-field' });
+  const ALIGN_DIST = 130;
+  const CANDIDATES = 900;
 
-  for (let i = 0; i < 220; i++) {
+  for (let i = 0; i < CANDIDATES; i++) {
     const x = seededUnit(i * 3.17) * VIEW_W;
     const y = seededUnit(i * 7.73 + 1) * VIEW_H;
+
+    let minDist = Infinity;
+    for (let j = 0; j < samplePoints.length; j++) {
+      const d = Math.hypot(x - samplePoints[j].x, y - samplePoints[j].y);
+      if (d < minDist) minDist = d;
+    }
+    if (minDist > ALIGN_DIST) continue;
+
     const r = 0.4 + seededUnit(i * 5.31) * 1.1;
     const star = el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: r.toFixed(2), class: 'bg-star' });
     star.style.animationDelay = `${(seededUnit(i * 2.23) * 7).toFixed(2)}s`;
@@ -267,10 +278,9 @@ function render() {
   const positioned = layout();
   const nodeList = Object.values(positioned);
 
-  svg.appendChild(buildBackgroundField());
-
   // Branches organiques (tendons courbes) du hub vers chaque agent, et
   // points d'echantillonnage le long de chacune pour tisser le maillage.
+  // Calcules avant le fond : la poussiere de fond s'aligne dessus.
   const branches = {};
   const samplePoints = [];
   nodeList.forEach((p, i) => {
@@ -282,6 +292,8 @@ function render() {
     branches[p.id] = branch;
     branchSamplePoints(branch).forEach((pt) => samplePoints.push({ ...pt, branch: p.id }));
   });
+
+  svg.appendChild(buildBackgroundField(samplePoints));
   svg.appendChild(buildMeshFilaments(samplePoints));
 
   // Liens transversaux reels entre agents (§5.6.1)
