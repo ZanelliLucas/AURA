@@ -75,11 +75,17 @@ function organicBranch(p0, p1, seed, waypointCount = 4) {
 function insertLoop(points, atIndex, seed, radius) {
   const center = points[atIndex];
   const startAngle = seededUnit(seed) * Math.PI * 2;
-  const steps = 5;
+  const steps = 7;
   const loopPts = [];
   for (let i = 1; i <= steps; i++) {
-    const a = startAngle + (i / steps) * Math.PI * 2;
-    loopPts.push({ x: center.x + Math.cos(a) * radius, y: center.y + Math.sin(a) * radius });
+    // Pas angulaire et rayon irreguliers a chaque point - un cercle
+    // geometrique parfait ne ressemble a rien dans les references, ou
+    // les boucles sont des noeuds tordus/asymetriques, jamais des
+    // ronds trop nets. Plus de points que d'angularite pour rester une
+    // courbe qui se noue, pas un polygone.
+    const a = startAngle + (i / steps) * Math.PI * 2 + seededOffset(seed + i * 2.9, 0.32);
+    const r = radius * (0.55 + seededUnit(seed + i * 4.3) * 0.85);
+    loopPts.push({ x: center.x + Math.cos(a) * r, y: center.y + Math.sin(a) * r });
   }
   return points.slice(0, atIndex + 1).concat(loopPts, points.slice(atIndex + 1));
 }
