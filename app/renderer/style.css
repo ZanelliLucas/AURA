@@ -118,6 +118,10 @@ html, body {
 .link-glow-0 { stroke: var(--red-dim); stroke-width: 13; opacity: 0.32; }
 .link-glow-1 { stroke: var(--red-dim); stroke-width: 7.5; opacity: 0.24; }
 .link-glow-2 { stroke: var(--red-dim); stroke-width: 4; opacity: 0.16; }
+/* Halo large et tres flou sur toute la branche - le flou photographique
+   (bloom) diffus qui borde les tendrilles des references, en plus des
+   halos degressifs ci-dessus qui epousent l'epaisseur du tendon. */
+.link-glow-halo { stroke: var(--red-dim); stroke-width: 22; opacity: 0.10; filter: blur(9px); }
 .link-braid {
   stroke: rgba(245, 246, 247, 0.24);
   stroke-width: 0.6;

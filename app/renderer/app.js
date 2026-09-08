@@ -152,19 +152,25 @@ function buildCableRungs(branchPoints, braidPoints) {
 // Chaque point rejoint ses K plus proches voisins (pas un seul) pour une
 // vraie densite de trame, avec un petit point lumineux a chaque noeud du
 // maillage - certains scintillant comme des paquets de donnees actifs.
+// Quelques points (ancrages) tissent bien plus de connexions que les
+// autres : des noeuds de trame plus denses par endroits, comme les
+// amas lumineux bien plus fournis que le reste du plexus dans la
+// seconde reference, plutot qu'une densite uniforme partout.
 function buildMeshFilaments(points) {
   const group = el('g', { class: 'mesh-filaments' });
   const nodeGroup = el('g', { class: 'mesh-nodes' });
   const MAX_DIST = 235;
   const K = 5;
+  const K_ANCHOR = 9;
   const drawn = new Set();
 
   points.forEach((a, i) => {
+    const isAnchor = seededUnit(i * 23.7 + 5) < 0.14;
     const distances = points
       .map((b, j) => ({ b, j, d: Math.hypot(a.x - b.x, a.y - b.y) }))
       .filter((e) => e.j !== i && e.b.branch !== a.branch && e.d < MAX_DIST)
       .sort((e1, e2) => e1.d - e2.d)
-      .slice(0, K);
+      .slice(0, isAnchor ? K_ANCHOR : K);
 
     distances.forEach(({ b, j }) => {
       const key = i < j ? `${i}-${j}` : `${j}-${i}`;
@@ -173,7 +179,7 @@ function buildMeshFilaments(points) {
       group.appendChild(el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: 'mesh-filament' }));
     });
 
-    const isFlare = seededUnit(i * 8.9 + 2) < 0.16;
+    const isFlare = isAnchor || seededUnit(i * 8.9 + 2) < 0.16;
     const dot = el('circle', {
       cx: a.x.toFixed(1), cy: a.y.toFixed(1), r: isFlare ? 1.6 : 0.9,
       class: isFlare ? 'mesh-node mesh-node-flare' : 'mesh-node'
@@ -388,6 +394,7 @@ function render() {
   const trunkGroup = el('g', { class: 'branch-layer' });
   nodeList.forEach((p, i) => {
     const branch = branches[p.id];
+    glowGroup.appendChild(el('path', { d: branch.d, class: 'link-glow link-glow-halo' }));
     branchSegments(branch.points, 3).forEach((seg, si) => {
       glowGroup.appendChild(el('path', { d: catmullRomPath(seg), class: `link-glow link-glow-${si}` }));
     });
