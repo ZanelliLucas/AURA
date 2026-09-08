@@ -50,6 +50,7 @@
       <button type="button" class="module-link" data-screen="comm">Communication</button>
       <button type="button" class="module-link" data-screen="sysmon">System Monitor</button>
       <button type="button" class="module-link" data-screen="analytics">Analytics</button>
+      <button type="button" class="module-link" data-screen="security">AURA SECURITY</button>
     </nav>
   </aside>
 
@@ -401,6 +402,49 @@
         <div id="forecast-result" class="comm-preview" hidden></div>
         <div id="predictions-history" class="muted small"></div>
       </section>
+    </div>
+  </div>
+
+  <div id="screen-security" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>AURA SECURITY</h1>
+    <p class="muted small" style="max-width:640px; margin-top:-14px; margin-bottom:26px;">Volet défensif sur le projet configuré dans AURA CODE. La reconnaissance réseau reste strictement bornée : localhost par défaut, toute autre cible exige une confirmation explicite d’autorisation (§18.2).</p>
+
+    <div class="gaming-columns">
+      <div class="gaming-col">
+        <section>
+          <h2>Dépendances (npm audit)</h2>
+          <button id="sec-deps-btn" type="button" class="module-link">Vérifier les dépendances</button>
+          <div id="sec-deps-result" class="muted small"></div>
+        </section>
+
+        <section>
+          <h2>Secrets exposés</h2>
+          <button id="sec-secrets-btn" type="button" class="module-link">Scanner le projet</button>
+          <div id="sec-secrets-result" class="muted small"></div>
+        </section>
+
+        <section>
+          <h2>Journal d’actions</h2>
+          <button id="sec-logs-btn" type="button" class="module-link">Analyser les journaux</button>
+          <div id="sec-logs-result" class="muted small"></div>
+        </section>
+      </div>
+
+      <div class="gaming-col">
+        <section>
+          <h2>Reconnaissance réseau</h2>
+          <form id="pentest-form" class="inline-form" style="flex-direction:column; align-items:stretch;">
+            <input id="pentest-host" type="text" placeholder="127.0.0.1" value="127.0.0.1">
+            <label style="display:flex; align-items:center; gap:8px; font-size:11px; color:var(--dim);">
+              <input id="pentest-authorized" type="checkbox" style="width:auto;">
+              Je confirme que ce système m’appartient, ou est un environnement CTF / une cible couverte par une autorisation écrite (bug bounty).
+            </label>
+            <button type="submit" class="module-link">Scanner les ports courants</button>
+          </form>
+          <div id="pentest-result" class="muted small"></div>
+        </section>
+      </div>
     </div>
   </div>
 

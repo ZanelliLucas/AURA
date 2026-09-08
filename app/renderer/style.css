@@ -190,6 +190,8 @@ html, body {
   cursor: pointer;
 }
 .module-link:hover { border-color: var(--red-glow); color: var(--red); }
+.module-link:disabled { opacity: 0.35; cursor: default; }
+.module-link:disabled:hover { border-color: rgba(245, 246, 247, 0.12); color: var(--white); }
 
 .provider-row {
   display: flex;

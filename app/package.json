@@ -38,6 +38,7 @@
       "communication.js",
       "systemMonitor.js",
       "analytics.js",
+      "security.js",
       "connectors/**/*",
       "providers/**/*",
       "renderer/**/*",

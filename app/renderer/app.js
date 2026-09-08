@@ -1513,6 +1513,92 @@ function wireAnalyticsScreen() {
   });
 }
 
+// --- AURA SECURITY (§5.8, §18.2) ---------------------------------------
+// Volet defensif toujours en lecture (aucune confirmation). La
+// reconnaissance reseau reste bornee cote UI : hors localhost, la case
+// d'autorisation doit etre cochee avant de pouvoir soumettre le formulaire.
+
+function wireSecurityScreen() {
+  document.getElementById('sec-deps-btn').addEventListener('click', async () => {
+    const el = document.getElementById('sec-deps-result');
+    el.textContent = 'Analyse en cours…';
+    try {
+      const v = await window.aura.checkDependencies();
+      el.innerHTML = `<div>Total : ${v.total}</div><div>Critique : ${v.critical} · Haute : ${v.high} · Moyenne : ${v.moderate} · Faible : ${v.low}</div>`;
+      journal(`SECURITY_DEPENDENCIES : ${v.total} vulnérabilité(s)`);
+    } catch (err) {
+      el.textContent = err.message;
+    }
+  });
+
+  document.getElementById('sec-secrets-btn').addEventListener('click', async () => {
+    const el = document.getElementById('sec-secrets-result');
+    el.textContent = 'Scan en cours…';
+    try {
+      const r = await window.aura.auditSecrets();
+      if (!r.findings.length) {
+        el.innerHTML = `<div>${r.filesScanned} fichiers scannés — aucun secret détecté.</div>`;
+      } else {
+        el.innerHTML = `<div>${r.filesScanned} fichiers scannés — ${r.findings.length} résultat(s) :</div>` +
+          r.findings.slice(0, 15).map((f) => `<div class="file-status-row"><span class="file-status-code">${f.pattern}</span><span class="file-status-path">${f.file} (${f.preview})</span></div>`).join('');
+      }
+      journal(`SECURITY_AUDIT : ${r.findings.length} résultat(s)`);
+    } catch (err) {
+      el.textContent = err.message;
+    }
+  });
+
+  document.getElementById('sec-logs-btn').addEventListener('click', async () => {
+    const el = document.getElementById('sec-logs-result');
+    el.textContent = 'Analyse en cours…';
+    try {
+      const r = await window.aura.scanSecurityLogs();
+      el.innerHTML = !r.suspicious.length
+        ? `<div>${r.totalActions} actions analysées — rien d’inhabituel.</div>`
+        : `<div>${r.totalActions} actions analysées :</div>` +
+          r.suspicious.map((s) => `<div>${s.typeAction} : ${s.failed}/${s.total} échecs (${s.failureRatePercent}%)</div>`).join('');
+      journal(`SECURITY_LOGS : ${r.suspicious.length} type(s) suspect(s)`);
+    } catch (err) {
+      el.textContent = err.message;
+    }
+  });
+
+  document.getElementById('pentest-host').addEventListener('input', updatePentestGate);
+  document.getElementById('pentest-authorized').addEventListener('change', updatePentestGate);
+
+  document.getElementById('pentest-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const host = document.getElementById('pentest-host').value.trim() || '127.0.0.1';
+    const authorized = document.getElementById('pentest-authorized').checked;
+    const localTarget = ['127.0.0.1', 'localhost', '::1'].includes(host);
+    if (!localTarget && !authorized) return;
+    if (!localTarget && !confirm(`Scanner ${host} ? Tu confirmes que c’est autorisé (système propre, CTF, ou bug bounty écrit).`)) return;
+
+    const el = document.getElementById('pentest-result');
+    el.textContent = 'Scan en cours…';
+    try {
+      const { target, results } = await window.aura.pentestScan(host, authorized);
+      const open = results.filter((r) => r.open);
+      el.innerHTML = open.length
+        ? `<div>${target} — ${open.length} port(s) ouvert(s) :</div>` + open.map((r) => `<div>Port ${r.port}${r.banner ? ` — ${r.banner}` : ''}</div>`).join('')
+        : `<div>${target} — aucun port courant ouvert.</div>`;
+      journal(`SECURITY_PENTEST : ${target} (${open.length} port(s) ouvert(s))`);
+    } catch (err) {
+      el.textContent = err.message;
+    }
+  });
+
+  updatePentestGate();
+}
+
+function updatePentestGate() {
+  const host = document.getElementById('pentest-host').value.trim() || '127.0.0.1';
+  const authorized = document.getElementById('pentest-authorized').checked;
+  const localTarget = ['127.0.0.1', 'localhost', '::1'].includes(host);
+  const submitBtn = document.querySelector('#pentest-form button[type="submit"]');
+  submitBtn.disabled = !localTarget && !authorized;
+}
+
 render();
 startClock();
 wirePanels();
@@ -1526,6 +1612,7 @@ wireDevScreen();
 wireCommScreen();
 wireSysmonScreen();
 wireAnalyticsScreen();
+wireSecurityScreen();
 wireEmergencyStop();
 initConversation();
 loadTasks();

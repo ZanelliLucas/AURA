@@ -86,5 +86,10 @@ contextBridge.exposeInMainWorld('aura', {
   getAnalyticsSummary: () => getJson('/api/analytics/summary'),
   getAnalyticsAnomalies: () => getJson('/api/analytics/anomalies'),
   getForecast: (metric, stepsAhead) => getJson(`/api/analytics/forecast?metric=${metric}&stepsAhead=${stepsAhead}`),
-  getPredictions: () => getJson('/api/analytics/predictions')
+  getPredictions: () => getJson('/api/analytics/predictions'),
+
+  checkDependencies: () => getJson('/api/security/dependencies'),
+  auditSecrets: () => getJson('/api/security/audit'),
+  scanSecurityLogs: () => getJson('/api/security/logs'),
+  pentestScan: (host, authorized) => postJson('/api/security/pentest', { host, authorized })
 });

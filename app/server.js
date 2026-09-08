@@ -13,6 +13,7 @@ const dev = require('./dev');
 const communication = require('./communication');
 const systemMonitor = require('./systemMonitor');
 const analytics = require('./analytics');
+const security = require('./security');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -327,6 +328,35 @@ function startServer() {
 
   server.get('/api/analytics/predictions', (req, res) => {
     res.json(analytics.getPredictions());
+  });
+
+  // AURA SECURITY (§5.8, §18.2)
+  server.get('/api/security/dependencies', async (req, res) => {
+    try {
+      res.json(await security.checkDependencies());
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.get('/api/security/audit', async (req, res) => {
+    try {
+      res.json(await security.auditProject());
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.get('/api/security/logs', (req, res) => {
+    res.json(security.scanLogs());
+  });
+
+  server.post('/api/security/pentest', async (req, res) => {
+    try {
+      res.json(await security.pentestScan(req.body || {}));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
   });
 
   return new Promise((resolve, reject) => {
