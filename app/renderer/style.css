@@ -214,6 +214,14 @@ html, body {
   opacity: 0.32;
   filter: drop-shadow(0 0 1.5px rgba(245, 246, 247, 0.5));
 }
+/* Rares grains plus gros/brillants - la variation de magnitude visible
+   dans la poussiere des references, plutot que des points tous
+   identiques. */
+.bg-star-hero {
+  opacity: 0.55;
+  filter: drop-shadow(0 0 2.5px rgba(245, 246, 247, 0.7));
+  animation: star-twinkle 5s ease-in-out infinite;
+}
 @keyframes star-twinkle {
   0%, 100% { opacity: 0.08; }
   50% { opacity: 0.32; }

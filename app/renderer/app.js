@@ -269,11 +269,12 @@ function buildBackgroundField(curveDust) {
     const x = pt.x + nx * offset;
     const y = pt.y + ny * offset;
     const near = Math.abs(offset) < 8;
+    const isHero = seededUnit(i * 14.6 + 3) < 0.035;
 
-    const r = (near ? 0.6 : 0.35) + seededUnit(i * 8.9 + 2) * 0.7;
+    const r = isHero ? 1.9 + seededUnit(i * 6.1) * 0.8 : (near ? 0.6 : 0.35) + seededUnit(i * 8.9 + 2) * 0.7;
     const star = el('circle', {
       cx: x.toFixed(1), cy: y.toFixed(1), r: r.toFixed(2),
-      class: near ? 'bg-star bg-star-near' : 'bg-star'
+      class: isHero ? 'bg-star bg-star-hero' : (near ? 'bg-star bg-star-near' : 'bg-star')
     });
     star.style.animationDelay = `${(seededUnit(i * 2.23) * 7).toFixed(2)}s`;
     star.style.animationDuration = `${(4 + seededUnit(i * 9.1) * 5).toFixed(2)}s`;
