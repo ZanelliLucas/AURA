@@ -154,10 +154,11 @@ html, body {
   50% { opacity: 1; filter: drop-shadow(0 0 9px rgba(245, 246, 247, 1)); }
 }
 .link {
-  stroke: rgba(245, 246, 247, 0.55);
-  stroke-width: 1.1;
+  stroke: rgba(245, 246, 247, 0.62);
+  stroke-width: 1.4;
+  stroke-linecap: round;
   fill: none;
-  filter: drop-shadow(0 0 2px rgba(245, 246, 247, 0.4));
+  filter: drop-shadow(0 0 2.5px rgba(245, 246, 247, 0.45));
   transition: stroke 0.25s ease, stroke-width 0.25s ease;
 }
 .link-tool { stroke: rgba(245, 246, 247, 0.22); stroke-width: 0.85; fill: none; }
@@ -184,6 +185,11 @@ html, body {
 @keyframes mesh-flare {
   0%, 100% { opacity: 0.3; }
   50% { opacity: 1; filter: drop-shadow(0 0 3px rgba(245, 246, 247, 0.9)); }
+}
+.mesh-cluster-glow {
+  fill: rgba(245, 246, 247, 0.12);
+  filter: blur(7px);
+  pointer-events: none;
 }
 
 /* Flux lumineux voyageant le long des branches, dans les deux sens - le

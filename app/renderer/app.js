@@ -189,6 +189,17 @@ function buildMeshFilaments(points) {
       dot.style.animationDuration = `${(2 + seededUnit(i * 6.6) * 2.5).toFixed(2)}s`;
     }
     nodeGroup.appendChild(dot);
+
+    // Autour d'un ancrage, le noeud ne suffit pas a lire comme un amas
+    // - un halo diffus par-dessus la trame le fait paraitre comme une
+    // vraie zone plus dense/lumineuse, a la maniere des amas nettement
+    // plus fournis (presque une tache laiteuse) de la seconde reference.
+    if (isAnchor) {
+      const blob = el('circle', {
+        cx: a.x.toFixed(1), cy: a.y.toFixed(1), r: 16, class: 'mesh-cluster-glow'
+      });
+      nodeGroup.appendChild(blob);
+    }
   });
 
   group.appendChild(nodeGroup);
