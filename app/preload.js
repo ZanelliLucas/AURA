@@ -63,5 +63,12 @@ contextBridge.exposeInMainWorld('aura', {
   getReminders: () => getJson('/api/reminders'),
   createReminder: (reminder) => postJson('/api/reminders', reminder),
   deleteReminder: (id) => delJson(`/api/reminders/${encodeURIComponent(id)}`),
-  checkDueReminders: () => getJson('/api/reminders/due')
+  checkDueReminders: () => getJson('/api/reminders/due'),
+
+  getDevConfig: () => getJson('/api/dev/config'),
+  setDevConfig: (key, value) => postJson('/api/dev/config', { key, value }),
+  gitStatus: () => getJson('/api/dev/git/status'),
+  gitCommit: (message, files) => postJson('/api/dev/git/commit', { message, files }),
+  gitPush: (remote, branch) => postJson('/api/dev/git/push', { remote, branch }),
+  unityBuild: (options) => postJson('/api/dev/unity/build', options)
 });

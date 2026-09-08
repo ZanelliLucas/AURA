@@ -46,6 +46,7 @@
       <button type="button" class="module-link" data-screen="gaming">Gaming &amp; Streaming</button>
       <button type="button" class="module-link" data-screen="world">Carte du monde</button>
       <button type="button" class="module-link" data-screen="imagelab">Image Lab</button>
+      <button type="button" class="module-link" data-screen="dev">AURA CODE</button>
     </nav>
   </aside>
 
@@ -198,6 +199,58 @@
           <button id="imagelab-new" type="button">Changer d’image</button>
         </div>
         <p id="imagelab-status" class="muted small"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-dev" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>AURA CODE</h1>
+
+    <div class="gaming-columns">
+      <div class="gaming-col">
+        <section>
+          <h2>Git</h2>
+          <div class="conn-row"><span class="conn-dot" id="dot-dev-repo"></span> <span id="label-dev-repo">Dépôt non configuré</span> <button type="button" class="mini-link" data-devfield="devRepoPath">dossier</button></div>
+          <button id="git-status-btn" type="button" class="module-link">Vérifier le statut</button>
+          <div id="git-status-result" class="muted small"></div>
+
+          <h3>Commit</h3>
+          <form id="git-commit-form" class="inline-form">
+            <input id="git-commit-message" type="text" placeholder="Message de commit…">
+            <button type="submit">Commiter</button>
+          </form>
+
+          <h3>Push</h3>
+          <form id="git-push-form" class="inline-form">
+            <input id="git-push-remote" type="text" placeholder="origin" value="origin">
+            <input id="git-push-branch" type="text" placeholder="branche (auto)">
+            <button type="submit" class="danger-link" style="flex-shrink:0">Push</button>
+          </form>
+          <p id="git-status-message" class="muted small"></p>
+        </section>
+      </div>
+
+      <div class="gaming-col">
+        <section>
+          <h2>Unity</h2>
+          <div class="conn-row"><span class="conn-dot" id="dot-dev-unity"></span> <span id="label-dev-unity">Non configuré</span></div>
+          <div class="inline-form">
+            <button type="button" class="mini-link" data-devfield="devUnityEditorPath">éditeur (Unity.exe)</button>
+            <button type="button" class="mini-link" data-devfield="devUnityProjectPath">projet</button>
+          </div>
+          <form id="unity-build-form" class="inline-form">
+            <select id="unity-build-target">
+              <option value="StandaloneWindows64">Windows 64-bit</option>
+              <option value="StandaloneOSX">macOS</option>
+              <option value="Android">Android</option>
+              <option value="WebGL">WebGL</option>
+            </select>
+            <input id="unity-output-path" type="text" placeholder="Dossier de sortie…">
+            <button type="submit">Lancer le build</button>
+          </form>
+          <p id="unity-status" class="muted small"></p>
+        </section>
       </div>
     </div>
   </div>

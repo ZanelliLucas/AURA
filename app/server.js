@@ -9,6 +9,7 @@ const core = require('./core');
 const store = require('./store');
 const gaming = require('./gaming');
 const productivity = require('./productivity');
+const dev = require('./dev');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -198,6 +199,51 @@ function startServer() {
   // renderer : evite de manquer une echeance si aucun ecran ne l'affiche.
   server.get('/api/reminders/due', (req, res) => {
     res.json(productivity.checkDueReminders());
+  });
+
+  // Connecteur Developpement (§6)
+  server.get('/api/dev/config', (req, res) => {
+    res.json(dev.getDevConfig());
+  });
+
+  server.post('/api/dev/config', (req, res) => {
+    try {
+      res.json(dev.setDevField(req.body.key, req.body.value));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.get('/api/dev/git/status', async (req, res) => {
+    try {
+      res.json(await dev.gitStatus());
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/dev/git/commit', async (req, res) => {
+    try {
+      res.json(await dev.gitCommit(req.body.message, req.body.files));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/dev/git/push', async (req, res) => {
+    try {
+      res.json(await dev.gitPush(req.body.remote, req.body.branch));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/dev/unity/build', async (req, res) => {
+    try {
+      res.json(await dev.unityBuildAction(req.body));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
   });
 
   return new Promise((resolve, reject) => {

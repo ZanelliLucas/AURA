@@ -34,6 +34,7 @@
       "router.js",
       "gaming.js",
       "productivity.js",
+      "dev.js",
       "connectors/**/*",
       "providers/**/*",
       "renderer/**/*",

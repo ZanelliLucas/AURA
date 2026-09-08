@@ -830,3 +830,14 @@ body.estopped #conversation-panel {
 
 #panel-projects .inline-form { margin-bottom: 16px; }
 #panel-projects .inline-form input, #panel-projects .inline-form select { font-size: 11px; padding: 5px 6px; }
+
+/* AURA CODE (§6) */
+.file-status-row {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  padding: 3px 0;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.file-status-code { color: var(--red); width: 24px; flex-shrink: 0; }
+.file-status-path { color: var(--dim); }

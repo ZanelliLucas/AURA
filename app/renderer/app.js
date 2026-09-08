@@ -382,6 +382,7 @@ function showScreen(name) {
   document.getElementById('panel-projects').classList.remove('open');
   if (name === 'memory') loadMemoryScreen();
   if (name === 'gaming') loadGamingScreen();
+  if (name === 'dev') loadDevScreen();
   if (name === 'world') {
     initWorldMap();
     setTimeout(() => worldMap && worldMap.invalidateSize(), 0);
@@ -1035,6 +1036,126 @@ function wireProductivity() {
   });
 }
 
+// --- AURA CODE (§6) ---------------------------------------------------
+// git.push est "Irreversible" (§14.1) : confirmation explicite avant
+// l'appel. Le connecteur gaming reste en lecture (§18.2) ; ici, commit
+// et push agissent reellement sur le depot configure - à utiliser avec
+// discernement.
+
+const DEVFIELD_LABELS = {
+  devRepoPath: 'Chemin du dépôt Git (dossier local)',
+  devUnityEditorPath: 'Chemin complet vers Unity.exe',
+  devUnityProjectPath: 'Chemin du projet Unity'
+};
+
+function renderDevStatus(config) {
+  document.getElementById('dot-dev-repo').classList.toggle('ok', !!config.repoPath);
+  document.getElementById('label-dev-repo').textContent = config.repoPath || 'Dépôt non configuré';
+  const unityOk = !!(config.unityEditorPath && config.unityProjectPath);
+  document.getElementById('dot-dev-unity').classList.toggle('ok', unityOk);
+  document.getElementById('label-dev-unity').textContent = unityOk
+    ? 'Éditeur et projet configurés'
+    : 'Non configuré';
+}
+
+async function loadDevScreen() {
+  try {
+    renderDevStatus(await window.aura.getDevConfig());
+  } catch {
+    // API locale indisponible
+  }
+}
+
+function renderGitStatus(result) {
+  const el = document.getElementById('git-status-result');
+  if (!result.files.length) {
+    el.innerHTML = `<div>Branche <strong>${result.branch}</strong> — aucun changement.</div>`;
+    return;
+  }
+  el.innerHTML = `<div>Branche <strong>${result.branch}</strong> — ${result.files.length} changement(s) :</div>`;
+  result.files.forEach((f) => {
+    const row = document.createElement('div');
+    row.className = 'file-status-row';
+    row.innerHTML = `<span class="file-status-code">${f.status}</span><span class="file-status-path">${f.path}</span>`;
+    el.appendChild(row);
+  });
+}
+
+function wireDevScreen() {
+  document.querySelectorAll('[data-devfield]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const key = btn.dataset.devfield;
+      const value = prompt(DEVFIELD_LABELS[key] || key);
+      if (value === null) return;
+      try {
+        renderDevStatus(await window.aura.setDevConfig(key, value));
+        journal(`DEV_CONFIG : ${key}`);
+      } catch (err) {
+        journal(`DEV_CONFIG_ECHEC : ${err.message}`);
+      }
+    });
+  });
+
+  document.getElementById('git-status-btn').addEventListener('click', async () => {
+    const el = document.getElementById('git-status-result');
+    el.textContent = 'Vérification…';
+    try {
+      renderGitStatus(await window.aura.gitStatus());
+    } catch (err) {
+      el.textContent = err.message;
+    }
+  });
+
+  document.getElementById('git-commit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const message = document.getElementById('git-commit-message').value.trim();
+    if (!message) return;
+    const status = document.getElementById('git-status-message');
+    try {
+      const result = await window.aura.gitCommit(message);
+      status.textContent = `Commit créé : ${result.hash.slice(0, 8)}`;
+      document.getElementById('git-commit-message').value = '';
+      journal(`GIT_COMMIT : ${result.hash.slice(0, 8)}`);
+      document.getElementById('git-status-btn').click();
+    } catch (err) {
+      status.textContent = err.message;
+    }
+  });
+
+  document.getElementById('git-push-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const remote = document.getElementById('git-push-remote').value.trim() || 'origin';
+    const branch = document.getElementById('git-push-branch').value.trim() || null;
+    if (!confirm(`Publier les commits locaux sur "${remote}"${branch ? ` (${branch})` : ''} ? Action irréversible.`)) return;
+    const status = document.getElementById('git-status-message');
+    status.textContent = 'Push en cours…';
+    try {
+      const result = await window.aura.gitPush(remote, branch);
+      status.textContent = result.output || 'Push terminé.';
+      journal(`GIT_PUSH : ${remote}`);
+    } catch (err) {
+      status.textContent = err.message;
+      journal(`GIT_PUSH_ECHEC : ${err.message}`);
+    }
+  });
+
+  document.getElementById('unity-build-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const buildTarget = document.getElementById('unity-build-target').value;
+    const outputPath = document.getElementById('unity-output-path').value.trim() || null;
+    const status = document.getElementById('unity-status');
+    status.textContent = 'Build en cours (cela peut prendre plusieurs minutes)…';
+    try {
+      const result = await window.aura.unityBuild({ buildTarget, outputPath });
+      status.textContent = `Build terminé (code ${result.exitCode}).`;
+      journal('UNITY_BUILD');
+    } catch (err) {
+      status.textContent = err.message;
+      journal(`UNITY_BUILD_ECHEC : ${err.message}`);
+    }
+  });
+}
+
 render();
 startClock();
 wirePanels();
@@ -1044,6 +1165,7 @@ wireWorldMap();
 wireImageLab();
 wireGamingScreen();
 wireProductivity();
+wireDevScreen();
 wireEmergencyStop();
 initConversation();
 loadTasks();
