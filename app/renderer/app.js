@@ -181,32 +181,75 @@ function buildMeshFilaments(points) {
   return group;
 }
 
-// Champ de fond : poussiere stellaire, purement decorative - alignee sur
-// le reseau (uniquement a proximite des tendons/du maillage), jamais
-// eparpillee au hasard dans le vide du canevas, comme la poussiere
-// concentree autour de la structure dans les references.
-function buildBackgroundField(samplePoints) {
-  const group = el('g', { class: 'bg-field' });
-  const ALIGN_DIST = 130;
-  const CANDIDATES = 900;
-
-  for (let i = 0; i < CANDIDATES; i++) {
-    const x = seededUnit(i * 3.17) * VIEW_W;
-    const y = seededUnit(i * 7.73 + 1) * VIEW_H;
-
-    let minDist = Infinity;
-    for (let j = 0; j < samplePoints.length; j++) {
-      const d = Math.hypot(x - samplePoints[j].x, y - samplePoints[j].y);
-      if (d < minDist) minDist = d;
+// Echantillonne finement la meme courbe que catmullRomPath (au lieu des
+// seuls points de controle, trop espaces) pour pouvoir coller la
+// poussiere de fond directement sur le trace reel du tendon, y compris
+// dans ses boucles - jamais a plusieurs dizaines de pixels d'une ligne
+// visible, comme la brume qui longe precisement les dendrites/le plexus
+// des references.
+function sampleCurveFine(points, perSegment = 7) {
+  const out = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] || points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] || p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    for (let s = 0; s < perSegment; s++) {
+      const t = s / perSegment;
+      const mt = 1 - t;
+      const x = mt * mt * mt * p1.x + 3 * mt * mt * t * c1x + 3 * mt * t * t * c2x + t * t * t * p2.x;
+      const y = mt * mt * mt * p1.y + 3 * mt * mt * t * c1y + 3 * mt * t * t * c2y + t * t * t * p2.y;
+      out.push({ x, y });
     }
-    if (minDist > ALIGN_DIST) continue;
+  }
+  out.push(points[points.length - 1]);
+  return out;
+}
 
-    const r = 0.4 + seededUnit(i * 5.31) * 1.1;
-    const star = el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: r.toFixed(2), class: 'bg-star' });
+// Points fins + normale (perpendiculaire au trace a cet endroit), base
+// pour disperser la poussiere de fond de part et d'autre d'une courbe.
+function dustSource(points, perSegment = 7) {
+  const fine = sampleCurveFine(points, perSegment);
+  return fine.map((pt, i) => {
+    const prev = fine[Math.max(i - 1, 0)];
+    const next = fine[Math.min(i + 1, fine.length - 1)];
+    const dx = next.x - prev.x;
+    const dy = next.y - prev.y;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: pt.x, y: pt.y, nx: -dy / len, ny: dx / len };
+  });
+}
+
+// Champ de fond : poussiere stellaire, purement decorative, semee le
+// long du trace reel des tendons (curveDust) plutot que pres de simples
+// points de controle - chaque grain colle a quelques pixels d'une ligne
+// visible, jamais flottant seul dans le vide du canevas.
+function buildBackgroundField(curveDust) {
+  const group = el('g', { class: 'bg-field' });
+
+  curveDust.forEach((pt, i) => {
+    if (seededUnit(i * 3.17 + 1) > 0.4) return;
+    const nx = pt.nx || 0;
+    const ny = pt.ny || 0;
+    const side = seededUnit(i * 6.03) < 0.5 ? -1 : 1;
+    const offset = (2.5 + seededUnit(i * 5.31) * 13) * side;
+    const x = pt.x + nx * offset;
+    const y = pt.y + ny * offset;
+    const near = Math.abs(offset) < 8;
+
+    const r = (near ? 0.6 : 0.35) + seededUnit(i * 8.9 + 2) * 0.7;
+    const star = el('circle', {
+      cx: x.toFixed(1), cy: y.toFixed(1), r: r.toFixed(2),
+      class: near ? 'bg-star bg-star-near' : 'bg-star'
+    });
     star.style.animationDelay = `${(seededUnit(i * 2.23) * 7).toFixed(2)}s`;
     star.style.animationDuration = `${(4 + seededUnit(i * 9.1) * 5).toFixed(2)}s`;
     group.appendChild(star);
-  }
+  });
 
   return group;
 }
@@ -283,17 +326,20 @@ function render() {
   // Calcules avant le fond : la poussiere de fond s'aligne dessus.
   const branches = {};
   const samplePoints = [];
+  const curveDust = [];
   nodeList.forEach((p, i) => {
     const seed = i * 13.7 + 5;
     const dist = Math.hypot(p.x - CENTER.x, p.y - CENTER.y);
     const base = organicBranch(CENTER, p, seed);
     const branch = maybeAddLoop(base, seed, dist);
     branch.basePoints = base.points;
+    branch.braid = braidBranch(CENTER, p, seed);
     branches[p.id] = branch;
     branchSamplePoints(branch).forEach((pt) => samplePoints.push({ ...pt, branch: p.id }));
+    curveDust.push(...dustSource(branch.points), ...dustSource(branch.braid.points));
   });
 
-  svg.appendChild(buildBackgroundField(samplePoints));
+  svg.appendChild(buildBackgroundField(curveDust));
   svg.appendChild(buildMeshFilaments(samplePoints));
 
   // Liens transversaux reels entre agents (§5.6.1)
@@ -324,7 +370,7 @@ function render() {
     branchSegments(branch.points, 3).forEach((seg, si) => {
       glowGroup.appendChild(el('path', { d: catmullRomPath(seg), class: `link-glow link-glow-${si}` }));
     });
-    const braid = braidBranch(CENTER, p, i * 13.7 + 5);
+    const braid = branch.braid;
     braidGroup.appendChild(el('path', { d: braid.d, class: 'link-braid' }));
     rungGroup.appendChild(buildCableRungs(branch.basePoints, braid.points));
     trunkGroup.appendChild(el('path', { d: branch.d, id: `branch-${p.id}`, class: 'link', 'data-node': p.id }));
