@@ -324,24 +324,40 @@ function el(tag, attrs) {
 // le reseau plutot qu'un graphe statique. direction 'out' = hub -> agent
 // (donnees envoyees), 'in' = agent -> hub (donnees remontees) : les deux
 // tournent en meme temps sur chaque branche, comme un flux dans les deux
-// sens plutot qu'un aller simple.
+// sens plutot qu'un aller simple. Un halo flou plus large accompagne
+// chaque pastille (meme trajet, meme timing) pour qu'elle reste bien
+// lisible malgre la densite du reste de la toile, au lieu de se
+// confondre avec le fond une fois la trame chargee.
 function addFlowPulse(svg, pathId, seed, kind, direction) {
   const isOut = direction === 'out';
-  const dot = el('circle', {
-    r: kind === 'core' ? 2.2 : 1.6,
-    class: `branch-pulse branch-pulse-${kind} branch-pulse-${direction}`
-  });
+  const baseR = kind === 'core' ? 3.2 : 2.4;
   const duration = (5.5 + seededUnit(seed) * 4.5).toFixed(2);
   const beginDelay = (seededUnit(seed + 71) * 6).toFixed(2);
-  const anim = el('animateMotion', {
-    dur: `${duration}s`, begin: `${beginDelay}s`, repeatCount: 'indefinite',
-    keyPoints: isOut ? '0;1' : '1;0', keyTimes: '0;1', calcMode: 'linear'
+
+  const makeMotion = () => {
+    const anim = el('animateMotion', {
+      dur: `${duration}s`, begin: `${beginDelay}s`, repeatCount: 'indefinite',
+      keyPoints: isOut ? '0;1' : '1;0', keyTimes: '0;1', calcMode: 'linear'
+    });
+    const mpath = el('mpath', {});
+    mpath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${pathId}`);
+    mpath.setAttribute('href', `#${pathId}`);
+    anim.appendChild(mpath);
+    return anim;
+  };
+
+  const halo = el('circle', {
+    r: baseR * 2.4,
+    class: `branch-pulse-halo branch-pulse-${kind} branch-pulse-${direction}`
   });
-  const mpath = el('mpath', {});
-  mpath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${pathId}`);
-  mpath.setAttribute('href', `#${pathId}`);
-  anim.appendChild(mpath);
-  dot.appendChild(anim);
+  halo.appendChild(makeMotion());
+  svg.appendChild(halo);
+
+  const dot = el('circle', {
+    r: baseR,
+    class: `branch-pulse branch-pulse-${kind} branch-pulse-${direction}`
+  });
+  dot.appendChild(makeMotion());
   svg.appendChild(dot);
 }
 

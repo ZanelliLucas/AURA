@@ -198,15 +198,33 @@ html, body {
 }
 
 /* Flux lumineux voyageant le long des branches, dans les deux sens - le
-   reseau "respire" et echange reellement, pas un aller simple. */
-.branch-pulse {
-  fill: var(--red);
-  opacity: 0.85;
-  filter: drop-shadow(0 0 3px var(--red-glow));
+   reseau "respire" et echange reellement, pas un aller simple. Un halo
+   flou (branch-pulse-halo) accompagne chaque pastille nette : la toile
+   etant maintenant dense, le flux doit rester lisible au premier coup
+   d'oeil plutot que se noyer dans le reste de la trame. */
+.branch-pulse-halo {
+  fill: var(--white);
+  opacity: 0.16;
+  filter: blur(4px);
   pointer-events: none;
 }
-.branch-pulse-agent { fill: var(--white); opacity: 0.55; filter: drop-shadow(0 0 2px rgba(245, 246, 247, 0.6)); }
-.branch-pulse-in { fill: var(--white); opacity: 0.4; filter: drop-shadow(0 0 2px rgba(245, 246, 247, 0.45)); }
+.branch-pulse {
+  fill: var(--red);
+  opacity: 0.95;
+  filter: drop-shadow(0 0 4px var(--red-glow)) drop-shadow(0 0 8px var(--red-glow));
+  pointer-events: none;
+}
+.branch-pulse-agent {
+  fill: var(--white);
+  opacity: 0.92;
+  filter: drop-shadow(0 0 3px rgba(245, 246, 247, 0.9)) drop-shadow(0 0 7px rgba(245, 246, 247, 0.55));
+}
+.branch-pulse-in {
+  fill: var(--white);
+  opacity: 0.65;
+  filter: drop-shadow(0 0 3px rgba(245, 246, 247, 0.65));
+}
+.branch-pulse-halo.branch-pulse-in { opacity: 0.09; }
 
 /* Champ de fond : poussiere + glyphes techniques, purement decoratifs. */
 .bg-field { pointer-events: none; }
