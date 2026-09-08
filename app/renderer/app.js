@@ -73,6 +73,27 @@ function branchSamplePoints(branch) {
   return branch.points.slice(1, -1);
 }
 
+// Decoupe une branche en N segments qui se chevauchent d'un point, pour
+// dessiner un halo qui s'amincit du hub vers l'agent (effet d'epaisseur
+// degressive, sans passer par des formes remplies).
+function branchSegments(points, count) {
+  const spans = points.length - 1;
+  const segments = [];
+  for (let s = 0; s < count; s++) {
+    const start = Math.floor((s / count) * spans);
+    const end = Math.floor(((s + 1) / count) * spans);
+    segments.push(points.slice(start, end + 1));
+  }
+  return segments;
+}
+
+// Second tendon, plus fin, qui serpente pres du principal sans le suivre
+// exactement - effet de fibres torsadees (cable/vigne) plutot qu'un
+// simple trait unique, comme dans les references.
+function braidBranch(p0, p1, seed) {
+  return organicBranch(p0, p1, seed + 503, 5);
+}
+
 // Maillage entre points voisins issus de branches differentes : la
 // membrane connective qui tisse les tendons entre eux, comme dans les
 // references (texture de plexus dense plutot que des rayons isoles).
@@ -258,15 +279,22 @@ function render() {
   });
   svg.appendChild(relationGroup);
 
-  // Branches principales : halo flou puis trait net par-dessus.
+  // Branches principales : halo qui s'amincit du hub vers l'agent, un
+  // second fil torsade plus fin, puis le trait net par-dessus.
   const glowGroup = el('g', { class: 'branch-glow-layer' });
+  const braidGroup = el('g', { class: 'branch-braid-layer' });
   const trunkGroup = el('g', { class: 'branch-layer' });
-  nodeList.forEach((p) => {
+  nodeList.forEach((p, i) => {
     const branch = branches[p.id];
-    glowGroup.appendChild(el('path', { d: branch.d, class: 'link-glow' }));
+    branchSegments(branch.points, 3).forEach((seg, si) => {
+      glowGroup.appendChild(el('path', { d: catmullRomPath(seg), class: `link-glow link-glow-${si}` }));
+    });
+    const braid = braidBranch(CENTER, p, i * 13.7 + 5);
+    braidGroup.appendChild(el('path', { d: braid.d, class: 'link-braid' }));
     trunkGroup.appendChild(el('path', { d: branch.d, id: `branch-${p.id}`, class: 'link', 'data-node': p.id }));
   });
   svg.appendChild(glowGroup);
+  svg.appendChild(braidGroup);
   svg.appendChild(trunkGroup);
 
   // Noeuds principaux + leurs outils

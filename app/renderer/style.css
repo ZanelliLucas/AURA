@@ -101,14 +101,22 @@ html, body {
   100% { transform: scale(1.22); opacity: 0; }
 }
 
-/* Branches organiques : halo flou en dessous, trait net au-dessus -
-   evite les rayons rectilignes au profit d'un trace vivant (dendrites). */
+/* Branches organiques : halo qui s'amincit du hub vers l'agent (3
+   segments d'epaisseur degressive), fil torsade fin, trait net au-dessus
+   - evite les rayons rectilignes/uniformes au profit d'un trace vivant
+   qui epouse la forme d'un tendon reel (plus epais a la base). */
 .link-glow {
-  stroke: var(--red-dim);
-  stroke-width: 6;
   fill: none;
-  opacity: 0.16;
+  pointer-events: none;
   filter: blur(3px);
+}
+.link-glow-0 { stroke: var(--red-dim); stroke-width: 9; opacity: 0.20; }
+.link-glow-1 { stroke: var(--red-dim); stroke-width: 5.5; opacity: 0.15; }
+.link-glow-2 { stroke: var(--red-dim); stroke-width: 3; opacity: 0.10; }
+.link-braid {
+  stroke: rgba(245, 246, 247, 0.14);
+  stroke-width: 0.6;
+  fill: none;
   pointer-events: none;
 }
 .link { stroke: var(--line); stroke-width: 1.1; fill: none; transition: stroke 0.25s ease, stroke-width 0.25s ease; }
