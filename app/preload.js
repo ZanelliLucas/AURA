@@ -75,5 +75,11 @@ contextBridge.exposeInMainWorld('aura', {
   getCommStatus: () => getJson('/api/comm/status'),
   setCommConfig: (key, value) => postJson('/api/comm/config', { key, value }),
   mailSend: (mail) => postJson('/api/comm/mail/send', mail),
-  discordSend: (content) => postJson('/api/comm/discord/send', { content })
+  discordSend: (content) => postJson('/api/comm/discord/send', { content }),
+
+  getSystemSnapshot: () => getJson('/api/system/snapshot'),
+  getSystemThresholds: () => getJson('/api/system/thresholds'),
+  setSystemThreshold: (key, value) => postJson('/api/system/thresholds', { key, value }),
+  getSystemAlerts: () => getJson('/api/system/alerts'),
+  acknowledgeAlert: (id) => postJson(`/api/system/alerts/${encodeURIComponent(id)}/ack`)
 });

@@ -11,6 +11,7 @@ const gaming = require('./gaming');
 const productivity = require('./productivity');
 const dev = require('./dev');
 const communication = require('./communication');
+const systemMonitor = require('./systemMonitor');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -274,6 +275,35 @@ function startServer() {
     } catch (err) {
       res.status(400).json({ error: err.message });
     }
+  });
+
+  // AURA SYSTEM MONITOR (§5.7) - lecture seule, aucune confirmation requise.
+  server.get('/api/system/snapshot', async (req, res) => {
+    try {
+      res.json(await systemMonitor.snapshot());
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  server.get('/api/system/thresholds', (req, res) => {
+    res.json(systemMonitor.getThresholds());
+  });
+
+  server.post('/api/system/thresholds', (req, res) => {
+    try {
+      res.json(systemMonitor.setThreshold(req.body.key, req.body.value));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.get('/api/system/alerts', (req, res) => {
+    res.json(systemMonitor.getAlerts());
+  });
+
+  server.post('/api/system/alerts/:id/ack', (req, res) => {
+    res.json(systemMonitor.acknowledgeAlert(req.params.id));
   });
 
   return new Promise((resolve, reject) => {

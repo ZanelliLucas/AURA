@@ -380,10 +380,12 @@ function showScreen(name) {
     el.hidden = el.id !== `screen-${name}`;
   });
   document.getElementById('panel-projects').classList.remove('open');
+  if (name !== 'sysmon') stopSysmonPolling();
   if (name === 'memory') loadMemoryScreen();
   if (name === 'gaming') loadGamingScreen();
   if (name === 'dev') loadDevScreen();
   if (name === 'comm') loadCommScreen();
+  if (name === 'sysmon') startSysmonPolling();
   if (name === 'world') {
     initWorldMap();
     setTimeout(() => worldMap && worldMap.invalidateSize(), 0);
@@ -392,6 +394,7 @@ function showScreen(name) {
 
 function closeScreen() {
   document.querySelectorAll('.app-screen').forEach((el) => { el.hidden = true; });
+  stopSysmonPolling();
 }
 
 function wireScreens() {
@@ -1270,6 +1273,133 @@ function wireCommScreen() {
   document.getElementById('discord-content').addEventListener('input', () => invalidatePreview('discord-preview', 'discord-send-btn'));
 }
 
+// --- AURA SYSTEM MONITOR (§5.7) ---------------------------------------
+// Purement de l'observation (niveau OBSERVE, §14.2) : jamais d'action,
+// jamais de confirmation. Ne sonde que pendant que l'ecran est ouvert -
+// une surveillance continue en arriere-plan serait le role d'AURA
+// AUTONOMY (§5.9), pas encore construit.
+
+let sysmonInterval = null;
+
+function bar(percent, dangerAt = 90) {
+  const pct = Math.min(100, Math.max(0, percent || 0));
+  const cls = pct >= dangerAt ? '' : 'ok';
+  return `<span class="bar-track"><span class="bar-fill ${cls}" style="width:${pct}%"></span></span>`;
+}
+
+function renderSysmon(snap) {
+  document.getElementById('sysmon-cpu').innerHTML = `
+    <div>${snap.cpu.model} (${snap.cpu.cores} cœurs, ${snap.cpu.speedGhz} GHz)</div>
+    <div class="sysmon-metric">Charge ${bar(snap.cpu.loadPercent)}${snap.cpu.loadPercent}%</div>
+    ${snap.cpu.temperatureC !== null ? `<div class="sysmon-metric">Température${bar(snap.cpu.temperatureC, 85)}${snap.cpu.temperatureC}°C</div>` : '<div>Température indisponible</div>'}
+  `;
+
+  document.getElementById('sysmon-mem').innerHTML = `
+    <div class="sysmon-metric">Utilisée${bar(snap.memory.usedPercent)}${snap.memory.usedPercent}%</div>
+    <div>${snap.memory.usedGB} Go / ${snap.memory.totalGB} Go</div>
+  `;
+
+  document.getElementById('sysmon-gpu').innerHTML = snap.gpu.length
+    ? snap.gpu.map((g) => `
+      <div>${g.model}</div>
+      ${g.loadPercent !== null ? `<div class="sysmon-metric">Charge${bar(g.loadPercent)}${g.loadPercent}%</div>` : ''}
+      ${g.temperatureC !== null ? `<div class="sysmon-metric">Température${bar(g.temperatureC, 85)}${g.temperatureC}°C</div>` : ''}
+      <div>VRAM : ${g.memoryUsedMB ?? '?'} / ${g.vramMB} Mo</div>
+    `).join('<hr style="border-color:rgba(245,246,247,0.08); margin:8px 0;">')
+    : 'Aucun GPU détecté.';
+
+  document.getElementById('sysmon-disks').innerHTML = snap.disks.map((d) => `
+    <div class="sysmon-metric">${d.mount}${bar(d.usedPercent)}${d.usedPercent}%</div>
+    <div>${d.usedGB} Go / ${d.sizeGB} Go</div>
+  `).join('');
+
+  document.getElementById('sysmon-net').innerHTML = snap.network.length
+    ? snap.network.map((n) => `<div>${n.iface} : ↓ ${n.rxKBs} Ko/s · ↑ ${n.txKBs} Ko/s</div>`).join('')
+    : 'Aucune interface active.';
+
+  document.getElementById('sysmon-procs').innerHTML = snap.topProcesses.map((p) =>
+    `<div class="sysmon-metric">${p.name}<span>${p.cpuPercent}% CPU</span></div>`
+  ).join('');
+}
+
+function renderThresholds(thresholds) {
+  document.getElementById('sysmon-thresholds').textContent =
+    `CPU ≥ ${thresholds.cpuPercent}% · RAM ≥ ${thresholds.ramPercent}% · Disque ≥ ${thresholds.diskPercent}%`;
+}
+
+function renderAlerts(alerts) {
+  const el = document.getElementById('sysmon-alerts');
+  if (!alerts.length) { el.textContent = 'Aucune alerte.'; return; }
+  el.innerHTML = '';
+  alerts.forEach((alert) => {
+    const row = document.createElement('div');
+    row.className = `alert-row ${alert.statut === 'acquittee' ? 'acquittee' : ''}`;
+    const when = new Date(alert.date).toLocaleTimeString('fr-FR');
+    row.innerHTML = `<span>${when} — ${alert.cause}</span>`;
+    if (alert.statut !== 'acquittee') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'row-delete';
+      btn.title = 'Acquitter';
+      btn.textContent = '✓';
+      btn.addEventListener('click', async () => {
+        await window.aura.acknowledgeAlert(alert.id);
+        loadSysmonAlerts();
+      });
+      row.appendChild(btn);
+    }
+    el.appendChild(row);
+  });
+}
+
+async function loadSysmonAlerts() {
+  try { renderAlerts(await window.aura.getSystemAlerts()); } catch { /* API indisponible */ }
+}
+
+async function pollSysmon() {
+  try {
+    const { snapshot, newAlerts } = await window.aura.getSystemSnapshot();
+    renderSysmon(snapshot);
+    if (newAlerts.length) loadSysmonAlerts();
+  } catch {
+    document.getElementById('sysmon-cpu').textContent = 'Système indisponible.';
+  }
+}
+
+function startSysmonPolling() {
+  pollSysmon();
+  loadSysmonAlerts();
+  window.aura.getSystemThresholds().then(renderThresholds).catch(() => {});
+  stopSysmonPolling();
+  sysmonInterval = setInterval(pollSysmon, 4000);
+}
+
+function stopSysmonPolling() {
+  if (sysmonInterval) { clearInterval(sysmonInterval); sysmonInterval = null; }
+}
+
+const THRESHOLD_LABELS = {
+  cpuPercent: 'Seuil d’alerte CPU (%)',
+  ramPercent: 'Seuil d’alerte RAM (%)',
+  diskPercent: 'Seuil d’alerte disque (%)'
+};
+
+function wireSysmonScreen() {
+  document.querySelectorAll('[data-threshold]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const key = btn.dataset.threshold;
+      const value = prompt(THRESHOLD_LABELS[key] || key);
+      if (value === null || Number.isNaN(Number(value))) return;
+      try {
+        renderThresholds(await window.aura.setSystemThreshold(key, value));
+        journal(`SEUIL_MODIFIE : ${key} = ${value}`);
+      } catch (err) {
+        journal(`SEUIL_ECHEC : ${err.message}`);
+      }
+    });
+  });
+}
+
 render();
 startClock();
 wirePanels();
@@ -1281,6 +1411,7 @@ wireGamingScreen();
 wireProductivity();
 wireDevScreen();
 wireCommScreen();
+wireSysmonScreen();
 wireEmergencyStop();
 initConversation();
 loadTasks();

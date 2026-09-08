@@ -870,3 +870,39 @@ body.estopped #conversation-panel {
 .comm-actions { display: flex; gap: 8px; margin-bottom: 8px; }
 .comm-actions .module-link, .comm-actions .danger-link { width: auto; flex: 1; }
 .comm-actions button:disabled { opacity: 0.4; cursor: default; }
+
+/* AURA SYSTEM MONITOR (§5.7) */
+.sysmon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  max-width: 1000px;
+  margin-bottom: 30px;
+}
+.sysmon-card {
+  border: 1px solid rgba(245, 246, 247, 0.12);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.sysmon-card h3 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--red); margin: 0 0 10px;
+}
+.sysmon-metric { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+.sysmon-metric .bar-track {
+  flex: 1; height: 4px; background: rgba(245,246,247,0.1); border-radius: 2px;
+  margin: 0 8px; align-self: center; overflow: hidden;
+}
+.sysmon-metric .bar-fill { height: 100%; background: var(--red); }
+.sysmon-metric .bar-fill.ok { background: #3fb950; }
+
+.sysmon-bottom { display: flex; gap: 40px; flex-wrap: wrap; max-width: 1000px; }
+.sysmon-bottom section { flex: 1; min-width: 280px; max-width: none; }
+
+.alert-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(245,246,247,0.08);
+  font-size: 12px;
+}
+.alert-row.acquittee { opacity: 0.5; }
+.alert-row .row-delete { color: var(--dim); }

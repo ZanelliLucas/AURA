@@ -154,6 +154,38 @@ function deleteReminder(id) {
   return reminders;
 }
 
+// --- Alertes (§12.2 Alert : niveau, cause, statut) -------------------
+
+const MAX_ALERTS = 200;
+
+function getAlerts(limit = 50) {
+  return readJson('alerts.json', []).slice(-limit).reverse();
+}
+
+function createAlert({ level, cause }) {
+  const alerts = readJson('alerts.json', []);
+  const alert = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    level: level || 'info',
+    cause,
+    statut: 'active',
+    date: new Date().toISOString()
+  };
+  alerts.push(alert);
+  writeJson('alerts.json', alerts.slice(-MAX_ALERTS));
+  return alert;
+}
+
+function acknowledgeAlert(id) {
+  const alerts = readJson('alerts.json', []);
+  const alert = alerts.find((a) => a.id === id);
+  if (alert) {
+    alert.statut = 'acquittee';
+    writeJson('alerts.json', alerts);
+  }
+  return alert;
+}
+
 // --- Journal d'actions (§12.3 actions_log, §5.9) --------------------
 
 function getJournal(limit = 50) {
@@ -188,6 +220,9 @@ module.exports = {
   createReminder,
   markReminderFired,
   deleteReminder,
+  getAlerts,
+  createAlert,
+  acknowledgeAlert,
   getJournal,
   logAction
 };

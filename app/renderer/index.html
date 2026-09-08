@@ -48,6 +48,7 @@
       <button type="button" class="module-link" data-screen="imagelab">Image Lab</button>
       <button type="button" class="module-link" data-screen="dev">AURA CODE</button>
       <button type="button" class="module-link" data-screen="comm">Communication</button>
+      <button type="button" class="module-link" data-screen="sysmon">System Monitor</button>
     </nav>
   </aside>
 
@@ -300,6 +301,50 @@
           <p id="discord-status" class="muted small"></p>
         </section>
       </div>
+    </div>
+  </div>
+
+  <div id="screen-sysmon" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>AURA SYSTEM MONITOR</h1>
+
+    <div class="sysmon-grid">
+      <div class="sysmon-card">
+        <h3>CPU</h3>
+        <div id="sysmon-cpu" class="muted small">—</div>
+      </div>
+      <div class="sysmon-card">
+        <h3>Mémoire</h3>
+        <div id="sysmon-mem" class="muted small">—</div>
+      </div>
+      <div class="sysmon-card">
+        <h3>GPU</h3>
+        <div id="sysmon-gpu" class="muted small">—</div>
+      </div>
+      <div class="sysmon-card">
+        <h3>Stockage</h3>
+        <div id="sysmon-disks" class="muted small">—</div>
+      </div>
+      <div class="sysmon-card">
+        <h3>Réseau</h3>
+        <div id="sysmon-net" class="muted small">—</div>
+      </div>
+      <div class="sysmon-card">
+        <h3>Processus (top CPU)</h3>
+        <div id="sysmon-procs" class="muted small">—</div>
+      </div>
+    </div>
+
+    <div class="sysmon-bottom">
+      <section>
+        <h2>Seuils d’alerte</h2>
+        <div class="conn-row">CPU <button type="button" class="mini-link" data-threshold="cpuPercent">modifier</button> · RAM <button type="button" class="mini-link" data-threshold="ramPercent">modifier</button> · Disque <button type="button" class="mini-link" data-threshold="diskPercent">modifier</button></div>
+        <div id="sysmon-thresholds" class="muted small"></div>
+      </section>
+      <section>
+        <h2>Alertes</h2>
+        <div id="sysmon-alerts" class="muted small">Aucune alerte.</div>
+      </section>
     </div>
   </div>
 
