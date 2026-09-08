@@ -88,7 +88,7 @@ function insertLoop(points, atIndex, seed, radius) {
 // bouclent pas dans les references non plus) - decision deterministe
 // par seed, pas aleatoire a chaque rendu.
 function maybeAddLoop(branch, seed, dist) {
-  if (seededUnit(seed + 811) > 0.4) return branch;
+  if (seededUnit(seed + 811) > 0.55) return branch;
   const idx = 2 + Math.floor(seededUnit(seed + 233) * Math.max(branch.points.length - 4, 1));
   const radius = dist * (0.05 + seededUnit(seed + 611) * 0.05);
   const points = insertLoop(branch.points, idx, seed + 917, radius);
@@ -147,8 +147,8 @@ function buildCableRungs(branchPoints, braidPoints) {
 function buildMeshFilaments(points) {
   const group = el('g', { class: 'mesh-filaments' });
   const nodeGroup = el('g', { class: 'mesh-nodes' });
-  const MAX_DIST = 170;
-  const K = 3;
+  const MAX_DIST = 210;
+  const K = 4;
   const drawn = new Set();
 
   points.forEach((a, i) => {

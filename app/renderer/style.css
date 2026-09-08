@@ -82,8 +82,8 @@ html, body {
   height: 100%;
 }
 
-.node-core { fill: var(--white); filter: drop-shadow(0 0 3px rgba(245, 246, 247, 0.35)); }
-.node-agent { fill: var(--white); opacity: 0.92; filter: drop-shadow(0 0 2px rgba(245, 246, 247, 0.22)); }
+.node-core { fill: var(--white); filter: drop-shadow(0 0 5px rgba(245, 246, 247, 0.55)); }
+.node-agent { fill: var(--white); opacity: 0.95; filter: drop-shadow(0 0 3px rgba(245, 246, 247, 0.4)); }
 .node-tool { fill: var(--dim); }
 .node-hub { fill: var(--white); }
 
@@ -114,7 +114,7 @@ html, body {
 .link-glow-1 { stroke: var(--red-dim); stroke-width: 6.5; opacity: 0.22; }
 .link-glow-2 { stroke: var(--red-dim); stroke-width: 3.5; opacity: 0.14; }
 .link-braid {
-  stroke: rgba(245, 246, 247, 0.14);
+  stroke: rgba(245, 246, 247, 0.24);
   stroke-width: 0.6;
   fill: none;
   pointer-events: none;
@@ -122,17 +122,23 @@ html, body {
 /* Barreaux entre branche principale et fil torsade : texture de cable/
    fibre croisee le long des tendons, comme sur les references. */
 .cable-rung {
-  stroke: rgba(245, 246, 247, 0.10);
+  stroke: rgba(245, 246, 247, 0.18);
   stroke-width: 0.5;
   pointer-events: none;
 }
 /* Ganglions : renflements lumineux a meme la branche. */
 .branch-ganglion {
-  fill: rgba(245, 246, 247, 0.55);
-  filter: drop-shadow(0 0 2px rgba(245, 246, 247, 0.5));
+  fill: rgba(245, 246, 247, 0.85);
+  filter: drop-shadow(0 0 3px rgba(245, 246, 247, 0.75));
   pointer-events: none;
 }
-.link { stroke: var(--line); stroke-width: 1.1; fill: none; transition: stroke 0.25s ease, stroke-width 0.25s ease; }
+.link {
+  stroke: rgba(245, 246, 247, 0.55);
+  stroke-width: 1.1;
+  fill: none;
+  filter: drop-shadow(0 0 1.5px rgba(245, 246, 247, 0.3));
+  transition: stroke 0.25s ease, stroke-width 0.25s ease;
+}
 .link-tool { stroke: var(--line-dim); stroke-width: 0.75; fill: none; }
 .link-relation { stroke: var(--red-dim); stroke-width: 1; fill: none; stroke-dasharray: 2 3; }
 
@@ -145,11 +151,11 @@ html, body {
 /* Maillage entre branches voisines : la texture de plexus qui tisse les
    tendons entre eux, comme dans les references visuelles. */
 .mesh-filament {
-  stroke: rgba(245, 246, 247, 0.13);
+  stroke: rgba(245, 246, 247, 0.22);
   stroke-width: 0.6;
   pointer-events: none;
 }
-.mesh-node { fill: rgba(245, 246, 247, 0.35); pointer-events: none; }
+.mesh-node { fill: rgba(245, 246, 247, 0.55); pointer-events: none; }
 .mesh-node-flare {
   fill: var(--white);
   animation: mesh-flare 3s ease-in-out infinite;
