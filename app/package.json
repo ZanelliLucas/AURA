@@ -25,6 +25,7 @@
     "directories": {
       "output": "dist"
     },
+    "afterPack": "scripts/fix-exe-subsystem.js",
     "files": [
       "main.js",
       "preload.js",
