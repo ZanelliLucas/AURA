@@ -193,6 +193,54 @@ function createPrediction({ metric, sourceCount, predictedValue, confidence, hor
   return prediction;
 }
 
+// --- Regles d'automatisation (§12.2 Policy, AURA AUTONOMY §5.9) ------
+
+function getRules() {
+  return readJson('rules.json', []);
+}
+
+function createRule({ name, trigger, action, mode }) {
+  const rules = getRules();
+  const rule = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    name,
+    trigger,
+    action,
+    mode: mode === 'active' ? 'active' : 'simulation',
+    enabled: true,
+    createdAt: new Date().toISOString(),
+    lastRunAt: null
+  };
+  rules.push(rule);
+  writeJson('rules.json', rules);
+  return rule;
+}
+
+function toggleRule(id) {
+  const rules = getRules();
+  const rule = rules.find((r) => r.id === id);
+  if (!rule) throw new Error('Règle introuvable.');
+  rule.enabled = !rule.enabled;
+  writeJson('rules.json', rules);
+  return rule;
+}
+
+function deleteRule(id) {
+  const rules = getRules().filter((r) => r.id !== id);
+  writeJson('rules.json', rules);
+  return rules;
+}
+
+function markRuleRun(id) {
+  const rules = getRules();
+  const rule = rules.find((r) => r.id === id);
+  if (rule) {
+    rule.lastRunAt = new Date().toISOString();
+    writeJson('rules.json', rules);
+  }
+  return rule;
+}
+
 // --- Alertes (§12.2 Alert : niveau, cause, statut) -------------------
 
 const MAX_ALERTS = 200;
@@ -259,6 +307,11 @@ module.exports = {
   createReminder,
   markReminderFired,
   deleteReminder,
+  getRules,
+  createRule,
+  toggleRule,
+  deleteRule,
+  markRuleRun,
   getAlerts,
   createAlert,
   acknowledgeAlert,

@@ -39,6 +39,7 @@
       "systemMonitor.js",
       "analytics.js",
       "security.js",
+      "autonomy.js",
       "connectors/**/*",
       "providers/**/*",
       "renderer/**/*",

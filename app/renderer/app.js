@@ -253,7 +253,7 @@ function wireEmergencyStop() {
   const input = document.getElementById('message');
   const send = document.getElementById('send');
 
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     const stopped = document.body.classList.toggle('estopped');
 
     banner.hidden = !stopped;
@@ -267,7 +267,21 @@ function wireEmergencyStop() {
     }
 
     journal(stopped ? 'ARRET_URGENCE_ACTIVE : toile et conversation gelees' : 'ARRET_URGENCE_LEVE : reprise normale');
+
+    // Meme bouton, meme etat : suspend aussi les regles AURA AUTONOMY
+    // cote backend (§5.9) - une seule source de verite pour "arrete".
+    try {
+      await window.aura.setEstop(stopped);
+      updateAutonomyEstopStatus(stopped);
+    } catch { /* backend indisponible, l'UI reste geree localement */ }
   });
+}
+
+function updateAutonomyEstopStatus(active) {
+  const el = document.getElementById('autonomy-estop-status');
+  if (!el) return;
+  el.textContent = active ? 'Arrêt d’urgence : ACTIF — règles suspendues' : 'Arrêt d’urgence : inactif';
+  el.classList.toggle('estop-active', !!active);
 }
 
 function addMessage(role, text) {
@@ -387,6 +401,7 @@ function showScreen(name) {
   if (name === 'comm') loadCommScreen();
   if (name === 'sysmon') startSysmonPolling();
   if (name === 'analytics') loadAnalyticsScreen();
+  if (name === 'autonomy') loadAutonomyScreen();
   if (name === 'world') {
     initWorldMap();
     setTimeout(() => worldMap && worldMap.invalidateSize(), 0);
@@ -1599,6 +1614,126 @@ function updatePentestGate() {
   submitBtn.disabled = !localTarget && !authorized;
 }
 
+// --- AURA AUTONOMY (§5.9) ---------------------------------------------
+// Regles limitees a des actions sures (§14.1 lecture/reversible) : pas
+// de file d'approbation a construire, l'"escalade vers l'utilisateur"
+// pour le reste consiste simplement a ne jamais les exposer ici.
+
+function describeTrigger(trigger) {
+  if (trigger.type === 'interval') return `Toutes les ${trigger.minutes} min`;
+  if (trigger.type === 'daily') return `Chaque jour à ${trigger.time}`;
+  if (trigger.type === 'threshold') {
+    const op = trigger.operator === 'below' ? '<' : '>';
+    return `${trigger.metric.toUpperCase()} ${op} ${trigger.value}%`;
+  }
+  return trigger.type;
+}
+
+function describeAction(action) {
+  if (action.type === 'notify') return `Notifier : "${action.params?.message || ''}"`;
+  if (action.type === 'task.create') return `Créer tâche : "${action.params?.title || ''}"`;
+  if (action.type === 'system.snapshot') return 'Instantané système';
+  return action.type;
+}
+
+function renderRulesList(rules) {
+  const list = document.getElementById('rules-list');
+  if (!rules.length) { list.textContent = 'Aucune règle.'; return; }
+  list.innerHTML = '';
+  rules.forEach((rule) => {
+    const row = document.createElement('div');
+    row.className = `task-row ${rule.enabled ? '' : 'completed'}`;
+    const lastRun = rule.lastRunAt ? new Date(rule.lastRunAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : 'jamais';
+    row.innerHTML = `
+      <input type="checkbox" ${rule.enabled ? 'checked' : ''} title="Activer/désactiver">
+      <span class="task-title">${rule.name} — ${describeTrigger(rule.trigger)} → ${describeAction(rule.action)} <span class="muted small">[${rule.mode === 'active' ? 'active' : 'simulation'}]</span></span>
+      <span class="task-due">Dernière exécution : ${lastRun}</span>
+      <button type="button" class="row-delete" title="Supprimer">✕</button>
+    `;
+    row.querySelector('input[type="checkbox"]').addEventListener('change', async () => {
+      await window.aura.toggleRule(rule.id);
+      journal(`AUTONOMY_REGLE_${rule.enabled ? 'DESACTIVEE' : 'ACTIVEE'} : ${rule.name}`);
+      loadAutonomyScreen();
+    });
+    row.querySelector('.row-delete').addEventListener('click', async () => {
+      await window.aura.deleteRule(rule.id);
+      journal(`AUTONOMY_REGLE_SUPPRIMEE : ${rule.name}`);
+      loadAutonomyScreen();
+    });
+    list.appendChild(row);
+  });
+}
+
+async function loadAutonomyScreen() {
+  try {
+    renderRulesList(await window.aura.getRules());
+  } catch {
+    document.getElementById('rules-list').textContent = 'Règles indisponibles.';
+  }
+  try {
+    const { active } = await window.aura.getEstop();
+    updateAutonomyEstopStatus(active);
+  } catch { /* backend indisponible */ }
+}
+
+function wireAutonomyScreen() {
+  const triggerType = document.getElementById('rule-trigger-type');
+  const actionType = document.getElementById('rule-action-type');
+
+  triggerType.addEventListener('change', () => {
+    document.querySelectorAll('.rule-trigger-fields').forEach((el) => { el.hidden = true; });
+    document.getElementById(`trigger-${triggerType.value}`).hidden = false;
+  });
+
+  actionType.addEventListener('change', () => {
+    document.querySelectorAll('.rule-action-fields').forEach((el) => { el.hidden = true; });
+    const el = document.getElementById(`action-${actionType.value === 'task.create' ? 'task' : actionType.value}`);
+    if (el) el.hidden = false;
+  });
+
+  document.getElementById('rule-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('rule-name').value.trim();
+    if (!name) return;
+
+    let trigger;
+    if (triggerType.value === 'interval') {
+      trigger = { type: 'interval', minutes: Number(document.getElementById('rule-interval-minutes').value) || 30 };
+    } else if (triggerType.value === 'daily') {
+      trigger = { type: 'daily', time: document.getElementById('rule-daily-time').value || '09:00' };
+    } else {
+      trigger = {
+        type: 'threshold',
+        metric: document.getElementById('rule-threshold-metric').value,
+        operator: document.getElementById('rule-threshold-operator').value,
+        value: Number(document.getElementById('rule-threshold-value').value) || 90
+      };
+    }
+
+    let action;
+    if (actionType.value === 'notify') {
+      action = { type: 'notify', params: { message: document.getElementById('rule-action-message').value.trim() || name } };
+    } else if (actionType.value === 'task.create') {
+      action = { type: 'task.create', params: { title: document.getElementById('rule-action-title').value.trim() || name } };
+    } else {
+      action = { type: 'system.snapshot', params: {} };
+    }
+
+    const mode = document.getElementById('rule-mode').value;
+
+    try {
+      await window.aura.createRule({ name, trigger, action, mode });
+      journal(`AUTONOMY_REGLE_CREEE : ${name} (${mode})`);
+      e.target.reset();
+      triggerType.dispatchEvent(new Event('change'));
+      actionType.dispatchEvent(new Event('change'));
+      loadAutonomyScreen();
+    } catch (err) {
+      journal(`AUTONOMY_REGLE_ECHEC : ${err.message}`);
+    }
+  });
+}
+
 render();
 startClock();
 wirePanels();
@@ -1613,6 +1748,7 @@ wireCommScreen();
 wireSysmonScreen();
 wireAnalyticsScreen();
 wireSecurityScreen();
+wireAutonomyScreen();
 wireEmergencyStop();
 initConversation();
 loadTasks();

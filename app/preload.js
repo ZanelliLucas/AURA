@@ -91,5 +91,12 @@ contextBridge.exposeInMainWorld('aura', {
   checkDependencies: () => getJson('/api/security/dependencies'),
   auditSecrets: () => getJson('/api/security/audit'),
   scanSecurityLogs: () => getJson('/api/security/logs'),
-  pentestScan: (host, authorized) => postJson('/api/security/pentest', { host, authorized })
+  pentestScan: (host, authorized) => postJson('/api/security/pentest', { host, authorized }),
+
+  getRules: () => getJson('/api/autonomy/rules'),
+  createRule: (rule) => postJson('/api/autonomy/rules', rule),
+  toggleRule: (id) => postJson(`/api/autonomy/rules/${encodeURIComponent(id)}/toggle`),
+  deleteRule: (id) => delJson(`/api/autonomy/rules/${encodeURIComponent(id)}`),
+  getEstop: () => getJson('/api/autonomy/estop'),
+  setEstop: (active) => postJson('/api/autonomy/estop', { active })
 });

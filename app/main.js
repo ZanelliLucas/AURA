@@ -5,6 +5,7 @@ const { autoUpdater } = require('electron-updater');
 const { startServer } = require('./server');
 const store = require('./store');
 const sysinfo = require('./connectors/systemMonitor');
+const autonomy = require('./autonomy');
 
 // .env local de dev uniquement (cle API pour tester sans passer par
 // l'ecran de configuration) - jamais inclus dans le build packagee, voir
@@ -85,6 +86,20 @@ function startMetricsSampler() {
   metricsSamplerInterval = setInterval(sample, 30000);
 }
 
+// Moteur de regles AURA AUTONOMY (§5.9). Intervalle court (bien plus fin
+// que les declencheurs eux-memes, exprimes en minutes) pour rester
+// reactif sans faire de veritable planification systeme - ne tourne que
+// pendant la session (F-22), comme startMetricsSampler.
+let autonomyTickerInterval = null;
+
+function startAutonomyTicker() {
+  const tick = () => {
+    autonomy.tick().catch((err) => console.log('[autonomy] tick echoue :', err.message));
+  };
+  tick();
+  autonomyTickerInterval = setInterval(tick, 15000);
+}
+
 app.whenReady().then(async () => {
   try {
     apiServer = await startServer();
@@ -94,6 +109,7 @@ app.whenReady().then(async () => {
   createWindow();
   checkForUpdates();
   startMetricsSampler();
+  startAutonomyTicker();
 });
 
 // Auto-update (electron-updater). Inactif tant qu'aucune source de
@@ -114,5 +130,6 @@ function checkForUpdates() {
 app.on('window-all-closed', () => {
   if (apiServer) apiServer.close();
   if (metricsSamplerInterval) clearInterval(metricsSamplerInterval);
+  if (autonomyTickerInterval) clearInterval(autonomyTickerInterval);
   app.quit();
 });

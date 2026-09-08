@@ -868,6 +868,9 @@ body.estopped #conversation-panel {
   margin-bottom: 10px;
 }
 .comm-preview .preview-label { color: var(--red); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
+.comm-preview.estop-active { border-color: var(--red); color: var(--red); }
+
+.rule-trigger-fields, .rule-action-fields { display: flex; gap: 8px; }
 
 .comm-actions { display: flex; gap: 8px; margin-bottom: 8px; }
 .comm-actions .module-link, .comm-actions .danger-link { width: auto; flex: 1; }

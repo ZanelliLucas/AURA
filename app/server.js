@@ -14,6 +14,7 @@ const communication = require('./communication');
 const systemMonitor = require('./systemMonitor');
 const analytics = require('./analytics');
 const security = require('./security');
+const autonomy = require('./autonomy');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -357,6 +358,39 @@ function startServer() {
     } catch (err) {
       res.status(400).json({ error: err.message });
     }
+  });
+
+  // AURA AUTONOMY (§5.9)
+  server.get('/api/autonomy/rules', (req, res) => {
+    res.json(autonomy.getRules());
+  });
+
+  server.post('/api/autonomy/rules', (req, res) => {
+    try {
+      res.json(autonomy.createRule(req.body || {}));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/autonomy/rules/:id/toggle', (req, res) => {
+    try {
+      res.json(autonomy.toggleRule(req.params.id));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.delete('/api/autonomy/rules/:id', (req, res) => {
+    res.json(autonomy.deleteRule(req.params.id));
+  });
+
+  server.get('/api/autonomy/estop', (req, res) => {
+    res.json(autonomy.getEstop());
+  });
+
+  server.post('/api/autonomy/estop', (req, res) => {
+    res.json(autonomy.setEstop(!!req.body.active));
   });
 
   return new Promise((resolve, reject) => {

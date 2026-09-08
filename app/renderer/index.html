@@ -51,6 +51,7 @@
       <button type="button" class="module-link" data-screen="sysmon">System Monitor</button>
       <button type="button" class="module-link" data-screen="analytics">Analytics</button>
       <button type="button" class="module-link" data-screen="security">AURA SECURITY</button>
+      <button type="button" class="module-link" data-screen="autonomy">AURA AUTONOMY</button>
     </nav>
   </aside>
 
@@ -443,6 +444,78 @@
             <button type="submit" class="module-link">Scanner les ports courants</button>
           </form>
           <div id="pentest-result" class="muted small"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-autonomy" class="app-screen" hidden>
+    <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
+    <h1>AURA AUTONOMY</h1>
+    <p class="muted small" style="max-width:640px; margin-top:-14px; margin-bottom:26px;">Règles automatisées limitées à des actions sûres (notification, création de tâche, instantané système — §14.1 lecture/réversible). Aucune action sensible ou irréversible n’est automatisable ici : elle resterait à faire manuellement. L’arrêt d’urgence suspend immédiatement toutes les règles.</p>
+
+    <div id="autonomy-estop-status" class="comm-preview">Arrêt d’urgence : inactif</div>
+
+    <div class="gaming-columns">
+      <div class="gaming-col">
+        <section>
+          <h2>Nouvelle règle</h2>
+          <form id="rule-form" class="inline-form" style="flex-direction:column; align-items:stretch; gap:10px;">
+            <input id="rule-name" type="text" placeholder="Nom de la règle" required>
+
+            <label class="muted small">Déclencheur</label>
+            <select id="rule-trigger-type">
+              <option value="interval">Intervalle (toutes les X minutes)</option>
+              <option value="daily">Horaire quotidien</option>
+              <option value="threshold">Seuil système</option>
+            </select>
+            <div id="trigger-interval" class="rule-trigger-fields">
+              <input id="rule-interval-minutes" type="number" min="1" value="30" placeholder="Minutes">
+            </div>
+            <div id="trigger-daily" class="rule-trigger-fields" hidden>
+              <input id="rule-daily-time" type="time" value="09:00">
+            </div>
+            <div id="trigger-threshold" class="rule-trigger-fields" hidden>
+              <select id="rule-threshold-metric">
+                <option value="cpu">CPU</option>
+                <option value="ram">RAM</option>
+                <option value="gpu">GPU</option>
+              </select>
+              <select id="rule-threshold-operator">
+                <option value="above">au-dessus de</option>
+                <option value="below">en-dessous de</option>
+              </select>
+              <input id="rule-threshold-value" type="number" min="0" max="100" value="90" placeholder="%">
+            </div>
+
+            <label class="muted small">Action</label>
+            <select id="rule-action-type">
+              <option value="notify">Envoyer une notification</option>
+              <option value="task.create">Créer une tâche</option>
+              <option value="system.snapshot">Journaliser un instantané système</option>
+            </select>
+            <div id="action-notify" class="rule-action-fields">
+              <input id="rule-action-message" type="text" placeholder="Message de la notification">
+            </div>
+            <div id="action-task" class="rule-action-fields" hidden>
+              <input id="rule-action-title" type="text" placeholder="Titre de la tâche">
+            </div>
+
+            <label class="muted small">Mode</label>
+            <select id="rule-mode">
+              <option value="simulation">Simulation (journalise sans exécuter)</option>
+              <option value="active">Active (exécute réellement)</option>
+            </select>
+
+            <button type="submit" class="module-link">Créer la règle</button>
+          </form>
+        </section>
+      </div>
+
+      <div class="gaming-col">
+        <section>
+          <h2>Règles actives</h2>
+          <div id="rules-list" class="muted small">Chargement…</div>
         </section>
       </div>
     </div>
