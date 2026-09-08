@@ -187,6 +187,7 @@ function wireEmergencyStop() {
 
     banner.hidden = !stopped;
     label.textContent = stopped ? 'REPRENDRE' : 'ARRÊT D’URGENCE';
+    btn.title = stopped ? 'Reprendre' : 'Arrêt d’urgence global';
     input.disabled = stopped;
     send.disabled = stopped;
 
