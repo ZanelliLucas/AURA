@@ -61,7 +61,65 @@
   <div id="screen-gaming" class="app-screen" hidden>
     <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
     <h1>Gaming &amp; Streaming</h1>
-    <p class="muted">Écran pas encore construit — connecteurs Riot / Steam / OBS non branchés (§8).</p>
+
+    <div class="gaming-columns">
+      <div class="gaming-col">
+        <section>
+          <h2>Riot Games</h2>
+          <div class="conn-row"><span class="conn-dot" id="dot-riot"></span> <span id="label-riot">Non configuré</span> <button type="button" class="mini-link" data-connfield="riotApiKey">clé</button></div>
+          <form id="riot-form" class="inline-form">
+            <input id="riot-name" type="text" placeholder="Nom d’invocateur">
+            <input id="riot-tag" type="text" placeholder="TAG" class="riot-tag">
+            <select id="riot-region">
+              <option value="europe">Europe</option>
+              <option value="americas">Amériques</option>
+              <option value="asia">Asie</option>
+            </select>
+            <button type="submit">Charger</button>
+          </form>
+          <div id="riot-results" class="muted small"></div>
+        </section>
+
+        <section>
+          <h2>Steam</h2>
+          <div class="conn-row"><span class="conn-dot" id="dot-steam"></span> <span id="label-steam">Non configuré</span> <button type="button" class="mini-link" data-connfield="steamApiKey">clé</button> <button type="button" class="mini-link" data-connfield="steamId">SteamID</button></div>
+          <button id="steam-load" type="button" class="module-link">Charger le temps de jeu</button>
+          <div id="steam-results" class="muted small"></div>
+        </section>
+      </div>
+
+      <div class="gaming-col">
+        <section>
+          <h2>OBS Studio</h2>
+          <div class="conn-row"><span class="conn-dot" id="dot-obs"></span> <span id="label-obs">Non connecté</span></div>
+          <div class="inline-form">
+            <button type="button" class="mini-link" data-connfield="obsHost">hôte</button>
+            <button type="button" class="mini-link" data-connfield="obsPort">port</button>
+            <button type="button" class="mini-link" data-connfield="obsPassword">mot de passe</button>
+          </div>
+          <div id="obs-actions">
+            <button id="obs-connect" type="button" class="module-link">Connecter</button>
+            <button id="obs-disconnect" type="button" class="module-link" hidden>Déconnecter</button>
+          </div>
+
+          <div id="obs-controls" hidden>
+            <h3>Scènes</h3>
+            <div id="obs-scenes"></div>
+
+            <h3>Overlay</h3>
+            <form id="obs-overlay-form" class="inline-form">
+              <input id="obs-source-name" type="text" placeholder="Nom de la source texte">
+              <input id="obs-overlay-text" type="text" placeholder="Nouveau texte">
+              <button type="submit">Mettre à jour</button>
+            </form>
+
+            <h3>Diffusion</h3>
+            <button id="obs-start-stream" type="button" class="danger-link">Démarrer le stream</button>
+          </div>
+          <p id="obs-status" class="muted small"></p>
+        </section>
+      </div>
+    </div>
   </div>
 
   <div id="screen-world" class="app-screen app-screen-map" hidden>

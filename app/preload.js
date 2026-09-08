@@ -42,5 +42,17 @@ contextBridge.exposeInMainWorld('aura', {
   deletePreference: (key) => delJson(`/api/preferences/${encodeURIComponent(key)}`),
   clearMemory: () => delJson('/api/memory'),
   logAction: (entry) => postJson('/api/journal', entry),
-  saveImage: (dataUrl) => ipcRenderer.invoke('dialog:save-image', dataUrl)
+  saveImage: (dataUrl) => ipcRenderer.invoke('dialog:save-image', dataUrl),
+
+  getGamingStatus: () => getJson('/api/gaming/status'),
+  setGamingConfig: (key, value) => postJson('/api/gaming/config', { key, value }),
+  fetchRiotMatches: (gameName, tagLine, region) =>
+    getJson(`/api/gaming/riot?gameName=${encodeURIComponent(gameName)}&tagLine=${encodeURIComponent(tagLine)}&region=${region}`),
+  fetchSteamGames: (steamId) => getJson(`/api/gaming/steam${steamId ? `?steamId=${encodeURIComponent(steamId)}` : ''}`),
+  obsConnect: () => postJson('/api/streaming/obs/connect'),
+  obsDisconnect: () => postJson('/api/streaming/obs/disconnect'),
+  obsScenes: () => getJson('/api/streaming/obs/scenes'),
+  obsSwitchScene: (sceneName) => postJson('/api/streaming/obs/scene', { sceneName }),
+  obsUpdateOverlay: (sourceName, text) => postJson('/api/streaming/obs/overlay', { sourceName, text }),
+  obsStartStream: () => postJson('/api/streaming/obs/start')
 });

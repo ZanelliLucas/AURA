@@ -381,6 +381,7 @@ function showScreen(name) {
   });
   document.getElementById('panel-projects').classList.remove('open');
   if (name === 'memory') loadMemoryScreen();
+  if (name === 'gaming') loadGamingScreen();
   if (name === 'world') {
     initWorldMap();
     setTimeout(() => worldMap && worldMap.invalidateSize(), 0);
@@ -733,6 +734,175 @@ function wireImageLab() {
   });
 }
 
+// --- Gaming & Streaming (§8, §16.3) -----------------------------------
+// Connecteur gaming strictement en lecture (§18.2). OBS reste de la
+// supervision de diffusion, jamais une automatisation du jeu.
+
+const CONNFIELD_LABELS = {
+  riotApiKey: 'Clé API Riot',
+  steamApiKey: 'Clé API Steam',
+  steamId: 'SteamID64',
+  obsHost: 'Hôte OBS (ex. 127.0.0.1)',
+  obsPort: 'Port OBS (ex. 4455)',
+  obsPassword: 'Mot de passe OBS'
+};
+
+function renderGamingStatus(status) {
+  document.getElementById('dot-riot').classList.toggle('ok', status.riot);
+  document.getElementById('label-riot').textContent = status.riot ? 'Clé configurée' : 'Non configuré';
+  document.getElementById('dot-steam').classList.toggle('ok', status.steam);
+  document.getElementById('label-steam').textContent = status.steam ? 'Configuré' : 'Non configuré';
+  document.getElementById('dot-obs').classList.toggle('ok', status.obs.connected);
+  document.getElementById('label-obs').textContent = status.obs.connected
+    ? 'Connecté'
+    : (status.obs.configured ? 'Configuré (non connecté)' : 'Non configuré');
+  document.getElementById('obs-connect').hidden = status.obs.connected;
+  document.getElementById('obs-disconnect').hidden = !status.obs.connected;
+  document.getElementById('obs-controls').hidden = !status.obs.connected;
+}
+
+async function loadGamingScreen() {
+  try {
+    const status = await window.aura.getGamingStatus();
+    renderGamingStatus(status);
+    if (status.obs.connected) loadObsScenes();
+  } catch {
+    // API locale indisponible : les indicateurs restent sur leur etat par defaut
+  }
+}
+
+function renderMatches(matches) {
+  const el = document.getElementById('riot-results');
+  if (!matches.length) { el.textContent = 'Aucune partie récente.'; return; }
+  el.innerHTML = '';
+  matches.forEach((m) => {
+    const row = document.createElement('div');
+    row.className = `match-row ${m.win ? 'win' : 'loss'}`;
+    const mins = Math.round(m.gameDurationSec / 60);
+    row.innerHTML = `<span>${m.champion} — ${m.win ? 'Victoire' : 'Défaite'}</span><span>${m.kills}/${m.deaths}/${m.assists} · ${mins} min</span>`;
+    el.appendChild(row);
+  });
+}
+
+function renderGames(games) {
+  const el = document.getElementById('steam-results');
+  if (!games.length) { el.textContent = 'Aucun jeu trouvé.'; return; }
+  el.innerHTML = '';
+  games.forEach((g) => {
+    const row = document.createElement('div');
+    row.className = 'game-row';
+    row.innerHTML = `<span>${g.name}</span><span>${g.playtimeHours} h</span>`;
+    el.appendChild(row);
+  });
+}
+
+async function loadObsScenes() {
+  try {
+    const { current, scenes } = await window.aura.obsScenes();
+    const el = document.getElementById('obs-scenes');
+    el.innerHTML = '';
+    scenes.forEach((name) => {
+      const row = document.createElement('div');
+      row.className = `scene-row ${name === current ? 'current' : ''}`;
+      row.textContent = name;
+      row.addEventListener('click', async () => {
+        try {
+          await window.aura.obsSwitchScene(name);
+          journal(`OBS_SCENE : ${name}`);
+          loadObsScenes();
+        } catch (err) {
+          journal(`OBS_SCENE_ECHEC : ${err.message}`);
+        }
+      });
+      el.appendChild(row);
+    });
+  } catch (err) {
+    document.getElementById('obs-status').textContent = err.message;
+  }
+}
+
+function wireGamingScreen() {
+  document.querySelectorAll('[data-connfield]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const key = btn.dataset.connfield;
+      const value = prompt(CONNFIELD_LABELS[key] || key);
+      if (value === null) return;
+      try {
+        const status = await window.aura.setGamingConfig(key, value);
+        renderGamingStatus(status);
+        journal(`CONNECTEUR_CONFIG : ${key}`);
+      } catch (err) {
+        journal(`CONNECTEUR_CONFIG_ECHEC : ${err.message}`);
+      }
+    });
+  });
+
+  document.getElementById('riot-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const gameName = document.getElementById('riot-name').value.trim();
+    const tagLine = document.getElementById('riot-tag').value.trim();
+    const region = document.getElementById('riot-region').value;
+    if (!gameName || !tagLine) return;
+    const el = document.getElementById('riot-results');
+    el.textContent = 'Chargement…';
+    try {
+      renderMatches(await window.aura.fetchRiotMatches(gameName, tagLine, region));
+    } catch (err) {
+      el.textContent = err.message;
+    }
+  });
+
+  document.getElementById('steam-load').addEventListener('click', async () => {
+    const el = document.getElementById('steam-results');
+    el.textContent = 'Chargement…';
+    try {
+      renderGames(await window.aura.fetchSteamGames());
+    } catch (err) {
+      el.textContent = err.message;
+    }
+  });
+
+  document.getElementById('obs-connect').addEventListener('click', async () => {
+    const status = document.getElementById('obs-status');
+    status.textContent = 'Connexion…';
+    try {
+      await window.aura.obsConnect();
+      status.textContent = 'Connecté.';
+      loadGamingScreen();
+    } catch (err) {
+      status.textContent = err.message;
+    }
+  });
+
+  document.getElementById('obs-disconnect').addEventListener('click', async () => {
+    await window.aura.obsDisconnect();
+    loadGamingScreen();
+  });
+
+  document.getElementById('obs-overlay-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const sourceName = document.getElementById('obs-source-name').value.trim();
+    const text = document.getElementById('obs-overlay-text').value;
+    if (!sourceName) return;
+    try {
+      await window.aura.obsUpdateOverlay(sourceName, text);
+      journal(`OBS_OVERLAY : ${sourceName}`);
+    } catch (err) {
+      document.getElementById('obs-status').textContent = err.message;
+    }
+  });
+
+  document.getElementById('obs-start-stream').addEventListener('click', async () => {
+    if (!confirm('Démarrer la diffusion en direct maintenant ?')) return;
+    try {
+      await window.aura.obsStartStream();
+      journal('OBS_STREAM_DEMARRE');
+    } catch (err) {
+      document.getElementById('obs-status').textContent = err.message;
+    }
+  });
+}
+
 render();
 startClock();
 wirePanels();
@@ -740,6 +910,7 @@ wireScreens();
 wireMemoryScreen();
 wireWorldMap();
 wireImageLab();
+wireGamingScreen();
 wireEmergencyStop();
 initConversation();
 setInterval(pulseRandomActivity, 2600);

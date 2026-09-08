@@ -7,6 +7,7 @@
 const express = require('express');
 const core = require('./core');
 const store = require('./store');
+const gaming = require('./gaming');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -75,6 +76,80 @@ function startServer() {
   server.delete('/api/memory', (req, res) => {
     store.clearPreferences();
     res.json({ cleared: true });
+  });
+
+  // Gaming & Streaming (§8, §16.3)
+  server.get('/api/gaming/status', (req, res) => {
+    res.json(gaming.getConnectorStatus());
+  });
+
+  server.post('/api/gaming/config', (req, res) => {
+    try {
+      res.json(gaming.setConnectorField(req.body.key, req.body.value));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.get('/api/gaming/riot', async (req, res) => {
+    try {
+      const { gameName, tagLine, region } = req.query;
+      res.json(await gaming.fetchMatchHistory(gameName, tagLine, region || 'europe'));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.get('/api/gaming/steam', async (req, res) => {
+    try {
+      res.json(await gaming.fetchOwnedGames(req.query.steamId));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/streaming/obs/connect', async (req, res) => {
+    try {
+      res.json(await gaming.obsConnect());
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/streaming/obs/disconnect', async (req, res) => {
+    res.json(await gaming.obsDisconnect());
+  });
+
+  server.get('/api/streaming/obs/scenes', async (req, res) => {
+    try {
+      res.json(await gaming.obsScenes());
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/streaming/obs/scene', async (req, res) => {
+    try {
+      res.json(await gaming.obsSwitchScene(req.body.sceneName));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/streaming/obs/overlay', async (req, res) => {
+    try {
+      res.json(await gaming.obsUpdateOverlay(req.body.sourceName, req.body.text));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/streaming/obs/start', async (req, res) => {
+    try {
+      res.json(await gaming.obsStartStream());
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
   });
 
   return new Promise((resolve, reject) => {

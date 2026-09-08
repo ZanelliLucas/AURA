@@ -137,4 +137,4 @@ async function sendMessage(text) {
   return { text: result.text, agent: route.agent };
 }
 
-module.exports = { getStatus, setApiKey, sendMessage };
+module.exports = { getStatus, setApiKey, sendMessage, loadConfig, saveConfig };
