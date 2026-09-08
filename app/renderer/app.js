@@ -5,12 +5,108 @@ const GRAPH_RELATIONS = window.AURA_GRAPH.RELATIONS;
 const CENTER = { x: 800, y: 500 };
 const R_PRINCIPAL = 260;
 const R_TOOL = 95;
+const VIEW_W = 1600;
+const VIEW_H = 1000;
 
 function seededOffset(seed, spread) {
   // Decalage deterministe (pas de vrai hasard) pour un trace organique
   // stable d'un lancement a l'autre, comme dans la maquette de reference.
   const s = Math.sin(seed * 999.7) * 10000;
   return (s - Math.floor(s) - 0.5) * 2 * spread;
+}
+
+function seededUnit(seed) {
+  const s = Math.sin(seed * 12.9898) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+// Point d'une courbe cubique de Bezier a t (0..1).
+function cubicPoint(p0, c1, c2, p1, t) {
+  const mt = 1 - t;
+  return {
+    x: mt * mt * mt * p0.x + 3 * mt * mt * t * c1.x + 3 * mt * t * t * c2.x + t * t * t * p1.x,
+    y: mt * mt * mt * p0.y + 3 * mt * mt * t * c1.y + 3 * mt * t * t * c2.y + t * t * t * p1.y
+  };
+}
+
+// Branche organique (tendon incurve) entre deux points : une legere
+// courbure en S, deterministe par seed, plutot qu'un rayon rectiligne -
+// inspire des references fournies (dendrites/plexus, pas d'etoile a
+// rayons droits).
+function organicBranch(p0, p1, seed) {
+  const dx = p1.x - p0.x;
+  const dy = p1.y - p0.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const nx = -dy / dist;
+  const ny = dx / dist;
+  const bend1 = seededOffset(seed, dist * 0.16);
+  const bend2 = seededOffset(seed + 41, dist * 0.16);
+  const c1 = { x: p0.x + dx * 0.32 + nx * bend1, y: p0.y + dy * 0.32 + ny * bend1 };
+  const c2 = { x: p0.x + dx * 0.68 + nx * bend2, y: p0.y + dy * 0.68 + ny * bend2 };
+  return { d: `M ${p0.x} ${p0.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${p1.x} ${p1.y}`, p0, c1, c2, p1 };
+}
+
+function branchSamplePoints(branch, count) {
+  const pts = [];
+  for (let i = 1; i < count; i++) pts.push(cubicPoint(branch.p0, branch.c1, branch.c2, branch.p1, i / count));
+  return pts;
+}
+
+// Maillage fin entre points voisins issus de branches differentes : la
+// membrane connective qui relie les tendons entre eux, comme dans les
+// references (texture de plexus plutot que des rayons isoles).
+function buildMeshFilaments(points) {
+  const group = el('g', { class: 'mesh-filaments' });
+  const MAX_DIST = 130;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    let best = null;
+    let bestDist = MAX_DIST;
+    for (let j = 0; j < points.length; j++) {
+      if (i === j) continue;
+      const b = points[j];
+      if (b.branch === a.branch) continue;
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d < bestDist) { bestDist = d; best = b; }
+    }
+    if (best) {
+      group.appendChild(el('line', { x1: a.x, y1: a.y, x2: best.x, y2: best.y, class: 'mesh-filament' }));
+    }
+  }
+  return group;
+}
+
+// Champ de fond : poussiere stellaire et quelques glyphes techniques
+// discrets (coins de reticule), purement decoratifs - meme ambiance
+// "capteur" que les references, sans distraire du graphe lui-meme.
+function buildBackgroundField() {
+  const group = el('g', { class: 'bg-field' });
+
+  for (let i = 0; i < 110; i++) {
+    const x = seededUnit(i * 3.17) * VIEW_W;
+    const y = seededUnit(i * 7.73 + 1) * VIEW_H;
+    const r = 0.5 + seededUnit(i * 5.31) * 1.1;
+    const star = el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: r.toFixed(2), class: 'bg-star' });
+    star.style.animationDelay = `${(seededUnit(i * 2.23) * 7).toFixed(2)}s`;
+    star.style.animationDuration = `${(4 + seededUnit(i * 9.1) * 5).toFixed(2)}s`;
+    group.appendChild(star);
+  }
+
+  for (let i = 0; i < 10; i++) {
+    const margin = 90;
+    const x = margin + seededUnit(i * 4.4 + 3) * (VIEW_W - margin * 2);
+    const y = margin + seededUnit(i * 8.8 + 5) * (VIEW_H - margin * 2);
+    const rotation = Math.floor(seededUnit(i * 1.7 + 9) * 4) * 90;
+    const size = 8 + seededUnit(i * 6.6) * 5;
+    const glyph = el('g', {
+      class: 'bg-glyph',
+      transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rotation})`
+    });
+    glyph.appendChild(el('path', { d: `M 0 ${size.toFixed(1)} L 0 0 L ${size.toFixed(1)} 0` }));
+    group.appendChild(glyph);
+  }
+
+  return group;
 }
 
 function layout() {
@@ -48,20 +144,46 @@ function el(tag, attrs) {
   return node;
 }
 
+// Petite pastille lumineuse qui parcourt une branche en boucle, pour
+// donner l'impression d'un flux de donnees circulant reellement dans
+// le reseau plutot qu'un graphe statique.
+function addFlowPulse(svg, pathId, seed, kind) {
+  const dot = el('circle', { r: kind === 'core' ? 2.2 : 1.6, class: `branch-pulse branch-pulse-${kind}` });
+  const duration = (5.5 + seededUnit(seed) * 4.5).toFixed(2);
+  const beginDelay = (seededUnit(seed + 71) * 6).toFixed(2);
+  const anim = el('animateMotion', {
+    dur: `${duration}s`, begin: `${beginDelay}s`, repeatCount: 'indefinite',
+    keyPoints: '0;1', keyTimes: '0;1', calcMode: 'linear'
+  });
+  const mpath = el('mpath', {});
+  mpath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${pathId}`);
+  mpath.setAttribute('href', `#${pathId}`);
+  anim.appendChild(mpath);
+  dot.appendChild(anim);
+  svg.appendChild(dot);
+}
+
 function render() {
   const svg = document.getElementById('web');
+  svg.innerHTML = '';
   const positioned = layout();
+  const nodeList = Object.values(positioned);
 
-  // Liens vers le hub central
-  Object.values(positioned).forEach((p) => {
-    const line = el('line', {
-      x1: CENTER.x, y1: CENTER.y, x2: p.x, y2: p.y,
-      class: 'link', 'data-node': p.id
-    });
-    svg.appendChild(line);
+  svg.appendChild(buildBackgroundField());
+
+  // Branches organiques (tendons courbes) du hub vers chaque agent, et
+  // points d'echantillonnage le long de chacune pour tisser le maillage.
+  const branches = {};
+  const samplePoints = [];
+  nodeList.forEach((p, i) => {
+    const branch = organicBranch(CENTER, p, i * 13.7 + 5);
+    branches[p.id] = branch;
+    branchSamplePoints(branch, 5).forEach((pt) => samplePoints.push({ ...pt, branch: p.id }));
   });
+  svg.appendChild(buildMeshFilaments(samplePoints));
 
   // Liens transversaux reels entre agents (§5.6.1)
+  const relationGroup = el('g', { class: 'relation-layer' });
   GRAPH_RELATIONS.forEach(([a, b]) => {
     const pa = positioned[a];
     const pb = positioned[b];
@@ -73,11 +195,23 @@ function render() {
       class: 'link-relation',
       'data-a': a, 'data-b': b
     });
-    svg.appendChild(path);
+    relationGroup.appendChild(path);
   });
+  svg.appendChild(relationGroup);
+
+  // Branches principales : halo flou puis trait net par-dessus.
+  const glowGroup = el('g', { class: 'branch-glow-layer' });
+  const trunkGroup = el('g', { class: 'branch-layer' });
+  nodeList.forEach((p) => {
+    const branch = branches[p.id];
+    glowGroup.appendChild(el('path', { d: branch.d, class: 'link-glow' }));
+    trunkGroup.appendChild(el('path', { d: branch.d, id: `branch-${p.id}`, class: 'link', 'data-node': p.id }));
+  });
+  svg.appendChild(glowGroup);
+  svg.appendChild(trunkGroup);
 
   // Noeuds principaux + leurs outils
-  Object.values(positioned).forEach((p) => {
+  nodeList.forEach((p) => {
     const group = el('g', { class: 'node-group', 'data-node': p.id });
 
     p.toolPositions.forEach((tool) => {
@@ -110,8 +244,15 @@ function render() {
     svg.appendChild(group);
   });
 
+  // Flux lumineux le long des branches principales (§ "vivant et
+  // dynamique" - un reseau qui respire, pas un graphe fige).
+  const pulseGroup = el('g', { class: 'pulse-layer' });
+  svg.appendChild(pulseGroup);
+  nodeList.forEach((p, i) => addFlowPulse(pulseGroup, `branch-${p.id}`, i * 3.3, p.kind));
+
   // Hub central
   const hub = el('g', { class: 'node-group', 'data-node': '__hub' });
+  hub.appendChild(el('circle', { cx: CENTER.x, cy: CENTER.y, r: 46, class: 'node-hub-ring' }));
   hub.appendChild(el('circle', { cx: CENTER.x, cy: CENTER.y, r: 46, class: 'node-hub' }));
   const hubLabel = el('text', {
     x: CENTER.x, y: CENTER.y + 5, class: 'label-hub', 'text-anchor': 'middle'
