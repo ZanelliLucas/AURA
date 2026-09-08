@@ -2,9 +2,10 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' http://127.0.0.1:8420">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' http://127.0.0.1:8420 https://nominatim.openstreetmap.org; img-src 'self' data: https://*.tile.openstreetmap.org">
 <title>AURA</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 </head>
 <body>
   <div id="grid"></div>
@@ -63,10 +64,13 @@
     <p class="muted">Écran pas encore construit — connecteurs Riot / Steam / OBS non branchés (§8).</p>
   </div>
 
-  <div id="screen-world" class="app-screen" hidden>
+  <div id="screen-world" class="app-screen app-screen-map" hidden>
     <button type="button" class="screen-back" data-close-screen>← Retour à la toile</button>
-    <h1>AURA WORLD</h1>
-    <p class="muted">Écran pas encore construit — carte 2D Leaflet / OpenStreetMap à intégrer (§9).</p>
+    <form id="world-search" class="world-search">
+      <input id="world-search-input" type="text" placeholder="Zoomer vers un pays, une ville, un lieu…" autocomplete="off">
+      <button type="submit">Aller</button>
+    </form>
+    <div id="world-map"></div>
   </div>
 
   <div id="screen-imagelab" class="app-screen" hidden>
@@ -99,6 +103,7 @@
     </form>
   </div>
 
+  <script src="vendor/leaflet/leaflet.js"></script>
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>

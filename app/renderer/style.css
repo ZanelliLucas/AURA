@@ -532,3 +532,67 @@ body.estopped #conversation-panel {
 .pref-save:hover { border-color: #3fb950; color: #3fb950; }
 .pref-delete:hover { border-color: var(--red); color: var(--red); }
 #save-key:hover { background: var(--red-hover); }
+
+/* AURA WORLD (§9, §16.4) - carte 2D uniquement (F-18), plein cadre */
+.app-screen-map { padding: 0; }
+
+#world-map {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+}
+
+/* Habillage noir/rouge (F-17) par-dessus le fond OpenStreetMap (§9) :
+   inversion + rotation de teinte pour obtenir un rendu sombre, puis une
+   legere dominante rouge plutot que le bleu par defaut de ce procede. */
+#world-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(190deg) brightness(0.9) saturate(1.4) contrast(1.05);
+}
+#world-map .leaflet-control-attribution {
+  background: rgba(5, 5, 5, 0.75);
+  color: var(--dim);
+}
+#world-map .leaflet-control-attribution a { color: var(--dim); }
+#world-map .leaflet-control-zoom a {
+  background: rgba(5, 5, 5, 0.85);
+  color: var(--white);
+  border-color: rgba(245, 246, 247, 0.16);
+}
+#world-map .leaflet-control-zoom a:hover { background: var(--red-dim); color: var(--red); }
+
+.world-search {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  display: flex;
+  gap: 6px;
+  background: rgba(5, 5, 5, 0.9);
+  border: 1px solid rgba(245, 246, 247, 0.18);
+  border-radius: 20px;
+  padding: 6px 6px 6px 16px;
+  width: min(420px, 70vw);
+}
+.world-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--white);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+}
+.world-search input::placeholder { color: var(--dim); }
+.world-search button {
+  background: var(--red);
+  color: var(--white);
+  border: none;
+  border-radius: 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.world-search button:hover { background: var(--red-hover); }

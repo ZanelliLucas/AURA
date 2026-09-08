@@ -381,6 +381,10 @@ function showScreen(name) {
   });
   document.getElementById('panel-projects').classList.remove('open');
   if (name === 'memory') loadMemoryScreen();
+  if (name === 'world') {
+    initWorldMap();
+    requestAnimationFrame(() => worldMap && worldMap.invalidateSize());
+  }
 }
 
 function closeScreen() {
@@ -452,11 +456,63 @@ function wireMemoryScreen() {
   });
 }
 
+// --- AURA WORLD (§9, §16.4) -------------------------------------------
+// Carte 2D uniquement (F-18), vue mondiale par defaut (F-19), zoom vers
+// un lieu sur demande explicite (F-15) via la geocodification Nominatim
+// (service public OpenStreetMap, aucune cle requise). Initialisee au
+// premier affichage de l'ecran seulement (pas de chargement de tuiles
+// tant que l'utilisateur n'a pas ouvert la carte).
+let worldMap = null;
+
+function initWorldMap() {
+  if (worldMap) return;
+
+  worldMap = L.map('world-map', {
+    center: [20, 0],
+    zoom: 2,
+    minZoom: 2,
+    maxZoom: 18,
+    worldCopyJump: true
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+  }).addTo(worldMap);
+}
+
+async function worldSearch(query) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+  const res = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
+  if (!res.ok) throw new Error(`Service de recherche indisponible (${res.status}).`);
+  const results = await res.json();
+  if (!results.length) throw new Error('Lieu introuvable.');
+  const { lat, lon, display_name } = results[0];
+  worldMap.flyTo([parseFloat(lat), parseFloat(lon)], 10, { duration: 1.2 });
+  return display_name;
+}
+
+function wireWorldMap() {
+  document.getElementById('world-search').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('world-search-input');
+    const query = input.value.trim();
+    if (!query) return;
+    try {
+      const name = await worldSearch(query);
+      journal(`CARTE_ZOOM : ${name}`);
+    } catch (err) {
+      journal(`CARTE_ZOOM_ECHEC : ${err.message}`);
+    }
+  });
+}
+
 render();
 startClock();
 wirePanels();
 wireScreens();
 wireMemoryScreen();
+wireWorldMap();
 wireEmergencyStop();
 initConversation();
 setInterval(pulseRandomActivity, 2600);
