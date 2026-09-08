@@ -19,6 +19,24 @@ try {
 let mainWindow = null;
 let apiServer = null;
 
+// F-12/F-22 : une seule fenetre applicative a la fois. Plusieurs
+// instances concurrentes se disputent le meme dossier utilisateur (port
+// HTTP local, cache GPU Chromium) - source de conflits visibles (echecs
+// de creation du cache GPU) sans aucun benefice, AURA etant un
+// assistant personnel mono-fenetre par nature. La seconde instance
+// rend simplement la main a la premiere (focus) et se termine.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
