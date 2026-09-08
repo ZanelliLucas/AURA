@@ -73,27 +73,46 @@ function branchSamplePoints(branch) {
   return branch.points.slice(1, -1);
 }
 
-// Maillage fin entre points voisins issus de branches differentes : la
-// membrane connective qui relie les tendons entre eux, comme dans les
-// references (texture de plexus plutot que des rayons isoles).
+// Maillage entre points voisins issus de branches differentes : la
+// membrane connective qui tisse les tendons entre eux, comme dans les
+// references (texture de plexus dense plutot que des rayons isoles).
+// Chaque point rejoint ses K plus proches voisins (pas un seul) pour une
+// vraie densite de trame, avec un petit point lumineux a chaque noeud du
+// maillage - certains scintillant comme des paquets de donnees actifs.
 function buildMeshFilaments(points) {
   const group = el('g', { class: 'mesh-filaments' });
-  const MAX_DIST = 130;
-  for (let i = 0; i < points.length; i++) {
-    const a = points[i];
-    let best = null;
-    let bestDist = MAX_DIST;
-    for (let j = 0; j < points.length; j++) {
-      if (i === j) continue;
-      const b = points[j];
-      if (b.branch === a.branch) continue;
-      const d = Math.hypot(a.x - b.x, a.y - b.y);
-      if (d < bestDist) { bestDist = d; best = b; }
+  const nodeGroup = el('g', { class: 'mesh-nodes' });
+  const MAX_DIST = 170;
+  const K = 3;
+  const drawn = new Set();
+
+  points.forEach((a, i) => {
+    const distances = points
+      .map((b, j) => ({ b, j, d: Math.hypot(a.x - b.x, a.y - b.y) }))
+      .filter((e) => e.j !== i && e.b.branch !== a.branch && e.d < MAX_DIST)
+      .sort((e1, e2) => e1.d - e2.d)
+      .slice(0, K);
+
+    distances.forEach(({ b, j }) => {
+      const key = i < j ? `${i}-${j}` : `${j}-${i}`;
+      if (drawn.has(key)) return;
+      drawn.add(key);
+      group.appendChild(el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: 'mesh-filament' }));
+    });
+
+    const isFlare = seededUnit(i * 8.9 + 2) < 0.16;
+    const dot = el('circle', {
+      cx: a.x.toFixed(1), cy: a.y.toFixed(1), r: isFlare ? 1.6 : 0.9,
+      class: isFlare ? 'mesh-node mesh-node-flare' : 'mesh-node'
+    });
+    if (isFlare) {
+      dot.style.animationDelay = `${(seededUnit(i * 4.4) * 5).toFixed(2)}s`;
+      dot.style.animationDuration = `${(2 + seededUnit(i * 6.6) * 2.5).toFixed(2)}s`;
     }
-    if (best) {
-      group.appendChild(el('line', { x1: a.x, y1: a.y, x2: best.x, y2: best.y, class: 'mesh-filament' }));
-    }
-  }
+    nodeGroup.appendChild(dot);
+  });
+
+  group.appendChild(nodeGroup);
   return group;
 }
 
@@ -103,27 +122,39 @@ function buildMeshFilaments(points) {
 function buildBackgroundField() {
   const group = el('g', { class: 'bg-field' });
 
-  for (let i = 0; i < 110; i++) {
+  for (let i = 0; i < 220; i++) {
     const x = seededUnit(i * 3.17) * VIEW_W;
     const y = seededUnit(i * 7.73 + 1) * VIEW_H;
-    const r = 0.5 + seededUnit(i * 5.31) * 1.1;
+    const r = 0.4 + seededUnit(i * 5.31) * 1.1;
     const star = el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: r.toFixed(2), class: 'bg-star' });
     star.style.animationDelay = `${(seededUnit(i * 2.23) * 7).toFixed(2)}s`;
     star.style.animationDuration = `${(4 + seededUnit(i * 9.1) * 5).toFixed(2)}s`;
     group.appendChild(star);
   }
 
-  for (let i = 0; i < 10; i++) {
-    const margin = 90;
+  // Glyphes techniques disperses : coins de reticule, petits carres,
+  // croix de visee - ambiance "capteur/HUD" comme dans les references,
+  // sans jamais empieter sur le graphe (marge exclue autour du centre).
+  for (let i = 0; i < 26; i++) {
+    const margin = 60;
     const x = margin + seededUnit(i * 4.4 + 3) * (VIEW_W - margin * 2);
     const y = margin + seededUnit(i * 8.8 + 5) * (VIEW_H - margin * 2);
     const rotation = Math.floor(seededUnit(i * 1.7 + 9) * 4) * 90;
-    const size = 8 + seededUnit(i * 6.6) * 5;
+    const size = 6 + seededUnit(i * 6.6) * 7;
+    const variant = Math.floor(seededUnit(i * 2.9 + 11) * 3);
     const glyph = el('g', {
       class: 'bg-glyph',
       transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rotation})`
     });
-    glyph.appendChild(el('path', { d: `M 0 ${size.toFixed(1)} L 0 0 L ${size.toFixed(1)} 0` }));
+    if (variant === 0) {
+      glyph.appendChild(el('path', { d: `M 0 ${size.toFixed(1)} L 0 0 L ${size.toFixed(1)} 0` }));
+    } else if (variant === 1) {
+      glyph.appendChild(el('rect', { x: -size / 2, y: -size / 2, width: size, height: size }));
+    } else {
+      glyph.appendChild(el('line', { x1: -size / 2, y1: 0, x2: size / 2, y2: 0 }));
+      glyph.appendChild(el('line', { x1: 0, y1: -size / 2, x2: 0, y2: size / 2 }));
+      glyph.appendChild(el('circle', { cx: 0, cy: 0, r: size / 2, fill: 'none' }));
+    }
     group.appendChild(glyph);
   }
 

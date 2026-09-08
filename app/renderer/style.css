@@ -121,12 +121,21 @@ html, body {
   filter: drop-shadow(0 0 4px var(--red-glow));
 }
 
-/* Maillage fin entre branches voisines : la texture de plexus qui relie
-   les tendons entre eux, comme dans les references visuelles. */
+/* Maillage entre branches voisines : la texture de plexus qui tisse les
+   tendons entre eux, comme dans les references visuelles. */
 .mesh-filament {
-  stroke: rgba(245, 246, 247, 0.16);
+  stroke: rgba(245, 246, 247, 0.13);
   stroke-width: 0.6;
   pointer-events: none;
+}
+.mesh-node { fill: rgba(245, 246, 247, 0.35); pointer-events: none; }
+.mesh-node-flare {
+  fill: var(--white);
+  animation: mesh-flare 3s ease-in-out infinite;
+}
+@keyframes mesh-flare {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; filter: drop-shadow(0 0 3px rgba(245, 246, 247, 0.9)); }
 }
 
 /* Flux lumineux voyageant le long des branches, dans les deux sens - le
@@ -151,7 +160,7 @@ html, body {
   0%, 100% { opacity: 0.08; }
   50% { opacity: 0.32; }
 }
-.bg-glyph path {
+.bg-glyph path, .bg-glyph rect, .bg-glyph line, .bg-glyph circle {
   stroke: var(--line-dim);
   stroke-width: 1;
   fill: none;
