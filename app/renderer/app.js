@@ -117,9 +117,25 @@ function branchSegments(points, count) {
 
 // Second tendon, plus fin, qui serpente pres du principal sans le suivre
 // exactement - effet de fibres torsadees (cable/vigne) plutot qu'un
-// simple trait unique, comme dans les references.
+// simple trait unique, comme dans les references. Meme nombre de points
+// que la branche principale : les "barreaux" (buildCableRungs) relient
+// les points de meme rang entre les deux.
 function braidBranch(p0, p1, seed) {
-  return organicBranch(p0, p1, seed + 503, 5);
+  return organicBranch(p0, p1, seed + 503, 4);
+}
+
+// Petits barreaux entre la branche principale et son fil torsade, a
+// intervalles reguliers - la texture de cable/fibre croisee visible sur
+// les tendons des references, pas seulement deux traits paralleles.
+function buildCableRungs(branchPoints, braidPoints) {
+  const group = el('g', { class: 'cable-rungs' });
+  const count = Math.min(branchPoints.length, braidPoints.length);
+  for (let i = 1; i < count - 1; i++) {
+    const a = branchPoints[i];
+    const b = braidPoints[i];
+    group.appendChild(el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: 'cable-rung' }));
+  }
+  return group;
 }
 
 // Trame d'ambiance couvrant tout le canevas, independante de la
@@ -316,7 +332,9 @@ function render() {
   nodeList.forEach((p, i) => {
     const seed = i * 13.7 + 5;
     const dist = Math.hypot(p.x - CENTER.x, p.y - CENTER.y);
-    const branch = maybeAddLoop(organicBranch(CENTER, p, seed), seed, dist);
+    const base = organicBranch(CENTER, p, seed);
+    const branch = maybeAddLoop(base, seed, dist);
+    branch.basePoints = base.points;
     branches[p.id] = branch;
     branchSamplePoints(branch).forEach((pt) => samplePoints.push({ ...pt, branch: p.id }));
   });
@@ -343,6 +361,7 @@ function render() {
   // second fil torsade plus fin, puis le trait net par-dessus.
   const glowGroup = el('g', { class: 'branch-glow-layer' });
   const braidGroup = el('g', { class: 'branch-braid-layer' });
+  const rungGroup = el('g', { class: 'branch-rung-layer' });
   const trunkGroup = el('g', { class: 'branch-layer' });
   nodeList.forEach((p, i) => {
     const branch = branches[p.id];
@@ -351,9 +370,19 @@ function render() {
     });
     const braid = braidBranch(CENTER, p, i * 13.7 + 5);
     braidGroup.appendChild(el('path', { d: braid.d, class: 'link-braid' }));
+    rungGroup.appendChild(buildCableRungs(branch.basePoints, braid.points));
     trunkGroup.appendChild(el('path', { d: branch.d, id: `branch-${p.id}`, class: 'link', 'data-node': p.id }));
+
+    // Ganglions : quelques points plus gros et lumineux a meme la
+    // branche (pas seulement dans le maillage), comme les renflements
+    // visibles le long des tendons des references.
+    branch.basePoints.slice(1, -1).forEach((pt, gi) => {
+      if (seededUnit(i * 31 + gi * 7 + 61) > 0.45) return;
+      trunkGroup.appendChild(el('circle', { cx: pt.x.toFixed(1), cy: pt.y.toFixed(1), r: 2.2, class: 'branch-ganglion' }));
+    });
   });
   svg.appendChild(glowGroup);
+  svg.appendChild(rungGroup);
   svg.appendChild(braidGroup);
   svg.appendChild(trunkGroup);
 

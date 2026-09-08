@@ -127,6 +127,19 @@ html, body {
   fill: none;
   pointer-events: none;
 }
+/* Barreaux entre branche principale et fil torsade : texture de cable/
+   fibre croisee le long des tendons, comme sur les references. */
+.cable-rung {
+  stroke: rgba(245, 246, 247, 0.10);
+  stroke-width: 0.5;
+  pointer-events: none;
+}
+/* Ganglions : renflements lumineux a meme la branche. */
+.branch-ganglion {
+  fill: rgba(245, 246, 247, 0.55);
+  filter: drop-shadow(0 0 2px rgba(245, 246, 247, 0.5));
+  pointer-events: none;
+}
 .link { stroke: var(--line); stroke-width: 1.1; fill: none; transition: stroke 0.25s ease, stroke-width 0.25s ease; }
 .link-tool { stroke: var(--line-dim); stroke-width: 0.75; fill: none; }
 .link-relation { stroke: var(--red-dim); stroke-width: 1; fill: none; stroke-dasharray: 2 3; }
