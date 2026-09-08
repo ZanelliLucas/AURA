@@ -124,6 +124,14 @@ function braidBranch(p0, p1, seed) {
   return organicBranch(p0, p1, seed + 503, 4);
 }
 
+// Troisieme tendon torsade, de l'autre cote du principal - un cable a
+// trois brins plutot que deux traits paralleles, pour epaissir le
+// tendon et se rapprocher du faisceau de fibres visible sur les
+// references (les tendrils y sont clairement tisses de plusieurs fils).
+function braidBranch2(p0, p1, seed) {
+  return organicBranch(p0, p1, seed + 761, 4);
+}
+
 // Petits barreaux entre la branche principale et son fil torsade, a
 // intervalles reguliers - la texture de cable/fibre croisee visible sur
 // les tendons des references, pas seulement deux traits paralleles.
@@ -147,8 +155,8 @@ function buildCableRungs(branchPoints, braidPoints) {
 function buildMeshFilaments(points) {
   const group = el('g', { class: 'mesh-filaments' });
   const nodeGroup = el('g', { class: 'mesh-nodes' });
-  const MAX_DIST = 210;
-  const K = 4;
+  const MAX_DIST = 235;
+  const K = 5;
   const drawn = new Set();
 
   points.forEach((a, i) => {
@@ -334,10 +342,23 @@ function render() {
     const branch = maybeAddLoop(base, seed, dist);
     branch.basePoints = base.points;
     branch.braid = braidBranch(CENTER, p, seed);
+    branch.braid2 = braidBranch2(CENTER, p, seed);
     branches[p.id] = branch;
     branchSamplePoints(branch).forEach((pt) => samplePoints.push({ ...pt, branch: p.id }));
-    curveDust.push(...dustSource(branch.points), ...dustSource(branch.braid.points));
+    curveDust.push(...dustSource(branch.points), ...dustSource(branch.braid.points), ...dustSource(branch.braid2.points));
   });
+
+  // Halo nebuleux derriere le hub - la masse lumineuse diffuse au coeur
+  // du reseau, comme le coeur incandescent d'ou jaillissent les
+  // tendrilles dans les references, plutot qu'un point net isole.
+  const defs = el('defs', {});
+  const gradient = el('radialGradient', { id: 'hub-core-gradient' });
+  gradient.appendChild(el('stop', { offset: '0%', 'stop-color': 'rgba(165, 23, 6, 0.5)' }));
+  gradient.appendChild(el('stop', { offset: '55%', 'stop-color': 'rgba(165, 23, 6, 0.16)' }));
+  gradient.appendChild(el('stop', { offset: '100%', 'stop-color': 'rgba(165, 23, 6, 0)' }));
+  defs.appendChild(gradient);
+  svg.appendChild(defs);
+  svg.appendChild(el('circle', { cx: CENTER.x, cy: CENTER.y, r: 150, class: 'hub-core-glow' }));
 
   svg.appendChild(buildBackgroundField(curveDust));
   svg.appendChild(buildMeshFilaments(samplePoints));
@@ -371,16 +392,30 @@ function render() {
       glowGroup.appendChild(el('path', { d: catmullRomPath(seg), class: `link-glow link-glow-${si}` }));
     });
     const braid = branch.braid;
+    const braid2 = branch.braid2;
     braidGroup.appendChild(el('path', { d: braid.d, class: 'link-braid' }));
+    braidGroup.appendChild(el('path', { d: braid2.d, class: 'link-braid' }));
     rungGroup.appendChild(buildCableRungs(branch.basePoints, braid.points));
+    rungGroup.appendChild(buildCableRungs(branch.basePoints, braid2.points));
     trunkGroup.appendChild(el('path', { d: branch.d, id: `branch-${p.id}`, class: 'link', 'data-node': p.id }));
 
     // Ganglions : quelques points plus gros et lumineux a meme la
     // branche (pas seulement dans le maillage), comme les renflements
-    // visibles le long des tendons des references.
+    // visibles le long des tendons des references. Une partie d'entre
+    // eux, plus rares, sont de veritables points chauds (plus gros,
+    // pulsants) comme les eclats blancs intenses visibles sur les
+    // tendrilles des references, pas seulement une lueur uniforme.
     branch.basePoints.slice(1, -1).forEach((pt, gi) => {
       if (seededUnit(i * 31 + gi * 7 + 61) > 0.45) return;
-      trunkGroup.appendChild(el('circle', { cx: pt.x.toFixed(1), cy: pt.y.toFixed(1), r: 2.2, class: 'branch-ganglion' }));
+      const isHot = seededUnit(i * 17 + gi * 11 + 233) < 0.22;
+      const ganglion = el('circle', {
+        cx: pt.x.toFixed(1), cy: pt.y.toFixed(1), r: isHot ? 3.4 : 2.2,
+        class: isHot ? 'branch-ganglion branch-ganglion-hot' : 'branch-ganglion'
+      });
+      if (isHot) {
+        ganglion.style.animationDelay = `${(seededUnit(i * 4.1 + gi) * 4).toFixed(2)}s`;
+      }
+      trunkGroup.appendChild(ganglion);
     });
   });
   svg.appendChild(glowGroup);

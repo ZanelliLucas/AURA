@@ -87,6 +87,11 @@ html, body {
 .node-tool { fill: var(--dim); }
 .node-hub { fill: var(--white); }
 
+.hub-core-glow {
+  fill: url(#hub-core-gradient);
+  pointer-events: none;
+}
+
 .node-hub-ring {
   fill: none;
   stroke: var(--red-dim);
@@ -108,11 +113,11 @@ html, body {
 .link-glow {
   fill: none;
   pointer-events: none;
-  filter: blur(3px);
+  filter: blur(4px);
 }
-.link-glow-0 { stroke: var(--red-dim); stroke-width: 11; opacity: 0.30; }
-.link-glow-1 { stroke: var(--red-dim); stroke-width: 6.5; opacity: 0.22; }
-.link-glow-2 { stroke: var(--red-dim); stroke-width: 3.5; opacity: 0.14; }
+.link-glow-0 { stroke: var(--red-dim); stroke-width: 13; opacity: 0.32; }
+.link-glow-1 { stroke: var(--red-dim); stroke-width: 7.5; opacity: 0.24; }
+.link-glow-2 { stroke: var(--red-dim); stroke-width: 4; opacity: 0.16; }
 .link-braid {
   stroke: rgba(245, 246, 247, 0.24);
   stroke-width: 0.6;
@@ -126,17 +131,29 @@ html, body {
   stroke-width: 0.5;
   pointer-events: none;
 }
-/* Ganglions : renflements lumineux a meme la branche. */
+/* Ganglions : renflements lumineux a meme la branche. Une partie
+   ("chauds") est nettement plus intense et pulse doucement, comme les
+   points blancs incandescents visibles le long des tendrilles des
+   references, plutot qu'une lueur uniforme partout. */
 .branch-ganglion {
   fill: rgba(245, 246, 247, 0.85);
   filter: drop-shadow(0 0 3px rgba(245, 246, 247, 0.75));
   pointer-events: none;
 }
+.branch-ganglion-hot {
+  fill: var(--white);
+  filter: drop-shadow(0 0 6px rgba(245, 246, 247, 0.95));
+  animation: ganglion-hot-pulse 3.4s ease-in-out infinite;
+}
+@keyframes ganglion-hot-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; filter: drop-shadow(0 0 9px rgba(245, 246, 247, 1)); }
+}
 .link {
   stroke: rgba(245, 246, 247, 0.55);
   stroke-width: 1.1;
   fill: none;
-  filter: drop-shadow(0 0 1.5px rgba(245, 246, 247, 0.3));
+  filter: drop-shadow(0 0 2px rgba(245, 246, 247, 0.4));
   transition: stroke 0.25s ease, stroke-width 0.25s ease;
 }
 .link-tool { stroke: rgba(245, 246, 247, 0.22); stroke-width: 0.85; fill: none; }
