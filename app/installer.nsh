@@ -3,6 +3,14 @@
 ; par electron-builder). Permet a `aura` d'etre reconnu depuis n'importe
 ; quel terminal une fois l'app installee (F-12), sans code source ni
 ; Node.js sur la machine cible.
+;
+; Installe aussi un lanceur PowerShell personnel "launched AURA" (meme
+; principe F-12/F-22 : rien de visible - pas de raccourci - tant que
+; cette commande n'a pas ete tapee dans un terminal). La fonction elle-
+; meme vit dans $INSTDIR\launched-profile.ps1 (supprimee automatiquement
+; a la desinstallation, puisque tout $INSTDIR l'est) ; le profil
+; PowerShell de l'utilisateur ne recoit qu'une seule ligne d'inclusion
+; (dot-source), facile a ajouter sans doublon et a retirer proprement.
 
 !include "LogicLib.nsh"
 
@@ -20,6 +28,56 @@
     ${EndIf}
   ${EndIf}
   SendMessage 0xFFFF 0x1A 0 "STR:Environment" /TIMEOUT=5000
+
+  ; --- Lanceur "launched AURA" -----------------------------------------
+  FileOpen $0 "$INSTDIR\launched-profile.ps1" w
+  FileWrite $0 "# AURA - lanceur personnel (F-12/F-22), genere par l'installateur.$\r$\n"
+  FileWrite $0 "function launched {$\r$\n"
+  FileWrite $0 "    param([string]$$App)$\r$\n"
+  FileWrite $0 "    if ($$App -ieq 'AURA') {$\r$\n"
+  FileWrite $0 "        $$psi = New-Object System.Diagnostics.ProcessStartInfo$\r$\n"
+  FileWrite $0 "        $$psi.FileName = '$INSTDIR\aura.exe'$\r$\n"
+  FileWrite $0 "        $$psi.UseShellExecute = $$true$\r$\n"
+  FileWrite $0 "        [System.Diagnostics.Process]::Start($$psi) | Out-Null$\r$\n"
+  FileWrite $0 "        exit$\r$\n"
+  FileWrite $0 "    } else {$\r$\n"
+  FileWrite $0 "        Write-Host 'Usage : launched AURA'$\r$\n"
+  FileWrite $0 "    }$\r$\n"
+  FileWrite $0 "}$\r$\n"
+  FileClose $0
+
+  CreateDirectory "$DOCUMENTS\WindowsPowerShell"
+  StrCpy $1 "$DOCUMENTS\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
+  StrCpy $2 '. "$INSTDIR\launched-profile.ps1"'
+
+  ; N'ajoute la ligne d'inclusion que si elle n'y est pas deja (evite les
+  ; doublons en cas de reinstallation/mise a jour).
+  ClearErrors
+  FileOpen $3 "$1" r
+  ${If} ${Errors}
+    FileOpen $3 "$1" w
+    FileWrite $3 "$2$\r$\n"
+    FileClose $3
+  ${Else}
+    StrCpy $4 "0"
+    loopReadProfileInstall:
+      FileRead $3 $5
+      IfErrors doneReadProfileInstall
+      StrCmp $5 "$2$\r$\n" foundLineInstall
+      StrCmp $5 "$2$\n" foundLineInstall
+      Goto loopReadProfileInstall
+      foundLineInstall:
+        StrCpy $4 "1"
+      Goto loopReadProfileInstall
+    doneReadProfileInstall:
+    FileClose $3
+    ${If} $4 == "0"
+      FileOpen $3 "$1" a
+      FileSeek $3 0 END
+      FileWrite $3 "$2$\r$\n"
+      FileClose $3
+    ${EndIf}
+  ${EndIf}
 !macroend
 
 !macro customUnInstall
@@ -50,6 +108,32 @@
     ${EndIf}
   ${EndIf}
   SendMessage 0xFFFF 0x1A 0 "STR:Environment" /TIMEOUT=5000
+
+  ; --- Retrait de la ligne d'inclusion du lanceur "launched AURA" ------
+  ; launched-profile.ps1 disparait de lui-meme avec $INSTDIR : seule la
+  ; ligne d'inclusion, ajoutee dans le profil de l'utilisateur, doit
+  ; etre retiree explicitement ici.
+  StrCpy $0 "$DOCUMENTS\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
+  StrCpy $1 '. "$INSTDIR\launched-profile.ps1"'
+  ClearErrors
+  FileOpen $2 "$0" r
+  ${IfNot} ${Errors}
+    FileOpen $3 "$0.aura-tmp" w
+    loopUninstallProfile:
+      FileRead $2 $4
+      IfErrors doneUninstallProfile
+      StrCmp $4 "$1$\r$\n" skipLineUn
+      StrCmp $4 "$1$\n" skipLineUn
+      FileWrite $3 "$4"
+      Goto loopUninstallProfile
+      skipLineUn:
+      Goto loopUninstallProfile
+    doneUninstallProfile:
+    FileClose $2
+    FileClose $3
+    Delete "$0"
+    Rename "$0.aura-tmp" "$0"
+  ${EndIf}
 !macroend
 
 ; StrStr classique (domaine public, wiki NSIS) : renvoie la sous-chaine de
