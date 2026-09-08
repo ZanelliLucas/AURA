@@ -39,8 +39,8 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
-  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
-    console.log(`[renderer] ${message} (${sourceId}:${line})`);
+  mainWindow.webContents.on('console-message', (event) => {
+    console.log(`[renderer] ${event.message} (${event.sourceId}:${event.lineNumber})`);
   });
 
   mainWindow.on('closed', () => {
