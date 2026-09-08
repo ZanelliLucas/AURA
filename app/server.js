@@ -8,6 +8,7 @@ const express = require('express');
 const core = require('./core');
 const store = require('./store');
 const gaming = require('./gaming');
+const productivity = require('./productivity');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -150,6 +151,53 @@ function startServer() {
     } catch (err) {
       res.status(400).json({ error: err.message });
     }
+  });
+
+  // Connecteur Productivite (§7)
+  server.get('/api/tasks', (req, res) => {
+    res.json(productivity.getTasks());
+  });
+
+  server.post('/api/tasks', (req, res) => {
+    try {
+      res.json(productivity.taskCreate(req.body));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/tasks/:id/complete', (req, res) => {
+    try {
+      res.json(productivity.taskComplete(req.params.id));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.delete('/api/tasks/:id', (req, res) => {
+    res.json(productivity.taskDelete(req.params.id));
+  });
+
+  server.get('/api/reminders', (req, res) => {
+    res.json(productivity.getReminders());
+  });
+
+  server.post('/api/reminders', (req, res) => {
+    try {
+      res.json(productivity.reminderSchedule(req.body));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.delete('/api/reminders/:id', (req, res) => {
+    res.json(productivity.reminderDelete(req.params.id));
+  });
+
+  // Verifie a interval regulier (main.js) plutot qu'a chaque poll du
+  // renderer : evite de manquer une echeance si aucun ecran ne l'affiche.
+  server.get('/api/reminders/due', (req, res) => {
+    res.json(productivity.checkDueReminders());
   });
 
   return new Promise((resolve, reject) => {

@@ -799,3 +799,34 @@ body.estopped #conversation-panel {
 
 #obs-actions, #obs-controls { margin-top: 6px; }
 #obs-actions .module-link, #obs-controls .module-link { width: auto; display: inline-block; margin-right: 8px; }
+
+/* Taches & rappels (§7, panneau Projets) */
+#tasks-list, #reminders-list { margin-bottom: 10px; max-height: 160px; overflow-y: auto; }
+.task-row, .reminder-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(245, 246, 247, 0.08);
+  font-size: 12px;
+}
+.task-row input[type="checkbox"] { accent-color: var(--red); flex-shrink: 0; }
+.task-title { flex: 1; }
+.task-row.completed .task-title { text-decoration: line-through; color: var(--dim); }
+.task-due { color: var(--dim); font-size: 10px; }
+.task-priority-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.task-priority-dot.haute { background: var(--red); box-shadow: 0 0 4px var(--red-glow); }
+.task-priority-dot.moyenne { background: #d9a441; }
+.task-priority-dot.basse { background: var(--dim); }
+.row-delete {
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.row-delete:hover { color: var(--red); }
+
+#panel-projects .inline-form { margin-bottom: 16px; }
+#panel-projects .inline-form input, #panel-projects .inline-form select { font-size: 11px; padding: 5px 6px; }

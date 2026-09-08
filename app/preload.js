@@ -54,5 +54,14 @@ contextBridge.exposeInMainWorld('aura', {
   obsScenes: () => getJson('/api/streaming/obs/scenes'),
   obsSwitchScene: (sceneName) => postJson('/api/streaming/obs/scene', { sceneName }),
   obsUpdateOverlay: (sourceName, text) => postJson('/api/streaming/obs/overlay', { sourceName, text }),
-  obsStartStream: () => postJson('/api/streaming/obs/start')
+  obsStartStream: () => postJson('/api/streaming/obs/start'),
+
+  getTasks: () => getJson('/api/tasks'),
+  createTask: (task) => postJson('/api/tasks', task),
+  completeTask: (id) => postJson(`/api/tasks/${encodeURIComponent(id)}/complete`),
+  deleteTask: (id) => delJson(`/api/tasks/${encodeURIComponent(id)}`),
+  getReminders: () => getJson('/api/reminders'),
+  createReminder: (reminder) => postJson('/api/reminders', reminder),
+  deleteReminder: (id) => delJson(`/api/reminders/${encodeURIComponent(id)}`),
+  checkDueReminders: () => getJson('/api/reminders/due')
 });

@@ -33,6 +33,7 @@
       "store.js",
       "router.js",
       "gaming.js",
+      "productivity.js",
       "connectors/**/*",
       "providers/**/*",
       "renderer/**/*",

@@ -903,6 +903,138 @@ function wireGamingScreen() {
   });
 }
 
+// --- Connecteur Productivite (§7) -------------------------------------
+// task.create / task.complete / reminder.schedule. Les rappels ne sont
+// verifies que pendant qu'une session AURA est ouverte (F-22, §5.9) -
+// aucune surveillance hors session.
+
+function renderTasks(tasks) {
+  const list = document.getElementById('tasks-list');
+  const active = tasks.filter((t) => t.status !== 'completed');
+  const completed = tasks.filter((t) => t.status === 'completed');
+  const ordered = [...active, ...completed];
+  if (!ordered.length) { list.textContent = 'Aucune tâche.'; return; }
+  list.innerHTML = '';
+  ordered.forEach((task) => {
+    const row = document.createElement('div');
+    row.className = `task-row ${task.status === 'completed' ? 'completed' : ''}`;
+    row.innerHTML = `
+      <input type="checkbox" ${task.status === 'completed' ? 'checked disabled' : ''}>
+      <span class="task-priority-dot ${task.priority}"></span>
+      <span class="task-title">${task.title}</span>
+      ${task.dueDate ? `<span class="task-due">${task.dueDate}</span>` : ''}
+      <button type="button" class="row-delete" title="Supprimer">✕</button>
+    `;
+    if (task.status !== 'completed') {
+      row.querySelector('input[type="checkbox"]').addEventListener('change', async () => {
+        try {
+          await window.aura.completeTask(task.id);
+          journal(`TACHE_TERMINEE : ${task.title}`);
+          loadTasks();
+        } catch (err) {
+          journal(`TACHE_ECHEC : ${err.message}`);
+        }
+      });
+    }
+    row.querySelector('.row-delete').addEventListener('click', async () => {
+      await window.aura.deleteTask(task.id);
+      loadTasks();
+    });
+    list.appendChild(row);
+  });
+}
+
+async function loadTasks() {
+  try {
+    renderTasks(await window.aura.getTasks());
+  } catch {
+    document.getElementById('tasks-list').textContent = 'Tâches indisponibles.';
+  }
+}
+
+function renderReminders(reminders) {
+  const list = document.getElementById('reminders-list');
+  const active = reminders.filter((r) => r.active);
+  if (!active.length) { list.textContent = 'Aucun rappel.'; return; }
+  list.innerHTML = '';
+  active
+    .sort((a, b) => new Date(a.at) - new Date(b.at))
+    .forEach((reminder) => {
+      const row = document.createElement('div');
+      row.className = 'reminder-row';
+      const when = new Date(reminder.at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+      const recur = reminder.recurring === 'daily' ? ' ↻ jour' : reminder.recurring === 'weekly' ? ' ↻ semaine' : '';
+      row.innerHTML = `
+        <span class="task-title">${reminder.text}</span>
+        <span class="task-due">${when}${recur}</span>
+        <button type="button" class="row-delete" title="Supprimer">✕</button>
+      `;
+      row.querySelector('.row-delete').addEventListener('click', async () => {
+        await window.aura.deleteReminder(reminder.id);
+        loadReminders();
+      });
+      list.appendChild(row);
+    });
+}
+
+async function loadReminders() {
+  try {
+    renderReminders(await window.aura.getReminders());
+  } catch {
+    document.getElementById('reminders-list').textContent = 'Rappels indisponibles.';
+  }
+}
+
+async function checkDueReminders() {
+  try {
+    const fired = await window.aura.checkDueReminders();
+    fired.forEach((reminder) => {
+      if (!reminder) return;
+      try { new Notification('AURA — Rappel', { body: reminder.text }); } catch { /* notifications indisponibles */ }
+      journal(`RAPPEL_DECLENCHE : ${reminder.text}`);
+    });
+    if (fired.length) loadReminders();
+  } catch {
+    // API locale indisponible - reessaiera au prochain intervalle
+  }
+}
+
+function wireProductivity() {
+  document.getElementById('task-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('task-title').value.trim();
+    if (!title) return;
+    const dueDate = document.getElementById('task-due').value || null;
+    const priority = document.getElementById('task-priority').value;
+    try {
+      await window.aura.createTask({ title, dueDate, priority });
+      document.getElementById('task-title').value = '';
+      document.getElementById('task-due').value = '';
+      journal(`TACHE_CREEE : ${title}`);
+      loadTasks();
+    } catch (err) {
+      journal(`TACHE_CREATION_ECHEC : ${err.message}`);
+    }
+  });
+
+  document.getElementById('reminder-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = document.getElementById('reminder-text').value.trim();
+    const at = document.getElementById('reminder-at').value;
+    const recurring = document.getElementById('reminder-recurring').value || null;
+    if (!text || !at) return;
+    try {
+      await window.aura.createReminder({ text, at: new Date(at).toISOString(), recurring });
+      document.getElementById('reminder-text').value = '';
+      document.getElementById('reminder-at').value = '';
+      journal(`RAPPEL_PROGRAMME : ${text}`);
+      loadReminders();
+    } catch (err) {
+      journal(`RAPPEL_CREATION_ECHEC : ${err.message}`);
+    }
+  });
+}
+
 render();
 startClock();
 wirePanels();
@@ -911,6 +1043,10 @@ wireMemoryScreen();
 wireWorldMap();
 wireImageLab();
 wireGamingScreen();
+wireProductivity();
 wireEmergencyStop();
 initConversation();
+loadTasks();
+loadReminders();
 setInterval(pulseRandomActivity, 2600);
+setInterval(checkDueReminders, 30000);

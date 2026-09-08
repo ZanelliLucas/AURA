@@ -72,6 +72,88 @@ function appendInteraction(role, content) {
   return trimmed;
 }
 
+// --- Taches (§12.2 Task, connecteur Productivite §7) ----------------
+
+function getTasks() {
+  return readJson('tasks.json', []);
+}
+
+function createTask({ title, dueDate, priority }) {
+  const tasks = getTasks();
+  const task = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    title,
+    dueDate: dueDate || null,
+    priority: priority || 'moyenne',
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    completedAt: null
+  };
+  tasks.push(task);
+  writeJson('tasks.json', tasks);
+  return task;
+}
+
+function completeTask(id) {
+  const tasks = getTasks();
+  const task = tasks.find((t) => t.id === id);
+  if (!task) throw new Error('Tâche introuvable.');
+  task.status = 'completed';
+  task.completedAt = new Date().toISOString();
+  writeJson('tasks.json', tasks);
+  return task;
+}
+
+function deleteTask(id) {
+  const tasks = getTasks().filter((t) => t.id !== id);
+  writeJson('tasks.json', tasks);
+  return tasks;
+}
+
+// --- Rappels (connecteur Productivite §7 : reminder.schedule) -------
+
+function getReminders() {
+  return readJson('reminders.json', []);
+}
+
+function createReminder({ text, at, recurring }) {
+  const reminders = getReminders();
+  const reminder = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    text,
+    at,
+    recurring: recurring || null,
+    active: true,
+    createdAt: new Date().toISOString(),
+    lastFiredAt: null
+  };
+  reminders.push(reminder);
+  writeJson('reminders.json', reminders);
+  return reminder;
+}
+
+function markReminderFired(id) {
+  const reminders = getReminders();
+  const reminder = reminders.find((r) => r.id === id);
+  if (!reminder) return null;
+  reminder.lastFiredAt = new Date().toISOString();
+  if (reminder.recurring === 'daily') {
+    reminder.at = new Date(new Date(reminder.at).getTime() + 24 * 60 * 60 * 1000).toISOString();
+  } else if (reminder.recurring === 'weekly') {
+    reminder.at = new Date(new Date(reminder.at).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  } else {
+    reminder.active = false;
+  }
+  writeJson('reminders.json', reminders);
+  return reminder;
+}
+
+function deleteReminder(id) {
+  const reminders = getReminders().filter((r) => r.id !== id);
+  writeJson('reminders.json', reminders);
+  return reminders;
+}
+
 // --- Journal d'actions (§12.3 actions_log, §5.9) --------------------
 
 function getJournal(limit = 50) {
@@ -98,6 +180,14 @@ module.exports = {
   clearPreferences,
   getInteractions,
   appendInteraction,
+  getTasks,
+  createTask,
+  completeTask,
+  deleteTask,
+  getReminders,
+  createReminder,
+  markReminderFired,
+  deleteReminder,
   getJournal,
   logAction
 };
