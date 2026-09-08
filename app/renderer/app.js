@@ -39,16 +39,9 @@ function render() {
   nodeList.forEach((p) => {
     const group = el('g', { class: 'node-group', 'data-node': p.id });
 
-    const circle = el('circle', {
-      cx: p.x, cy: p.y, r: p.kind === 'core' ? 8 : 7,
-      class: p.kind === 'core' ? 'node-core' : 'node-agent'
-    });
-    group.appendChild(circle);
-
-    const dx = Math.cos(p.angle) >= 0 ? 12 : -12;
     const label = el('text', {
-      x: p.x + dx, y: p.y + 4,
-      class: 'label', 'text-anchor': Math.cos(p.angle) >= 0 ? 'start' : 'end'
+      x: p.x, y: p.y + 4,
+      class: 'label', 'text-anchor': 'middle'
     });
     label.textContent = p.label;
     group.appendChild(label);
@@ -61,7 +54,6 @@ function render() {
 
   // Hub central
   const hub = el('g', { class: 'node-group', 'data-node': '__hub' });
-  hub.appendChild(el('circle', { cx: CENTER.x, cy: CENTER.y, r: 46, class: 'node-hub' }));
   const hubLabel = el('text', {
     x: CENTER.x, y: CENTER.y + 5, class: 'label-hub', 'text-anchor': 'middle'
   });
