@@ -3,8 +3,18 @@ const GRAPH_NODES = window.AURA_GRAPH.NODES;
 const GRAPH_RELATIONS = window.AURA_GRAPH.RELATIONS;
 
 const CENTER = { x: 800, y: 500 };
-const R_PRINCIPAL = 260;
-const R_TOOL = 95;
+// Rayons distincts en X et Y : un cercle de rayon uniforme dans un
+// viewBox large (1.6:1) ne peut remplir la hauteur (deja ~84% avec
+// R_PRINCIPAL=260) sans laisser d'enormes marges vides a gauche/droite
+// - etirer le SVG en non-uniforme distordrait tous les cercles
+// (noeuds, hub). La disposition elle-meme est donc ovale (rayon X trois
+// fois plus generereux que le rayon Y) pour occuper toute la largeur
+// disponible sans aucune distorsion, comme l'etalement nettement plus
+// large que haut des tendrilles de la premiere reference.
+const R_PRINCIPAL_X = 390;
+const R_PRINCIPAL_Y = 260;
+const R_TOOL_X = 190;
+const R_TOOL_Y = 95;
 const VIEW_W = 1600;
 const VIEW_H = 1000;
 
@@ -296,9 +306,9 @@ function layout() {
 
   GRAPH_NODES.forEach((node, i) => {
     const angle = i * step + seededOffset(i, 0.06);
-    const radius = R_PRINCIPAL + seededOffset(i + 50, 24);
-    const x = CENTER.x + Math.cos(angle) * radius;
-    const y = CENTER.y + Math.sin(angle) * radius;
+    const jitter = seededOffset(i + 50, 24);
+    const x = CENTER.x + Math.cos(angle) * (R_PRINCIPAL_X + jitter);
+    const y = CENTER.y + Math.sin(angle) * (R_PRINCIPAL_Y + jitter);
     positioned[node.id] = { ...node, x, y, angle };
   });
 
@@ -307,11 +317,11 @@ function layout() {
     const toolSpread = 0.5;
     p.toolPositions = node.tools.map((label, i) => {
       const localAngle = p.angle + (i - (node.tools.length - 1) / 2) * (toolSpread / Math.max(node.tools.length - 1, 1));
-      const radius = R_PRINCIPAL + R_TOOL + seededOffset(i * 7 + p.angle * 100, 18);
+      const jitter = seededOffset(i * 7 + p.angle * 100, 18);
       return {
         label,
-        x: CENTER.x + Math.cos(localAngle) * radius,
-        y: CENTER.y + Math.sin(localAngle) * radius
+        x: CENTER.x + Math.cos(localAngle) * (R_PRINCIPAL_X + R_TOOL_X + jitter),
+        y: CENTER.y + Math.sin(localAngle) * (R_PRINCIPAL_Y + R_TOOL_Y + jitter)
       };
     });
   });
