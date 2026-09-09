@@ -88,48 +88,6 @@ html, body {
 
 .node-group { cursor: pointer; }
 
-/* Noyau central - AURA elle-meme (§13.3, F-21). */
-.nucleus { cursor: default; }
-
-.nucleus-core {
-  fill: var(--red);
-  filter: drop-shadow(0 0 18px var(--red-glow));
-  animation: nucleus-breathe 4s ease-in-out infinite;
-}
-
-.nucleus-ring {
-  fill: none;
-  stroke: var(--line);
-  stroke-width: 1.5;
-  stroke-dasharray: 4 10;
-  transform-origin: 800px 500px;
-  animation: nucleus-rotate 40s linear infinite;
-}
-
-.nucleus-halo {
-  animation: nucleus-halo-pulse 4s ease-in-out infinite;
-}
-
-.nucleus-label {
-  fill: var(--dim);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 13px;
-  letter-spacing: 6px;
-}
-
-@keyframes nucleus-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.06); }
-}
-@keyframes nucleus-halo-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-}
-@keyframes nucleus-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
 /* Panneaux retractables (F-21 / §16.1) */
 .edge-tab {
   position: fixed;
