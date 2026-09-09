@@ -104,10 +104,31 @@ function formatJournalMessage(entry) {
   return label;
 }
 
+// Filtre d'affichage du flux (§12.3) : "tous" | "execute" | "echoue".
+// Purement cote client - ne refait pas d'appel reseau, filtre la
+// derniere page recuperee.
+let journalEntriesCache = [];
+let journalFilter = 'tous';
+
+const JOURNAL_EMPTY_LABELS = {
+  tous: 'Aucune action enregistrée pour l’instant.',
+  execute: 'Aucun succès enregistré pour l’instant.',
+  echoue: 'Aucune erreur enregistrée pour l’instant.'
+};
+
 function renderJournal(entries) {
+  journalEntriesCache = entries;
+  renderJournalFiltered();
+}
+
+function renderJournalFiltered() {
   const list = document.getElementById('journal-list');
+  const entries = journalFilter === 'tous'
+    ? journalEntriesCache
+    : journalEntriesCache.filter((entry) => entry.statut === journalFilter);
+
   if (!entries.length) {
-    list.textContent = 'Aucune action enregistrée pour l’instant.';
+    list.textContent = JOURNAL_EMPTY_LABELS[journalFilter];
     return;
   }
   list.innerHTML = '';
@@ -118,6 +139,20 @@ function renderJournal(entries) {
     const label = STATUT_LABELS[entry.statut] || entry.statut;
     div.innerHTML = `<div class="journal-time">${time} · ${label}</div>${formatJournalMessage(entry)}`;
     list.appendChild(div);
+  });
+}
+
+function setJournalFilter(filter) {
+  journalFilter = filter;
+  document.querySelectorAll('#journal-filters .filter-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+  renderJournalFiltered();
+}
+
+function wireJournalFilters() {
+  document.querySelectorAll('#journal-filters .filter-btn').forEach((btn) => {
+    btn.addEventListener('click', () => setJournalFilter(btn.dataset.filter));
   });
 }
 
@@ -468,6 +503,7 @@ function wireProductivity() {
 render();
 startClock();
 wirePanels();
+wireJournalFilters();
 wireProductivity();
 wireEmergencyStop();
 initConversation();

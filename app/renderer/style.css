@@ -160,11 +160,31 @@ html, body {
 .edge-tab-left:has(+ .side-panel.open) { transform: translateY(-50%) translateX(280px); }
 .edge-tab-right:has(+ .side-panel.open) { transform: translateY(-50%) translateX(-280px); }
 
+.filter-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.filter-btn {
+  background: none;
+  border: 1px solid rgba(245, 246, 247, 0.16);
+  border-radius: 6px;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.filter-btn:hover { color: var(--white); }
+.filter-btn.active { color: var(--white); border-color: var(--red-mid); }
+
 #journal-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: calc(100vh - 190px);
+  max-height: calc(100vh - 230px);
   overflow-y: auto;
   margin-bottom: 16px;
 }
