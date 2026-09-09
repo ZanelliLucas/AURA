@@ -33,6 +33,7 @@ function layout() {
 function render() {
   const svg = document.getElementById('web');
   svg.innerHTML = '';
+  svg.appendChild(buildDefs());
   const positioned = layout();
   const nodeList = Object.values(positioned);
 
@@ -45,9 +46,45 @@ function render() {
     svg.appendChild(group);
   });
 
-  // Hub central
-  const hub = el('g', { class: 'node-group', 'data-node': '__hub' });
-  svg.appendChild(hub);
+  svg.appendChild(buildNucleus());
+}
+
+// Degrade radial utilise pour le halo du noyau - un fondu doux plutot
+// qu'un disque a bord net.
+function buildDefs() {
+  const defs = el('defs', {});
+  const gradient = el('radialGradient', { id: 'nucleus-glow' });
+  gradient.appendChild(el('stop', { offset: '0%', 'stop-color': 'var(--red)', 'stop-opacity': '0.35' }));
+  gradient.appendChild(el('stop', { offset: '100%', 'stop-color': 'var(--red)', 'stop-opacity': '0' }));
+  defs.appendChild(gradient);
+  return defs;
+}
+
+// Noyau central : AURA elle-meme, coeur de la toile (§13.3, F-21). Halo
+// respirant + anneau rotatif en pointilles + coeur plein, dans l'esprit
+// des badges HUD circulaires deja etablis pour le reste de l'identite
+// visuelle. Aucun agent ne s'accroche encore autour - seul le noyau
+// pour l'instant, le reste se reconstruit par-dessus ensuite.
+function buildNucleus() {
+  const hub = el('g', { class: 'node-group nucleus', 'data-node': '__hub' });
+  const { x, y } = CENTER;
+
+  hub.appendChild(el('circle', {
+    class: 'nucleus-halo', cx: x, cy: y, r: 130, fill: 'url(#nucleus-glow)'
+  }));
+  hub.appendChild(el('circle', {
+    class: 'nucleus-ring', cx: x, cy: y, r: 66
+  }));
+  hub.appendChild(el('circle', {
+    class: 'nucleus-core', cx: x, cy: y, r: 42
+  }));
+  const label = el('text', {
+    class: 'nucleus-label', x, y: y + 96, 'text-anchor': 'middle'
+  });
+  label.textContent = 'AURA';
+  hub.appendChild(label);
+
+  return hub;
 }
 
 function setActive(nodeId, active) {
