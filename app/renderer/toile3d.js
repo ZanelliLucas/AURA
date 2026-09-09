@@ -15,7 +15,9 @@
 // scene qu'on peut faire pivoter a la souris - avant d'ajouter les Somas et
 // leurs liaisons par-dessus.
 (function () {
-  const ROUGE = 0xe5261a;
+  // Blanc de l'identite AURA (--white, style.css) plutot qu'un blanc pur -
+  // coeur lumineux neutre, distinct du rouge reserve aux accents/alertes.
+  const BLANC = 0xf5f6f7;
 
   const canvas = document.getElementById('web');
 
@@ -36,33 +38,106 @@
 
   // Texture radiale generee en canvas 2D pour un halo au fondu doux plutot
   // qu'un disque a bord net (meme logique que l'ancien halo SVG).
-  function texteurHalo(couleur) {
+  function texteurRadiale(couleur, alphaCentre) {
     const c = document.createElement('canvas');
     c.width = c.height = 128;
     const g = c.getContext('2d');
     const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grad.addColorStop(0, couleur.replace('ALPHA', '0.55'));
+    grad.addColorStop(0, couleur.replace('ALPHA', String(alphaCentre)));
     grad.addColorStop(1, couleur.replace('ALPHA', '0'));
     g.fillStyle = grad;
     g.fillRect(0, 0, 128, 128);
     return new THREE.CanvasTexture(c);
   }
 
-  // Noyau central : AURA elle-meme, coeur du globe stellaire (§13.3, F-21).
-  const noyau = new THREE.Mesh(
-    new THREE.SphereGeometry(14, 32, 32),
-    new THREE.MeshBasicMaterial({ color: ROUGE })
-  );
-  monde.add(noyau);
+  const noyauGroupe = new THREE.Group();
+  monde.add(noyauGroupe);
 
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: texteurHalo('rgba(229,38,26,ALPHA)'),
+  // Coeur plein : le centre net et lumineux du noyau.
+  const coeur = new THREE.Mesh(
+    new THREE.SphereGeometry(9, 32, 32),
+    new THREE.MeshBasicMaterial({ color: BLANC })
+  );
+  noyauGroupe.add(coeur);
+
+  // Couronne de particules autour du coeur : donne du volume et une
+  // texture "vivante" plutot qu'une simple sphere lisse (esprit du globe
+  // stellaire de reference - un amas dense, pas un disque uni).
+  const NB_PARTICULES = 700;
+  const positions = new Float32Array(NB_PARTICULES * 3);
+  const phases = new Float32Array(NB_PARTICULES);
+  for (let i = 0; i < NB_PARTICULES; i++) {
+    // Direction aleatoire uniforme sur la sphere + rayon concentre pres
+    // du coeur (racine cubique d'un tirage elevee a une puissance) pour
+    // une densite qui decroit doucement vers l'exterieur.
+    let x, y, z, l;
+    do {
+      x = Math.random() * 2 - 1; y = Math.random() * 2 - 1; z = Math.random() * 2 - 1;
+      l = Math.sqrt(x * x + y * y + z * z);
+    } while (l > 1 || l < 1e-4);
+    const rayon = 10 + Math.pow(Math.random(), 1.6) * 16;
+    positions[i * 3] = (x / l) * rayon;
+    positions[i * 3 + 1] = (y / l) * rayon;
+    positions[i * 3 + 2] = (z / l) * rayon;
+    phases[i] = Math.random() * Math.PI * 2;
+  }
+  const geoParticules = new THREE.BufferGeometry();
+  geoParticules.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const particules = new THREE.Points(geoParticules, new THREE.PointsMaterial({
+    color: BLANC,
+    map: texteurRadiale('rgba(245,246,247,ALPHA)', 1),
+    size: 3.4,
+    transparent: true,
+    opacity: 0.85,
+    depthWrite: false,
+    sizeAttenuation: true,
+    blending: THREE.AdditiveBlending
+  }));
+  noyauGroupe.add(particules);
+
+  // Halo en deux couches : un glow serre et lumineux, et un halo plus
+  // large et plus doux par-dessus - plus de profondeur qu'un seul disque.
+  const haloProche = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: texteurRadiale('rgba(245,246,247,ALPHA)', 0.65),
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending
   }));
-  halo.scale.set(80, 80, 1);
-  monde.add(halo);
+  haloProche.scale.set(52, 52, 1);
+  noyauGroupe.add(haloProche);
+
+  const haloLarge = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: texteurRadiale('rgba(245,246,247,ALPHA)', 0.3),
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  }));
+  haloLarge.scale.set(110, 110, 1);
+  noyauGroupe.add(haloLarge);
+
+  // Anneau en pointilles, legerement incline, qui tourne independamment
+  // du reste - une touche HUD qui donne au noyau une structure plutot
+  // qu'une simple boule lumineuse.
+  const anneauGroupe = new THREE.Group();
+  anneauGroupe.rotation.x = 1.15;
+  noyauGroupe.add(anneauGroupe);
+
+  const SEGMENTS_ANNEAU = 96;
+  const pointsAnneau = [];
+  for (let i = 0; i <= SEGMENTS_ANNEAU; i++) {
+    const a = (i / SEGMENTS_ANNEAU) * Math.PI * 2;
+    pointsAnneau.push(new THREE.Vector3(Math.cos(a) * 34, Math.sin(a) * 34, 0));
+  }
+  const geoAnneau = new THREE.BufferGeometry().setFromPoints(pointsAnneau);
+  const anneau = new THREE.Line(geoAnneau, new THREE.LineDashedMaterial({
+    color: BLANC,
+    transparent: true,
+    opacity: 0.35,
+    dashSize: 2.2,
+    gapSize: 2.6
+  }));
+  anneau.computeLineDistances();
+  anneauGroupe.add(anneau);
 
   function redimensionner() {
     const largeur = canvas.clientWidth || 1;
@@ -124,8 +199,12 @@
 
     activite = Math.max(0, activite - 0.02);
     const respiration = 1 + Math.sin(t * 1.6) * 0.05 + activite * 0.18;
-    noyau.scale.setScalar(respiration);
-    halo.scale.setScalar(80 * (1 + Math.sin(t * 1.6) * 0.08 + activite * 0.3));
+    coeur.scale.setScalar(respiration);
+    particules.scale.setScalar(1 + Math.sin(t * 1.6 + 0.4) * 0.06 + activite * 0.22);
+    particules.material.opacity = 0.85 + Math.sin(t * 2.1) * 0.1 + activite * 0.15;
+    haloProche.scale.setScalar(52 * (1 + Math.sin(t * 1.6) * 0.08 + activite * 0.3));
+    haloLarge.scale.setScalar(110 * (1 + Math.sin(t * 1.1) * 0.06 + activite * 0.35));
+    anneauGroupe.rotation.z += 0.004 + activite * 0.01;
 
     renderer.render(scene, camera);
     requestAnimationFrame(boucle);
