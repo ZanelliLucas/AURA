@@ -61,16 +61,10 @@ function friendlyErrorMessage(err, providerLabel) {
 
 // getStatus : "configured" reste vrai des que la route par defaut
 // (general -> Claude) a une cle, pour piloter l'ecran de premiere
-// configuration ; le detail par fournisseur alimente le panneau Journal.
+// configuration.
 function getStatus() {
   const keys = providerKeys();
-  return {
-    configured: !!keys.anthropicApiKey,
-    providers: {
-      google: !!keys.googleApiKey,
-      anthropic: !!keys.anthropicApiKey
-    }
-  };
+  return { configured: !!keys.anthropicApiKey };
 }
 
 const PROVIDER_KEY_NAMES = { google: 'googleApiKey', anthropic: 'anthropicApiKey' };

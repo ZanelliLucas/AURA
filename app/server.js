@@ -38,7 +38,7 @@ function startServer() {
     }
   });
 
-  // Memory Layer (§12) - alimente le panneau Journal de la toile.
+  // Memory Layer (§12) - alimente le panneau Activité de la toile.
   server.get('/api/journal', (req, res) => {
     res.json(store.getJournal(20));
   });

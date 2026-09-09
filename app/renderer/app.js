@@ -76,7 +76,7 @@ function startClock() {
   setInterval(tick, 1000);
 }
 
-// Zone de rendu du panneau Journal (§12.3) : traduit chaque entree du
+// Zone de rendu du panneau Activité (§12.3) : traduit chaque entree du
 // journal backend (succes/echec, deja journalisees cote serveur par
 // core.js/productivity.js/autonomy.js) en un message lisible plutot que
 // d'exposer typeAction/statut bruts.
@@ -130,13 +130,13 @@ async function loadJournal() {
   }
 }
 
-// Rafraichit la zone de rendu si le panneau Journal est deja ouvert -
+// Rafraichit la zone de rendu si le panneau Activité est deja ouvert -
 // reste purement passif (n'ouvre jamais le panneau lui-meme) sinon.
 function refreshJournalIfOpen() {
   if (document.getElementById('panel-context').classList.contains('open')) loadJournal();
 }
 
-// Point d'alerte sur l'onglet Journal : signale une erreur non vue sans
+// Point d'alerte sur l'onglet Activité : signale une erreur non vue sans
 // jamais ouvrir le panneau lui-meme (reste purement passif). "Vu" est
 // horodate dans localStorage pour survivre a un redemarrage d'AURA.
 const LAST_SEEN_ERROR_KEY = 'aura_context_last_seen_error';
@@ -166,60 +166,6 @@ function afterJournalAction() {
   checkContextAlert();
 }
 
-const PROVIDER_LABELS = {
-  google: 'Gemini (image/vidéo — bientôt)',
-  anthropic: 'Claude (conversation & code)'
-};
-
-function toggleProviderForm(provider, container) {
-  const existing = container.querySelector('.provider-key-form');
-  if (existing) existing.remove();
-
-  const form = document.createElement('form');
-  form.className = 'provider-key-form';
-  form.innerHTML = `<input type="password" placeholder="Clé ${PROVIDER_LABELS[provider]}" autocomplete="off"><button type="submit">OK</button>`;
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const input = form.querySelector('input');
-    const key = input.value.trim();
-    if (!key) return;
-    try {
-      const status = await window.aura.setApiKey(provider, key);
-      renderProviders(status.providers);
-      journal(`CLE_API_MISE_A_JOUR : ${provider}`);
-    } catch (err) {
-      journal(`CLE_API_ECHEC : ${err.message}`);
-    }
-    loadJournal();
-  });
-  container.appendChild(form);
-  form.querySelector('input').focus();
-}
-
-function renderProviders(providers) {
-  const list = document.getElementById('provider-list');
-  list.innerHTML = '';
-  Object.entries(PROVIDER_LABELS).forEach(([id, label]) => {
-    const configured = !!providers[id];
-    const row = document.createElement('div');
-    row.className = 'provider-row';
-    row.innerHTML = `<span class="provider-dot ${configured ? 'ok' : ''}"></span><span class="provider-name">${label}</span><button type="button" class="provider-edit" data-provider="${id}">${configured ? 'changer' : 'ajouter'}</button>`;
-    list.appendChild(row);
-  });
-  list.querySelectorAll('.provider-edit').forEach((btn) => {
-    btn.addEventListener('click', () => toggleProviderForm(btn.dataset.provider, list));
-  });
-}
-
-async function loadProviders() {
-  try {
-    const status = await window.aura.getStatus();
-    renderProviders(status.providers);
-  } catch {
-    document.getElementById('provider-list').textContent = 'Statut indisponible.';
-  }
-}
-
 function wirePanels() {
   document.getElementById('toggle-projects').addEventListener('click', () => {
     document.getElementById('panel-projects').classList.toggle('open');
@@ -229,7 +175,6 @@ function wirePanels() {
     const opening = panel.classList.toggle('open');
     if (opening) {
       loadJournal();
-      loadProviders();
       markErrorsSeen();
     }
   });
