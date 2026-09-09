@@ -1,10 +1,60 @@
+const SVG_NS = 'http://www.w3.org/2000/svg';
 const GRAPH_NODES = window.AURA_GRAPH.NODES;
 
-// Le rendu du globe stellaire (noyau, Somas, liaisons) vit dans toile3d.js
-// (Three.js) - ce fichier ne fait plus que lui deleguer les evenements
-// d'activite (survol, pulsations, arret d'urgence).
+const CENTER = { x: 800, y: 500 };
+const R_PRINCIPAL = 300;
+const VIEW_W = 1600;
+const VIEW_H = 1000;
+
+function el(tag, attrs) {
+  const node = document.createElementNS(SVG_NS, tag);
+  Object.entries(attrs || {}).forEach(([k, v]) => node.setAttribute(k, v));
+  return node;
+}
+
+// Placeholder : la precedente toile (tendons organiques, maillage,
+// poussiere, flux...) a ete retiree pour repartir de zero sur une
+// nouvelle direction visuelle. Ne reste que le hub et les agents en
+// cercle simple, sans aucune ligne.
+function layout() {
+  const positioned = {};
+  const step = (Math.PI * 2) / GRAPH_NODES.length;
+
+  GRAPH_NODES.forEach((node, i) => {
+    const angle = i * step;
+    const x = CENTER.x + Math.cos(angle) * R_PRINCIPAL;
+    const y = CENTER.y + Math.sin(angle) * R_PRINCIPAL;
+    positioned[node.id] = { ...node, x, y, angle };
+  });
+
+  return positioned;
+}
+
+function render() {
+  const svg = document.getElementById('web');
+  svg.innerHTML = '';
+  const positioned = layout();
+  const nodeList = Object.values(positioned);
+
+  nodeList.forEach((p) => {
+    const group = el('g', { class: 'node-group', 'data-node': p.id });
+
+    group.addEventListener('mouseenter', () => setActive(p.id, true));
+    group.addEventListener('mouseleave', () => setActive(p.id, false));
+
+    svg.appendChild(group);
+  });
+
+  // Hub central
+  const hub = el('g', { class: 'node-group', 'data-node': '__hub' });
+  svg.appendChild(hub);
+}
+
 function setActive(nodeId, active) {
-  window.AuraToile3D?.setActive(nodeId, active);
+  document.querySelectorAll(`.link[data-node="${nodeId}"]`)
+    .forEach((line) => line.classList.toggle('active', active));
+  document.querySelectorAll(`.link-relation[data-a="${nodeId}"], .link-relation[data-b="${nodeId}"]`)
+    .forEach((path) => path.classList.toggle('active', active));
 }
 
 function pulseRandomActivity() {
@@ -165,6 +215,8 @@ function wireEmergencyStop() {
     conversationBtn.disabled = stopped;
 
     if (stopped) {
+      document.querySelectorAll('.link.active, .link-relation.active')
+        .forEach((el) => el.classList.remove('active'));
       stopSpeaking();
     }
 
@@ -322,6 +374,7 @@ function wireProductivity() {
   });
 }
 
+render();
 startClock();
 wirePanels();
 wireJournalFilters();
