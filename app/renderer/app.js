@@ -104,17 +104,25 @@ function formatJournalMessage(entry) {
   return label;
 }
 
-// Filtre d'affichage du flux (§12.3) : "tous" | "execute" | "echoue".
-// Purement cote client - ne refait pas d'appel reseau, filtre la
-// derniere page recuperee.
+// Filtres d'affichage du flux (§12.3), deux dimensions combinables :
+// statut ("tous" | "execute" | "echoue") et sensibilite ("tous" |
+// "lecture" | "reversible"). Purement cote client - ne refait pas
+// d'appel reseau, filtre la derniere page recuperee.
 let journalEntriesCache = [];
 let journalFilter = 'tous';
+let journalSensFilter = 'tous';
 
-const JOURNAL_EMPTY_LABELS = {
-  tous: 'Aucune action enregistrée pour l’instant.',
-  execute: 'Aucun succès enregistré pour l’instant.',
-  echoue: 'Aucune erreur enregistrée pour l’instant.'
-};
+const SENSIBILITE_LABELS = { lecture: 'lecture', reversible: 'réversible' };
+
+function journalEmptyMessage() {
+  if (journalFilter === 'tous' && journalSensFilter === 'tous') {
+    return 'Aucune action enregistrée pour l’instant.';
+  }
+  const parts = [];
+  if (journalFilter !== 'tous') parts.push(STATUT_LABELS[journalFilter].toLowerCase());
+  if (journalSensFilter !== 'tous') parts.push(SENSIBILITE_LABELS[journalSensFilter]);
+  return `Aucune action (${parts.join(', ')}) pour ce filtre.`;
+}
 
 function renderJournal(entries) {
   journalEntriesCache = entries;
@@ -123,12 +131,12 @@ function renderJournal(entries) {
 
 function renderJournalFiltered() {
   const list = document.getElementById('journal-list');
-  const entries = journalFilter === 'tous'
-    ? journalEntriesCache
-    : journalEntriesCache.filter((entry) => entry.statut === journalFilter);
+  let entries = journalEntriesCache;
+  if (journalFilter !== 'tous') entries = entries.filter((entry) => entry.statut === journalFilter);
+  if (journalSensFilter !== 'tous') entries = entries.filter((entry) => entry.sensibilite === journalSensFilter);
 
   if (!entries.length) {
-    list.textContent = JOURNAL_EMPTY_LABELS[journalFilter];
+    list.textContent = journalEmptyMessage();
     return;
   }
   list.innerHTML = '';
@@ -142,17 +150,18 @@ function renderJournalFiltered() {
   });
 }
 
-function setJournalFilter(filter) {
-  journalFilter = filter;
-  document.querySelectorAll('#journal-filters .filter-btn').forEach((btn) => {
+function setJournalFilter(type, filter) {
+  if (type === 'statut') journalFilter = filter;
+  else journalSensFilter = filter;
+  document.querySelectorAll(`.filter-btn[data-filter-type="${type}"]`).forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.filter === filter);
   });
   renderJournalFiltered();
 }
 
 function wireJournalFilters() {
-  document.querySelectorAll('#journal-filters .filter-btn').forEach((btn) => {
-    btn.addEventListener('click', () => setJournalFilter(btn.dataset.filter));
+  document.querySelectorAll('.filter-btn').forEach((btn) => {
+    btn.addEventListener('click', () => setJournalFilter(btn.dataset.filterType, btn.dataset.filter));
   });
 }
 

@@ -44,10 +44,17 @@
   <aside id="panel-context" class="side-panel side-panel-right">
     <h2>Activité</h2>
 
+    <div class="filter-label">Statut</div>
     <div id="journal-filters" class="filter-tabs">
-      <button type="button" class="filter-btn active" data-filter="tous">Tout</button>
-      <button type="button" class="filter-btn" data-filter="execute">Succès</button>
-      <button type="button" class="filter-btn" data-filter="echoue">Erreurs</button>
+      <button type="button" class="filter-btn active" data-filter-type="statut" data-filter="tous">Tout</button>
+      <button type="button" class="filter-btn" data-filter-type="statut" data-filter="execute">Succès</button>
+      <button type="button" class="filter-btn" data-filter-type="statut" data-filter="echoue">Erreurs</button>
+    </div>
+    <div class="filter-label">Sensibilité</div>
+    <div id="journal-filters-sensibilite" class="filter-tabs">
+      <button type="button" class="filter-btn active" data-filter-type="sensibilite" data-filter="tous">Tout</button>
+      <button type="button" class="filter-btn" data-filter-type="sensibilite" data-filter="lecture">Lecture</button>
+      <button type="button" class="filter-btn" data-filter-type="sensibilite" data-filter="reversible">Réversible</button>
     </div>
     <div id="journal-list" class="muted">Aucune action enregistrée pour l’instant.</div>
   </aside>

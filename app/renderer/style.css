@@ -160,6 +160,13 @@ html, body {
 .edge-tab-left:has(+ .side-panel.open) { transform: translateY(-50%) translateX(280px); }
 .edge-tab-right:has(+ .side-panel.open) { transform: translateY(-50%) translateX(-280px); }
 
+.filter-label {
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
 .filter-tabs {
   display: flex;
   gap: 6px;
@@ -184,7 +191,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: calc(100vh - 230px);
+  max-height: calc(100vh - 280px);
   overflow-y: auto;
   margin-bottom: 16px;
 }
