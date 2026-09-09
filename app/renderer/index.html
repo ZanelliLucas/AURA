@@ -14,7 +14,7 @@
   <button id="toggle-projects" class="edge-tab edge-tab-left" type="button">Projets</button>
   <aside id="panel-projects" class="side-panel side-panel-left">
     <h2>Tâches</h2>
-    <div id="tasks-list" class="muted small">Aucune tâche.</div>
+    <div id="tasks-list" class="muted small custom-scroll">Aucune tâche.</div>
     <form id="task-form" class="inline-form">
       <input id="task-title" type="text" placeholder="Nouvelle tâche…">
       <input id="task-due" type="date" title="Échéance">
@@ -27,7 +27,7 @@
     </form>
 
     <h3>Rappels</h3>
-    <div id="reminders-list" class="muted small">Aucun rappel.</div>
+    <div id="reminders-list" class="muted small custom-scroll">Aucun rappel.</div>
     <form id="reminder-form" class="inline-form">
       <input id="reminder-text" type="text" placeholder="Rappel…">
       <input id="reminder-at" type="datetime-local">
@@ -56,7 +56,7 @@
       <button type="button" class="filter-btn" data-filter-type="sensibilite" data-filter="lecture">Lecture</button>
       <button type="button" class="filter-btn" data-filter-type="sensibilite" data-filter="reversible">Réversible</button>
     </div>
-    <div id="journal-list" class="muted">Aucune action enregistrée pour l’instant.</div>
+    <div id="journal-list" class="muted custom-scroll">Aucune action enregistrée pour l’instant.</div>
   </aside>
 
   <main id="stage">
@@ -75,7 +75,7 @@
   </button>
 
   <div id="conversation-panel">
-    <div id="thread" aria-live="polite"></div>
+    <div id="thread" class="custom-scroll" aria-live="polite"></div>
 
     <form id="setup-key" hidden>
       <input id="api-key" type="password" placeholder="Colle ta clé API Anthropic (sk-ant-...)" autocomplete="off">

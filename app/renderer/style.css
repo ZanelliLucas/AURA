@@ -186,6 +186,20 @@ html, body {
 .filter-btn:hover { color: var(--white); }
 .filter-btn.active { color: var(--white); border-color: var(--red); }
 
+/* Barre de defilement personnalisee, appliquee a toutes les zones
+   scrollables de l'app (Activite, Taches, Rappels, conversation). */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.custom-scroll::-webkit-scrollbar { width: 6px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--red); }
+
 #journal-list {
   display: flex;
   flex-direction: column;
@@ -193,16 +207,7 @@ html, body {
   max-height: calc(100vh - 280px);
   overflow-y: auto;
   margin-bottom: 16px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
 }
-#journal-list::-webkit-scrollbar { width: 6px; }
-#journal-list::-webkit-scrollbar-track { background: transparent; }
-#journal-list::-webkit-scrollbar-thumb {
-  background: var(--line);
-  border-radius: 3px;
-}
-#journal-list::-webkit-scrollbar-thumb:hover { background: var(--red); }
 .journal-entry {
   border-left: 2px solid var(--line-dim);
   padding-left: 10px;
@@ -316,7 +321,6 @@ body.estopped #conversation-panel {
   max-height: 38vh;
   overflow-y: auto;
   padding: 4px 2px;
-  scrollbar-width: thin;
 }
 #thread:empty { display: none; }
 
