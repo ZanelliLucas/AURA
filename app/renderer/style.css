@@ -26,15 +26,14 @@
 :root {
   --bg: #050505;
   --bg-panel: rgba(5, 5, 5, 0.9);
-  --red: #A51706;
-  --red-dim: rgba(165, 23, 6, 0.35);
-  --red-glow: rgba(165, 23, 6, 0.85);
-  --red-hover: #C41F0A;
-  /* Rouge de clarte "normale" - a mi-chemin entre le rouge sombre de
-     l'horloge (--red, #A51706) et le rouge vif du bouton power
-     (#ff3b30), meme famille de teinte. Pour les etats/messages qui ne
-     doivent etre ni discrets ni criards. */
-  --red-mid: #E5261A;
+  /* Rouge unique de l'app - une seule teinte partout (horloge, panneaux,
+     boutons, bouton Power y compris), sans exception. Ni aussi sombre
+     que l'ancien #A51706 de l'horloge, ni aussi vif que l'ancien #ff3b30
+     du bouton Power - a mi-chemin entre les deux. */
+  --red: #E5261A;
+  --red-dim: rgba(229, 38, 26, 0.35);
+  --red-glow: rgba(229, 38, 26, 0.85);
+  --red-hover: #F03D2E;
   --white: #F5F6F7;
   --dim: #8A93A0;
   --line: rgba(245, 246, 247, 0.28);
@@ -114,8 +113,8 @@ html, body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--red-mid);
-  box-shadow: 0 0 5px var(--red-mid);
+  background: var(--red);
+  box-shadow: 0 0 5px var(--red);
 }
 .edge-tab-left { left: 0; border-radius: 0 6px 6px 0; }
 .edge-tab-right { right: 0; border-radius: 6px 0 0 6px; }
@@ -185,7 +184,7 @@ html, body {
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 .filter-btn:hover { color: var(--white); }
-.filter-btn.active { color: var(--white); border-color: var(--red-mid); }
+.filter-btn.active { color: var(--white); border-color: var(--red); }
 
 #journal-list {
   display: flex;
@@ -202,7 +201,7 @@ html, body {
   line-height: 1.5;
 }
 .journal-entry.execute { border-left-color: #3fb950; }
-.journal-entry.echoue { border-left-color: var(--red-mid); }
+.journal-entry.echoue { border-left-color: var(--red); }
 .journal-time { color: var(--dim); font-size: 10px; letter-spacing: 0.5px; }
 
 /* Arret d'urgence (§5.9, §22) - toujours visible. Simple icone "power"
@@ -231,15 +230,15 @@ html, body {
   height: 42px;
   background: none;
   border: none;
-  color: #ff3b30;
+  color: var(--red);
   cursor: pointer;
   transition: color 0.2s ease, filter 0.2s ease, transform 0.15s ease;
 }
 #estop svg { width: 26px; height: 26px; display: block; }
 
 #estop:hover {
-  color: #ff5c52;
-  filter: drop-shadow(0 0 5px rgba(255, 59, 48, 0.55));
+  color: var(--red-hover);
+  filter: drop-shadow(0 0 5px var(--red-glow));
   transform: scale(1.08);
 }
 
@@ -253,8 +252,7 @@ html, body {
 }
 
 body.estopped #estop {
-  color: #ff2d6c;
-  filter: drop-shadow(0 0 7px rgba(255, 45, 108, 0.7));
+  filter: drop-shadow(0 0 7px var(--red-glow));
 }
 body.estopped .estop-dot { background: var(--white); box-shadow: 0 0 6px rgba(255, 255, 255, 0.85); animation: estop-blink 1s ease-in-out infinite; }
 @keyframes estop-blink { 50% { opacity: 0.25; } }
@@ -338,7 +336,7 @@ body.estopped #conversation-panel {
 }
 .msg-error {
   align-self: flex-start;
-  background: rgba(165, 23, 6, 0.18);
+  background: rgba(229, 38, 26, 0.18);
   border: 1px solid var(--red);
   color: var(--white);
 }
@@ -359,8 +357,8 @@ body.estopped #conversation-panel {
 }
 #setup-key { border-color: var(--red-glow); }
 #conversation:focus-within {
-  border-color: rgba(255, 59, 48, 0.6);
-  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.12);
+  border-color: rgba(229, 38, 26, 0.6);
+  box-shadow: 0 0 0 3px rgba(229, 38, 26, 0.12);
 }
 /* Masque temporairement pendant la refonte de la toile - reste
    fonctionnel en arriere-plan (JS/hidden inchanges), juste invisible. */
