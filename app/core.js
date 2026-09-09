@@ -109,9 +109,14 @@ async function sendMessage(text) {
   const apiKey = keys[route.keyName];
 
   if (!apiKey) {
-    throw new Error(
-      `Cette demande a été orientée vers ${route.agent} (${route.providerLabel}), mais aucune clé n’est configurée pour ce fournisseur.`
-    );
+    const message = `Cette demande a été orientée vers ${route.agent} (${route.providerLabel}), mais aucune clé n’est configurée pour ce fournisseur.`;
+    store.logAction({
+      typeAction: 'core.send_message',
+      sensibilite: 'lecture',
+      statut: 'echoue',
+      details: { error: message, route: routeName, agent: route.agent }
+    });
+    throw new Error(message);
   }
 
   const messages = [...apiMessages(), { role: 'user', content: text }];
