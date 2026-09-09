@@ -99,6 +99,7 @@ html, body {
   padding: 10px 6px;
   writing-mode: vertical-rl;
   cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
 }
 .edge-tab:hover { color: var(--white); border-color: var(--red); }
 .edge-tab-left { left: 0; border-radius: 0 6px 6px 0; }
@@ -390,8 +391,13 @@ body.estopped #conversation-panel {
   border: 1px solid rgba(245, 246, 247, 0.16);
   border-radius: 22px;
   padding: 6px 6px 6px 18px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 #setup-key { border-color: var(--red-glow); }
+#conversation:focus-within {
+  border-color: rgba(255, 59, 48, 0.6);
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.12);
+}
 /* Masque temporairement pendant la refonte de la toile - reste
    fonctionnel en arriere-plan (JS/hidden inchanges), juste invisible. */
 #setup-key { display: none !important; }
@@ -422,8 +428,10 @@ body.estopped #conversation-panel {
   color: var(--white);
   cursor: pointer;
   flex-shrink: 0;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
-#send:hover { background: var(--red-hover); }
+#send:hover { background: var(--red-hover); transform: scale(1.06); }
+#send:active { transform: scale(0.94); }
 #send:disabled { opacity: 0.4; cursor: default; }
 
 #save-key {
