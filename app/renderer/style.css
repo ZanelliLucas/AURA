@@ -256,7 +256,7 @@ html, body {
 
 #estop {
   position: fixed;
-  top: 18px;
+  top: 9px;
   right: 22px;
   z-index: 6;
   display: flex;
