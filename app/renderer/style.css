@@ -266,15 +266,15 @@ html, body {
   height: 42px;
   background: none;
   border: none;
-  color: var(--red);
+  color: #ff3b30;
   cursor: pointer;
   transition: color 0.2s ease, filter 0.2s ease, transform 0.15s ease;
 }
 #estop svg { width: 26px; height: 26px; display: block; }
 
 #estop:hover {
-  color: var(--red-hover);
-  filter: drop-shadow(0 0 5px rgba(165, 23, 6, 0.55));
+  color: #ff5c52;
+  filter: drop-shadow(0 0 5px rgba(255, 59, 48, 0.55));
   transform: scale(1.08);
 }
 
