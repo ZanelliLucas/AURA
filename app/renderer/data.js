@@ -1,4 +1,4 @@
-// Modele de la toile AURA, derive du cahier des charges V0.3.2
+// Modele de la toile AURA, derive du cahier des charges V0.4
 // (branches principales : Groupe B §5 + agents §5.6 ; branches secondaires :
 // listes de capacites de chaque section ; liens transversaux : §5.6.1).
 
@@ -19,11 +19,7 @@ const NODES = [
     tools: ['Carte 2D mondiale', 'Zoom pays / ville', 'Statut des agents', 'Flux d’événements'] },
 
   { id: 'code', label: 'AURA CODE', kind: 'agent',
-    tools: ['Revue & debug', 'Tests', 'Web / Mobile / Unity', 'Git'] },
-  { id: 'game', label: 'AURA GAME', kind: 'agent',
-    tools: ['Historique de parties', 'Statistiques Riot / Steam'] },
-  { id: 'stream', label: 'AURA STREAM', kind: 'agent',
-    tools: ['Scènes OBS', 'Overlays', 'Supervision diffusion'] },
+    tools: ['Revue & debug', 'Tests', 'Web / Mobile', 'Git', 'Analyse de code statique'] },
   { id: 'data', label: 'AURA DATA', kind: 'agent',
     tools: ['Statistiques', 'Visualisation', 'Nettoyage de données'] },
   { id: 'system', label: 'AURA SYSTEM', kind: 'agent',
@@ -55,8 +51,6 @@ const RELATIONS = [
   ['analytics', 'systemMonitor'],
   ['security', 'code'],
   ['security', 'system'],
-  ['stream', 'game'],
-  ['stream', 'productivity'],
   ['creative', 'vision'],
   ['research', 'office'],
   ['education', 'research']
