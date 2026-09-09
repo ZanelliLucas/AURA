@@ -30,27 +30,6 @@ function getEstop() {
   return { active: estopped };
 }
 
-function createRule({ name, trigger, action, mode }) {
-  if (!name || !name.trim()) throw new Error('Nom de règle manquant.');
-  if (!trigger || !trigger.type) throw new Error('Déclencheur manquant.');
-  if (!action || !action.type) throw new Error('Action manquante.');
-  const rule = store.createRule({ name: name.trim(), trigger, action, mode });
-  store.logAction({
-    typeAction: 'task.create_workflow', sensibilite: 'reversible', statut: 'execute',
-    details: { ruleId: rule.id, name: rule.name, mode: rule.mode }
-  });
-  return rule;
-}
-
-function toggleRule(id) {
-  const rule = store.toggleRule(id);
-  store.logAction({
-    typeAction: 'task.pause', sensibilite: 'reversible', statut: 'execute',
-    details: { ruleId: id, enabled: rule.enabled }
-  });
-  return rule;
-}
-
 function metricValue(snapshot, metric) {
   if (metric === 'cpu') return snapshot.cpu.loadPercent;
   if (metric === 'ram') return snapshot.memory.usedPercent;
@@ -154,10 +133,6 @@ async function tick() {
 }
 
 module.exports = {
-  getRules: store.getRules,
-  createRule,
-  toggleRule,
-  deleteRule: store.deleteRule,
   setEstop,
   getEstop,
   tick

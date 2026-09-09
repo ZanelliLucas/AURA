@@ -16,8 +16,7 @@
   "devDependencies": {
     "dotenv": "^17.4.2",
     "electron": "^44.2.0",
-    "electron-builder": "^26.15.3",
-    "leaflet": "^1.9.4"
+    "electron-builder": "^26.15.3"
   },
   "build": {
     "appId": "org.les-z.aura",
@@ -33,17 +32,8 @@
       "server.js",
       "store.js",
       "router.js",
-      "gaming.js",
       "productivity.js",
-      "dev.js",
-      "communication.js",
-      "systemMonitor.js",
-      "analytics.js",
-      "security.js",
       "autonomy.js",
-      "voice.js",
-      "education.js",
-      "office.js",
       "connectors/**/*",
       "providers/**/*",
       "renderer/**/*",
@@ -81,14 +71,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
     "@google/genai": "^2.21.0",
-    "docx": "^9.7.1",
     "electron-updater": "^6.8.9",
-    "exceljs": "^4.4.0",
     "express": "^5.2.1",
-    "nodemailer": "^10.0.1",
-    "obs-websocket-js": "^5.0.8",
-    "pdf-lib": "^1.17.1",
-    "pptxgenjs": "^4.0.1",
     "systeminformation": "^5.33.9"
   }
 }

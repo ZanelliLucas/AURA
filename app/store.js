@@ -33,31 +33,6 @@ function writeJson(name, data) {
   fs.writeFileSync(filePath(name), JSON.stringify(data, null, 2));
 }
 
-// --- Preferences (F-05, F-06, F-07) ---------------------------------
-
-function getPreferences() {
-  return readJson('preferences.json', {});
-}
-
-function setPreference(key, value) {
-  const prefs = getPreferences();
-  prefs[key] = { value, updatedAt: new Date().toISOString() };
-  writeJson('preferences.json', prefs);
-  return prefs;
-}
-
-function deletePreference(key) {
-  const prefs = getPreferences();
-  delete prefs[key];
-  writeJson('preferences.json', prefs);
-  return prefs;
-}
-
-function clearPreferences() {
-  writeJson('preferences.json', {});
-  return {};
-}
-
 // --- Interactions (F-02 : contexte de conversation persistant) -----
 
 function getInteractions() {
@@ -154,104 +129,12 @@ function deleteReminder(id) {
   return reminders;
 }
 
-// --- Historique de metriques (AURA ANALYTICS, §5.5) ------------------
-// Serie temporelle legere alimentee par un echantillonnage periodique
-// (main.js) pendant qu'une session est ouverte (F-22) - pas de
-// surveillance hors session.
-
-const MAX_METRIC_SAMPLES = 2880; // ~24h a un echantillon/30s
-
-function appendMetricSample(sample) {
-  const history = readJson('metrics.json', []);
-  history.push({ ...sample, at: new Date().toISOString() });
-  writeJson('metrics.json', history.slice(-MAX_METRIC_SAMPLES));
-}
-
-function getMetricHistory(limit = MAX_METRIC_SAMPLES) {
-  return readJson('metrics.json', []).slice(-limit);
-}
-
-// --- Predictions (§12.2 Prediction : sources, probabilite, confiance) --
-
-function getPredictions(limit = 50) {
-  return readJson('predictions.json', []).slice(-limit).reverse();
-}
-
-function createPrediction({ metric, sourceCount, predictedValue, confidence, horizon }) {
-  const predictions = readJson('predictions.json', []);
-  const prediction = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    metric,
-    sourceCount,
-    predictedValue,
-    confidence,
-    horizon,
-    date: new Date().toISOString()
-  };
-  predictions.push(prediction);
-  writeJson('predictions.json', predictions.slice(-200));
-  return prediction;
-}
-
-// --- Progression pedagogique (AURA EDUCATION §11.2 : tutorat -----------
-// personnalise appuye sur la memoire de projet) -------------------------
-
-const MAX_PROGRESS = 300;
-
-function getProgress() {
-  return readJson('progress.json', []);
-}
-
-function addProgressEntry({ topic, level, note }) {
-  const entries = getProgress();
-  const entry = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    topic,
-    level: level || null,
-    note: note || null,
-    createdAt: new Date().toISOString()
-  };
-  entries.push(entry);
-  writeJson('progress.json', entries.slice(-MAX_PROGRESS));
-  return entry;
-}
-
 // --- Regles d'automatisation (§12.2 Policy, AURA AUTONOMY §5.9) ------
+// Lues/mises a jour par autonomy.js#tick() ; la creation/suppression de
+// regles se faisait depuis l'ecran AURA AUTONOMY (retire).
 
 function getRules() {
   return readJson('rules.json', []);
-}
-
-function createRule({ name, trigger, action, mode }) {
-  const rules = getRules();
-  const rule = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    name,
-    trigger,
-    action,
-    mode: mode === 'active' ? 'active' : 'simulation',
-    enabled: true,
-    createdAt: new Date().toISOString(),
-    lastRunAt: null
-  };
-  rules.push(rule);
-  writeJson('rules.json', rules);
-  return rule;
-}
-
-function toggleRule(id) {
-  const rules = getRules();
-  const rule = rules.find((r) => r.id === id);
-  if (!rule) throw new Error('Règle introuvable.');
-  rule.enabled = !rule.enabled;
-  writeJson('rules.json', rules);
-  return rule;
-}
-
-function deleteRule(id) {
-  const rules = getRules().filter((r) => r.id !== id);
-  writeJson('rules.json', rules);
-  return rules;
 }
 
 function markRuleRun(id) {
@@ -262,38 +145,6 @@ function markRuleRun(id) {
     writeJson('rules.json', rules);
   }
   return rule;
-}
-
-// --- Alertes (§12.2 Alert : niveau, cause, statut) -------------------
-
-const MAX_ALERTS = 200;
-
-function getAlerts(limit = 50) {
-  return readJson('alerts.json', []).slice(-limit).reverse();
-}
-
-function createAlert({ level, cause }) {
-  const alerts = readJson('alerts.json', []);
-  const alert = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    level: level || 'info',
-    cause,
-    statut: 'active',
-    date: new Date().toISOString()
-  };
-  alerts.push(alert);
-  writeJson('alerts.json', alerts.slice(-MAX_ALERTS));
-  return alert;
-}
-
-function acknowledgeAlert(id) {
-  const alerts = readJson('alerts.json', []);
-  const alert = alerts.find((a) => a.id === id);
-  if (alert) {
-    alert.statut = 'acquittee';
-    writeJson('alerts.json', alerts);
-  }
-  return alert;
 }
 
 // --- Journal d'actions (§12.3 actions_log, §5.9) --------------------
@@ -316,10 +167,6 @@ function logAction({ typeAction, sensibilite, statut, details }) {
 }
 
 module.exports = {
-  getPreferences,
-  setPreference,
-  deletePreference,
-  clearPreferences,
   getInteractions,
   appendInteraction,
   getTasks,
@@ -330,20 +177,8 @@ module.exports = {
   createReminder,
   markReminderFired,
   deleteReminder,
-  getProgress,
-  addProgressEntry,
   getRules,
-  createRule,
-  toggleRule,
-  deleteRule,
   markRuleRun,
-  getAlerts,
-  createAlert,
-  acknowledgeAlert,
-  appendMetricSample,
-  getMetricHistory,
-  getPredictions,
-  createPrediction,
   getJournal,
   logAction
 };
