@@ -53,9 +53,11 @@
   const noyauGroupe = new THREE.Group();
   monde.add(noyauGroupe);
 
-  // Coeur plein : le centre net et lumineux du noyau.
+  // Coeur plein : le centre net et lumineux du noyau. Pas de halo autour
+  // (retire sur demande) - le volume vient uniquement du coeur, de la
+  // couronne de particules et des anneaux.
   const coeur = new THREE.Mesh(
-    new THREE.SphereGeometry(9, 32, 32),
+    new THREE.SphereGeometry(5.5, 32, 32),
     new THREE.MeshBasicMaterial({ color: BLANC })
   );
   noyauGroupe.add(coeur);
@@ -75,7 +77,7 @@
       x = Math.random() * 2 - 1; y = Math.random() * 2 - 1; z = Math.random() * 2 - 1;
       l = Math.sqrt(x * x + y * y + z * z);
     } while (l > 1 || l < 1e-4);
-    const rayon = 10 + Math.pow(Math.random(), 1.6) * 16;
+    const rayon = 5.5 + Math.pow(Math.random(), 1.6) * 8;
     positions[i * 3] = (x / l) * rayon;
     positions[i * 3 + 1] = (y / l) * rayon;
     positions[i * 3 + 2] = (z / l) * rayon;
@@ -86,7 +88,7 @@
   const particules = new THREE.Points(geoParticules, new THREE.PointsMaterial({
     color: BLANC,
     map: texteurRadiale('rgba(245,246,247,ALPHA)', 1),
-    size: 3.4,
+    size: 2.1,
     transparent: true,
     opacity: 0.85,
     depthWrite: false,
@@ -95,49 +97,34 @@
   }));
   noyauGroupe.add(particules);
 
-  // Halo en deux couches : un glow serre et lumineux, et un halo plus
-  // large et plus doux par-dessus - plus de profondeur qu'un seul disque.
-  const haloProche = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: texteurRadiale('rgba(245,246,247,ALPHA)', 0.65),
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending
-  }));
-  haloProche.scale.set(52, 52, 1);
-  noyauGroupe.add(haloProche);
-
-  const haloLarge = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: texteurRadiale('rgba(245,246,247,ALPHA)', 0.3),
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending
-  }));
-  haloLarge.scale.set(110, 110, 1);
-  noyauGroupe.add(haloLarge);
-
-  // Anneau en pointilles, legerement incline, qui tourne independamment
-  // du reste - une touche HUD qui donne au noyau une structure plutot
-  // qu'une simple boule lumineuse.
-  const anneauGroupe = new THREE.Group();
-  anneauGroupe.rotation.x = 1.15;
-  noyauGroupe.add(anneauGroupe);
-
-  const SEGMENTS_ANNEAU = 96;
-  const pointsAnneau = [];
-  for (let i = 0; i <= SEGMENTS_ANNEAU; i++) {
-    const a = (i / SEGMENTS_ANNEAU) * Math.PI * 2;
-    pointsAnneau.push(new THREE.Vector3(Math.cos(a) * 34, Math.sin(a) * 34, 0));
+  // Deux anneaux en pointilles, inclines differemment et tournant en sens
+  // oppose - une structure gyroscopique plutot qu'une simple boule
+  // lumineuse, dans l'esprit HUD de l'identite AURA.
+  function creerAnneau(rayon, dashSize, gapSize, opacite) {
+    const segments = 96;
+    const pts = [];
+    for (let i = 0; i <= segments; i++) {
+      const a = (i / segments) * Math.PI * 2;
+      pts.push(new THREE.Vector3(Math.cos(a) * rayon, Math.sin(a) * rayon, 0));
+    }
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const ligne = new THREE.Line(geo, new THREE.LineDashedMaterial({
+      color: BLANC, transparent: true, opacity: opacite, dashSize, gapSize
+    }));
+    ligne.computeLineDistances();
+    return ligne;
   }
-  const geoAnneau = new THREE.BufferGeometry().setFromPoints(pointsAnneau);
-  const anneau = new THREE.Line(geoAnneau, new THREE.LineDashedMaterial({
-    color: BLANC,
-    transparent: true,
-    opacity: 0.35,
-    dashSize: 2.2,
-    gapSize: 2.6
-  }));
-  anneau.computeLineDistances();
-  anneauGroupe.add(anneau);
+
+  const anneauGroupe1 = new THREE.Group();
+  anneauGroupe1.rotation.x = 1.15;
+  anneauGroupe1.add(creerAnneau(19, 1.3, 1.6, 0.35));
+  noyauGroupe.add(anneauGroupe1);
+
+  const anneauGroupe2 = new THREE.Group();
+  anneauGroupe2.rotation.x = -0.55;
+  anneauGroupe2.rotation.y = 0.9;
+  anneauGroupe2.add(creerAnneau(23, 1.1, 1.9, 0.22));
+  noyauGroupe.add(anneauGroupe2);
 
   function redimensionner() {
     const largeur = canvas.clientWidth || 1;
@@ -202,9 +189,8 @@
     coeur.scale.setScalar(respiration);
     particules.scale.setScalar(1 + Math.sin(t * 1.6 + 0.4) * 0.06 + activite * 0.22);
     particules.material.opacity = 0.85 + Math.sin(t * 2.1) * 0.1 + activite * 0.15;
-    haloProche.scale.setScalar(52 * (1 + Math.sin(t * 1.6) * 0.08 + activite * 0.3));
-    haloLarge.scale.setScalar(110 * (1 + Math.sin(t * 1.1) * 0.06 + activite * 0.35));
-    anneauGroupe.rotation.z += 0.004 + activite * 0.01;
+    anneauGroupe1.rotation.z += 0.004 + activite * 0.01;
+    anneauGroupe2.rotation.z -= 0.0026 + activite * 0.008;
 
     renderer.render(scene, camera);
     requestAnimationFrame(boucle);
