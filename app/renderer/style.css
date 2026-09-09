@@ -138,16 +138,29 @@ html, body {
   text-align: left;
   background: rgba(245, 246, 247, 0.05);
   border: 1px solid rgba(245, 246, 247, 0.12);
+  border-left: 2px solid transparent;
   color: var(--white);
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;
   padding: 9px 12px;
   border-radius: 6px;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
-.module-link:hover { border-color: var(--red-glow); color: var(--red); }
+.module-link:hover {
+  background: rgba(255, 59, 48, 0.08);
+  border-color: rgba(255, 59, 48, 0.45);
+  border-left-color: #ff3b30;
+  color: #ff5c52;
+}
+.module-link:active { transform: scale(0.98); }
 .module-link:disabled { opacity: 0.35; cursor: default; }
-.module-link:disabled:hover { border-color: rgba(245, 246, 247, 0.12); color: var(--white); }
+.module-link:disabled:hover {
+  background: rgba(245, 246, 247, 0.05);
+  border-color: rgba(245, 246, 247, 0.12);
+  border-left-color: transparent;
+  color: var(--white);
+}
 
 .provider-row {
   display: flex;
