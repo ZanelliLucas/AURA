@@ -262,19 +262,20 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   background: none;
   border: none;
   color: var(--red);
   cursor: pointer;
-  transition: color 0.2s ease, filter 0.2s ease;
+  transition: color 0.2s ease, filter 0.2s ease, transform 0.15s ease;
 }
-#estop svg { width: 42px; height: 42px; display: block; }
+#estop svg { width: 26px; height: 26px; display: block; }
 
 #estop:hover {
   color: var(--red-hover);
-  filter: drop-shadow(0 0 6px rgba(165, 23, 6, 0.5));
+  filter: drop-shadow(0 0 5px rgba(165, 23, 6, 0.55));
+  transform: scale(1.08);
 }
 
 .estop-dot {
@@ -288,7 +289,7 @@ html, body {
 
 body.estopped #estop {
   color: var(--white);
-  filter: drop-shadow(0 0 8px var(--red-glow));
+  filter: drop-shadow(0 0 7px var(--red-glow));
 }
 body.estopped .estop-dot { background: var(--white); box-shadow: 0 0 6px rgba(255, 255, 255, 0.85); animation: estop-blink 1s ease-in-out infinite; }
 @keyframes estop-blink { 50% { opacity: 0.25; } }
