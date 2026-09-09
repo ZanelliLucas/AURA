@@ -77,12 +77,22 @@ const PROVIDER_KEY_NAMES = { google: 'googleApiKey', anthropic: 'anthropicApiKey
 
 function setApiKey(provider, key) {
   const keyName = PROVIDER_KEY_NAMES[provider];
-  if (!keyName) throw new Error(`Fournisseur inconnu : ${provider}.`);
   const trimmed = String(key || '').trim();
-  if (!trimmed) throw new Error('Clé vide.');
+  if (!keyName || !trimmed) {
+    const error = !keyName ? `Fournisseur inconnu : ${provider}.` : 'Clé vide.';
+    store.logAction({
+      typeAction: 'config.api_key', sensibilite: 'reversible', statut: 'echoue',
+      details: { provider, error }
+    });
+    throw new Error(error);
+  }
   const config = loadConfig();
   config[keyName] = trimmed;
   saveConfig(config);
+  store.logAction({
+    typeAction: 'config.api_key', sensibilite: 'reversible', statut: 'execute',
+    details: { provider }
+  });
   return getStatus();
 }
 

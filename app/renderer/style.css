@@ -30,6 +30,11 @@
   --red-dim: rgba(165, 23, 6, 0.35);
   --red-glow: rgba(165, 23, 6, 0.85);
   --red-hover: #C41F0A;
+  /* Rouge de clarte "normale" - a mi-chemin entre le rouge sombre de
+     l'horloge (--red, #A51706) et le rouge vif du bouton power
+     (#ff3b30), meme famille de teinte. Pour les etats/messages qui ne
+     doivent etre ni discrets ni criards. */
+  --red-mid: #E5261A;
   --white: #F5F6F7;
   --dim: #8A93A0;
   --line: rgba(245, 246, 247, 0.28);
@@ -209,12 +214,13 @@ html, body {
   margin-bottom: 16px;
 }
 .journal-entry {
-  border-left: 2px solid var(--red-dim);
+  border-left: 2px solid var(--line-dim);
   padding-left: 10px;
   font-size: 12px;
   line-height: 1.5;
 }
-.journal-entry.echoue { border-left-color: var(--red); }
+.journal-entry.execute { border-left-color: #3fb950; }
+.journal-entry.echoue { border-left-color: var(--red-mid); }
 .journal-time { color: var(--dim); font-size: 10px; letter-spacing: 0.5px; }
 
 /* Arret d'urgence (§5.9, §22) - toujours visible. Simple icone "power"

@@ -76,6 +76,34 @@ function startClock() {
   setInterval(tick, 1000);
 }
 
+// Zone de rendu du panneau Contexte (§12.3) : traduit chaque entree du
+// journal backend (succes/echec, deja journalisees cote serveur par
+// core.js/productivity.js/autonomy.js) en un message lisible plutot que
+// d'exposer typeAction/statut bruts.
+const STATUT_LABELS = { execute: 'Succès', echoue: 'Échec' };
+
+const TYPE_LABELS = {
+  'task.create': 'Tâche créée',
+  'task.complete': 'Tâche terminée',
+  'reminder.schedule': 'Rappel programmé',
+  'reminder.fired': 'Rappel déclenché',
+  'core.send_message': 'Message envoyé',
+  'config.api_key': 'Clé API',
+  'autonomy.estop': 'Arrêt d’urgence',
+  'autonomy.rule_fired': 'Règle AUTONOMY',
+  'autonomy.simulation': 'Règle AUTONOMY (simulation)'
+};
+
+function formatJournalMessage(entry) {
+  const label = TYPE_LABELS[entry.typeAction] || entry.typeAction;
+  const d = entry.details || {};
+  if (entry.statut === 'echoue') return `${label} — ${d.error || 'échec'}`;
+  if (entry.typeAction === 'task.create' || entry.typeAction === 'task.complete') return `${label} : ${d.title || ''}`;
+  if (entry.typeAction === 'reminder.schedule' || entry.typeAction === 'reminder.fired') return `${label} : ${d.text || ''}`;
+  if (entry.typeAction === 'config.api_key') return `${label} : ${d.provider || ''}`;
+  return label;
+}
+
 function renderJournal(entries) {
   const list = document.getElementById('journal-list');
   if (!entries.length) {
@@ -87,7 +115,8 @@ function renderJournal(entries) {
     const div = document.createElement('div');
     div.className = `journal-entry ${entry.statut}`;
     const time = new Date(entry.date).toLocaleTimeString('fr-FR');
-    div.innerHTML = `<div class="journal-time">${time} · ${entry.statut}</div>${entry.typeAction}`;
+    const label = STATUT_LABELS[entry.statut] || entry.statut;
+    div.innerHTML = `<div class="journal-time">${time} · ${label}</div>${formatJournalMessage(entry)}`;
     list.appendChild(div);
   });
 }
@@ -99,6 +128,12 @@ async function loadJournal() {
   } catch {
     document.getElementById('journal-list').textContent = 'Journal indisponible.';
   }
+}
+
+// Rafraichit la zone de rendu si le panneau Contexte est deja ouvert -
+// reste purement passif (n'ouvre jamais le panneau lui-meme) sinon.
+function refreshJournalIfOpen() {
+  if (document.getElementById('panel-context').classList.contains('open')) loadJournal();
 }
 
 const PROVIDER_LABELS = {
@@ -125,6 +160,7 @@ function toggleProviderForm(provider, container) {
     } catch (err) {
       journal(`CLE_API_ECHEC : ${err.message}`);
     }
+    loadJournal();
   });
   container.appendChild(form);
   form.querySelector('input').focus();
@@ -204,6 +240,7 @@ function wireEmergencyStop() {
     try {
       await window.aura.setEstop(stopped);
     } catch { /* backend indisponible, l'UI reste geree localement */ }
+    refreshJournalIfOpen();
   });
 }
 
@@ -264,6 +301,7 @@ function wireConversation() {
       addMessage('error', `AURA ne peut pas répondre : ${err.message}`);
       journal(`MESSAGE_ECHEC : ${err.message}`);
     } finally {
+      refreshJournalIfOpen();
       setActive('__hub', false);
       input.disabled = false;
       send.disabled = false;
@@ -347,6 +385,7 @@ function renderTasks(tasks) {
         } catch (err) {
           journal(`TACHE_ECHEC : ${err.message}`);
         }
+        refreshJournalIfOpen();
       });
     }
     row.querySelector('.row-delete').addEventListener('click', async () => {
@@ -406,7 +445,7 @@ async function checkDueReminders() {
       try { new Notification('AURA — Rappel', { body: reminder.text }); } catch { /* notifications indisponibles */ }
       journal(`RAPPEL_DECLENCHE : ${reminder.text}`);
     });
-    if (fired.length) loadReminders();
+    if (fired.length) { loadReminders(); refreshJournalIfOpen(); }
   } catch {
     // API locale indisponible - reessaiera au prochain intervalle
   }
@@ -428,6 +467,7 @@ function wireProductivity() {
     } catch (err) {
       journal(`TACHE_CREATION_ECHEC : ${err.message}`);
     }
+    refreshJournalIfOpen();
   });
 
   document.getElementById('reminder-form').addEventListener('submit', async (e) => {
@@ -445,6 +485,7 @@ function wireProductivity() {
     } catch (err) {
       journal(`RAPPEL_CREATION_ECHEC : ${err.message}`);
     }
+    refreshJournalIfOpen();
   });
 }
 

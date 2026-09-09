@@ -4,7 +4,13 @@ const store = require('./store');
 
 // task.create (§7, Reversible)
 function taskCreate({ title, dueDate, priority }) {
-  if (!title || !title.trim()) throw new Error('Titre de tâche manquant.');
+  if (!title || !title.trim()) {
+    store.logAction({
+      typeAction: 'task.create', sensibilite: 'reversible', statut: 'echoue',
+      details: { error: 'Titre de tâche manquant.' }
+    });
+    throw new Error('Titre de tâche manquant.');
+  }
   const task = store.createTask({ title: title.trim(), dueDate, priority });
   store.logAction({
     typeAction: 'task.create', sensibilite: 'reversible', statut: 'execute',
@@ -15,7 +21,16 @@ function taskCreate({ title, dueDate, priority }) {
 
 // task.complete (§7, Reversible)
 function taskComplete(id) {
-  const task = store.completeTask(id);
+  let task;
+  try {
+    task = store.completeTask(id);
+  } catch (err) {
+    store.logAction({
+      typeAction: 'task.complete', sensibilite: 'reversible', statut: 'echoue',
+      details: { id, error: err.message }
+    });
+    throw err;
+  }
   store.logAction({
     typeAction: 'task.complete', sensibilite: 'reversible', statut: 'execute',
     details: { id: task.id, title: task.title }
@@ -29,8 +44,14 @@ function taskDelete(id) {
 
 // reminder.schedule (§7, Reversible)
 function reminderSchedule({ text, at, recurring }) {
-  if (!text || !text.trim()) throw new Error('Texte du rappel manquant.');
-  if (!at) throw new Error('Date/heure du rappel manquante.');
+  if (!text || !text.trim() || !at) {
+    const error = !text || !text.trim() ? 'Texte du rappel manquant.' : 'Date/heure du rappel manquante.';
+    store.logAction({
+      typeAction: 'reminder.schedule', sensibilite: 'reversible', statut: 'echoue',
+      details: { error }
+    });
+    throw new Error(error);
+  }
   const reminder = store.createReminder({ text: text.trim(), at, recurring });
   store.logAction({
     typeAction: 'reminder.schedule', sensibilite: 'reversible', statut: 'execute',
@@ -49,7 +70,14 @@ function reminderDelete(id) {
 function checkDueReminders() {
   const now = Date.now();
   const due = store.getReminders().filter((r) => r.active && new Date(r.at).getTime() <= now);
-  return due.map((r) => store.markReminderFired(r.id));
+  return due.map((r) => {
+    const fired = store.markReminderFired(r.id);
+    store.logAction({
+      typeAction: 'reminder.fired', sensibilite: 'lecture', statut: 'execute',
+      details: { id: r.id, text: r.text }
+    });
+    return fired;
+  });
 }
 
 module.exports = {
