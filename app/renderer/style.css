@@ -193,7 +193,16 @@ html, body {
   max-height: calc(100vh - 280px);
   overflow-y: auto;
   margin-bottom: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
+#journal-list::-webkit-scrollbar { width: 6px; }
+#journal-list::-webkit-scrollbar-track { background: transparent; }
+#journal-list::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+#journal-list::-webkit-scrollbar-thumb:hover { background: var(--red); }
 .journal-entry {
   border-left: 2px solid var(--line-dim);
   padding-left: 10px;
