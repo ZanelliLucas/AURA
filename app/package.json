@@ -16,7 +16,8 @@
   "devDependencies": {
     "dotenv": "^17.4.2",
     "electron": "^44.2.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "three": "^0.128.0"
   },
   "build": {
     "appId": "org.les-z.aura",
@@ -40,7 +41,10 @@
       "assets/**/*"
     ],
     "extraFiles": [
-      { "from": "launched-profile-template.ps1", "to": "launched-profile.ps1" }
+      {
+        "from": "launched-profile-template.ps1",
+        "to": "launched-profile.ps1"
+      }
     ],
     "win": {
       "executableName": "aura",

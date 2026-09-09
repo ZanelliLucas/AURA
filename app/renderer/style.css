@@ -84,9 +84,8 @@ html, body {
 #web {
   width: 100%;
   height: 100%;
+  display: block;
 }
-
-.node-group { cursor: pointer; }
 
 /* Panneaux retractables (F-21 / §16.1) */
 .edge-tab {
