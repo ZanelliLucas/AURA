@@ -262,15 +262,15 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 48px;
+  height: 48px;
   background: none;
   border: none;
   color: var(--red);
   cursor: pointer;
   transition: color 0.2s ease, filter 0.2s ease;
 }
-#estop svg { width: 30px; height: 30px; display: block; }
+#estop svg { width: 42px; height: 42px; display: block; }
 
 #estop:hover {
   color: var(--red-hover);
