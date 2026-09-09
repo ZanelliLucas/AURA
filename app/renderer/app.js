@@ -180,36 +180,6 @@ function refreshJournalIfOpen() {
   if (document.getElementById('panel-context').classList.contains('open')) loadJournal();
 }
 
-// Point d'alerte sur l'onglet Activité : signale une erreur non vue sans
-// jamais ouvrir le panneau lui-meme (reste purement passif). "Vu" est
-// horodate dans localStorage pour survivre a un redemarrage d'AURA.
-const LAST_SEEN_ERROR_KEY = 'aura_context_last_seen_error';
-
-function getLastSeenErrorAt() {
-  try { return localStorage.getItem(LAST_SEEN_ERROR_KEY) || ''; } catch { return ''; }
-}
-
-function markErrorsSeen() {
-  try { localStorage.setItem(LAST_SEEN_ERROR_KEY, new Date().toISOString()); } catch { /* stockage indisponible */ }
-  document.getElementById('context-alert-dot').hidden = true;
-}
-
-async function checkContextAlert() {
-  try {
-    const entries = await window.aura.getJournal();
-    const lastSeen = getLastSeenErrorAt();
-    const hasUnseenError = entries.some((entry) => entry.statut === 'echoue' && entry.date > lastSeen);
-    document.getElementById('context-alert-dot').hidden = !hasUnseenError;
-  } catch { /* API indisponible, on laisse le point tel quel */ }
-}
-
-// A appeler apres toute commande pouvant reussir/echouer : rafraichit le
-// Journal s'il est visible et met a jour le point d'alerte sinon.
-function afterJournalAction() {
-  refreshJournalIfOpen();
-  checkContextAlert();
-}
-
 function wirePanels() {
   document.getElementById('toggle-projects').addEventListener('click', () => {
     document.getElementById('panel-projects').classList.toggle('open');
@@ -219,7 +189,6 @@ function wirePanels() {
     const opening = panel.classList.toggle('open');
     if (opening) {
       loadJournal();
-      markErrorsSeen();
     }
   });
 
@@ -235,8 +204,7 @@ function wireEmergencyStop() {
   const btn = document.getElementById('estop');
   const label = document.getElementById('estop-label');
   const banner = document.getElementById('estop-banner');
-  const input = document.getElementById('message');
-  const send = document.getElementById('send');
+  const conversationBtn = document.getElementById('conversation');
 
   btn.addEventListener('click', async () => {
     const stopped = document.body.classList.toggle('estopped');
@@ -244,8 +212,7 @@ function wireEmergencyStop() {
     banner.hidden = !stopped;
     label.textContent = stopped ? 'REPRENDRE' : 'ARRÊT D’URGENCE';
     btn.title = stopped ? 'Reprendre' : 'Arrêt d’urgence global';
-    input.disabled = stopped;
-    send.disabled = stopped;
+    conversationBtn.disabled = stopped;
 
     if (stopped) {
       document.querySelectorAll('.link.active, .link-relation.active')
@@ -260,7 +227,7 @@ function wireEmergencyStop() {
     try {
       await window.aura.setEstop(stopped);
     } catch { /* backend indisponible, l'UI reste geree localement */ }
-    afterJournalAction();
+    refreshJournalIfOpen();
   });
 }
 
@@ -269,108 +236,6 @@ function wireEmergencyStop() {
 function stopSpeaking() {
   if (window.speechSynthesis && window.speechSynthesis.speaking) {
     window.speechSynthesis.cancel();
-  }
-}
-
-function addMessage(role, text) {
-  const thread = document.getElementById('thread');
-  const bubble = document.createElement('div');
-  bubble.className = `msg msg-${role}`;
-  bubble.textContent = text;
-  thread.appendChild(bubble);
-  thread.scrollTop = thread.scrollHeight;
-  return bubble;
-}
-
-function addPendingMessage() {
-  const thread = document.getElementById('thread');
-  const bubble = document.createElement('div');
-  bubble.className = 'msg msg-aura msg-pending';
-  bubble.innerHTML = 'AURA réfléchit<span class="dots"></span>';
-  thread.appendChild(bubble);
-  thread.scrollTop = thread.scrollHeight;
-  return bubble;
-}
-
-function wireConversation() {
-  const form = document.getElementById('conversation');
-  const input = document.getElementById('message');
-  const send = document.getElementById('send');
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (document.body.classList.contains('estopped')) return;
-    const text = input.value.trim();
-    if (!text) return;
-
-    setActive('__hub', true);
-    input.value = '';
-    input.disabled = true;
-    send.disabled = true;
-
-    addMessage('user', text);
-    const pending = addPendingMessage();
-
-    try {
-      const result = await window.aura.sendMessage(text);
-      pending.remove();
-      addMessage('aura', result.text);
-      journal(`MESSAGE_ECHANGE : "${text.slice(0, 60)}"`);
-    } catch (err) {
-      pending.remove();
-      addMessage('error', `AURA ne peut pas répondre : ${err.message}`);
-      journal(`MESSAGE_ECHEC : ${err.message}`);
-    } finally {
-      afterJournalAction();
-      setActive('__hub', false);
-      input.disabled = false;
-      send.disabled = false;
-      input.focus();
-    }
-  });
-}
-
-async function initConversation() {
-  const setupForm = document.getElementById('setup-key');
-  const conversationForm = document.getElementById('conversation');
-  const apiKeyInput = document.getElementById('api-key');
-
-  const showConversation = () => {
-    setupForm.hidden = true;
-    conversationForm.hidden = false;
-    document.getElementById('message').focus();
-  };
-  const showSetup = () => {
-    setupForm.hidden = false;
-    conversationForm.hidden = true;
-    apiKeyInput.focus();
-  };
-
-  wireConversation();
-
-  setupForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const key = apiKeyInput.value.trim();
-    if (!key) return;
-    try {
-      await window.aura.setApiKey('anthropic', key);
-      apiKeyInput.value = '';
-      showConversation();
-      addMessage('aura', 'Clé API enregistrée. Je t’écoute.');
-    } catch (err) {
-      addMessage('error', `Impossible d’enregistrer la clé : ${err.message}`);
-    }
-  });
-
-  try {
-    const status = await window.aura.getStatus();
-    if (status.configured) {
-      showConversation();
-    } else {
-      showSetup();
-    }
-  } catch {
-    showSetup();
   }
 }
 
@@ -405,7 +270,7 @@ function renderTasks(tasks) {
         } catch (err) {
           journal(`TACHE_ECHEC : ${err.message}`);
         }
-        afterJournalAction();
+        refreshJournalIfOpen();
       });
     }
     row.querySelector('.row-delete').addEventListener('click', async () => {
@@ -465,7 +330,7 @@ async function checkDueReminders() {
       try { new Notification('AURA — Rappel', { body: reminder.text }); } catch { /* notifications indisponibles */ }
       journal(`RAPPEL_DECLENCHE : ${reminder.text}`);
     });
-    if (fired.length) { loadReminders(); afterJournalAction(); }
+    if (fired.length) { loadReminders(); refreshJournalIfOpen(); }
   } catch {
     // API locale indisponible - reessaiera au prochain intervalle
   }
@@ -487,7 +352,7 @@ function wireProductivity() {
     } catch (err) {
       journal(`TACHE_CREATION_ECHEC : ${err.message}`);
     }
-    afterJournalAction();
+    refreshJournalIfOpen();
   });
 
   document.getElementById('reminder-form').addEventListener('submit', async (e) => {
@@ -505,7 +370,7 @@ function wireProductivity() {
     } catch (err) {
       journal(`RAPPEL_CREATION_ECHEC : ${err.message}`);
     }
-    afterJournalAction();
+    refreshJournalIfOpen();
   });
 }
 
@@ -515,10 +380,7 @@ wirePanels();
 wireJournalFilters();
 wireProductivity();
 wireEmergencyStop();
-initConversation();
 loadTasks();
 loadReminders();
-checkContextAlert();
 setInterval(pulseRandomActivity, 2600);
 setInterval(checkDueReminders, 30000);
-setInterval(checkContextAlert, 30000);

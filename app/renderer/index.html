@@ -40,7 +40,7 @@
     </form>
   </aside>
 
-  <button id="toggle-context" class="edge-tab edge-tab-right" type="button">Activité<span id="context-alert-dot" class="alert-dot" hidden></span></button>
+  <button id="toggle-context" class="edge-tab edge-tab-right" type="button">Activité</button>
   <aside id="panel-context" class="side-panel side-panel-right">
     <h2>Activité</h2>
 
@@ -75,19 +75,15 @@
   </button>
 
   <div id="conversation-panel">
-    <div id="thread" class="custom-scroll" aria-live="polite"></div>
-
-    <form id="setup-key" hidden>
-      <input id="api-key" type="password" placeholder="Colle ta clé API Anthropic (sk-ant-...)" autocomplete="off">
-      <button id="save-key" type="submit">Enregistrer</button>
-    </form>
-
-    <form id="conversation">
-      <input id="message" type="text" placeholder="Écrire un message..." autocomplete="off">
-      <button id="send" type="submit" aria-label="Envoyer">
+    <!-- Bouton d'acces vers la future page/module Conversation - n'ouvre
+         rien pour l'instant (ce module n'existe pas encore), volontairement
+         inerte tant que le systeme de pages/modules n'est pas construit. -->
+    <button id="conversation" type="button" class="conversation-bubble">
+      <span class="conversation-bubble-text">Écrire un message...</span>
+      <span class="conversation-bubble-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 11.5 21 3l-6.5 18-3-7.5L3 11.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-      </button>
-    </form>
+      </span>
+    </button>
   </div>
 
   <script src="data.js"></script>

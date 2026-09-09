@@ -94,6 +94,10 @@ html, body {
   top: 50%;
   transform: translateY(-50%);
   z-index: 5;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--bg-panel);
   border: 1px solid rgba(245, 246, 247, 0.18);
   color: var(--dim);
@@ -106,16 +110,6 @@ html, body {
   transition: color 0.2s ease, border-color 0.2s ease, transform 0.25s ease;
 }
 .edge-tab:hover { color: var(--white); border-color: var(--red); }
-.alert-dot {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--red);
-  box-shadow: 0 0 5px var(--red);
-}
 .edge-tab-left { left: 0; border-radius: 0 6px 6px 0; }
 .edge-tab-right { right: 0; border-radius: 6px 0 0 6px; }
 
@@ -307,58 +301,12 @@ body.estopped #conversation-panel {
   bottom: 34px;
   transform: translateX(-50%);
   z-index: 5;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
   width: min(560px, 86vw);
 }
 
-#thread {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 38vh;
-  overflow-y: auto;
-  padding: 4px 2px;
-}
-#thread:empty { display: none; }
-
-.msg {
-  max-width: 82%;
-  padding: 8px 13px;
-  border-radius: 14px;
-  font-size: 13px;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.msg-user {
-  align-self: flex-end;
-  background: var(--red-dim);
-  border: 1px solid var(--red-glow);
-  color: var(--white);
-  border-bottom-right-radius: 4px;
-}
-.msg-aura {
-  align-self: flex-start;
-  background: rgba(20, 20, 20, 0.92);
-  border: 1px solid rgba(245, 246, 247, 0.14);
-  color: var(--white);
-  border-bottom-left-radius: 4px;
-}
-.msg-error {
-  align-self: flex-start;
-  background: rgba(229, 38, 26, 0.18);
-  border: 1px solid var(--red);
-  color: var(--white);
-}
-.msg-pending { opacity: 0.55; }
-.msg-pending .dots::after { content: '…'; animation: dots-cycle 1.2s steps(4) infinite; }
-@keyframes dots-cycle { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
-
-#conversation,
-#setup-key {
+/* Bouton d'acces a la future page Conversation (module non encore
+   construit) - volontairement inerte, pas un veritable champ de saisie. */
+.conversation-bubble {
   display: flex;
   align-items: center;
   width: 100%;
@@ -366,48 +314,36 @@ body.estopped #conversation-panel {
   border: 1px solid rgba(245, 246, 247, 0.16);
   border-radius: 22px;
   padding: 6px 6px 6px 18px;
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-#setup-key { border-color: var(--red-glow); }
-#conversation:focus-within {
+.conversation-bubble:hover {
   border-color: rgba(229, 38, 26, 0.6);
   box-shadow: 0 0 0 3px rgba(229, 38, 26, 0.12);
 }
-/* Masque temporairement pendant la refonte de la toile - reste
-   fonctionnel en arriere-plan (JS/hidden inchanges), juste invisible. */
-#setup-key { display: none !important; }
+.conversation-bubble:disabled { opacity: 0.4; cursor: default; }
 
-#message,
-#api-key {
+.conversation-bubble-text {
   flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--white);
-  font-family: 'IBM Plex Mono', monospace;
+  text-align: left;
+  color: var(--dim);
   font-size: 14px;
-  min-width: 0;
 }
-#message::placeholder,
-#api-key::placeholder { color: var(--dim); }
 
-#send {
+.conversation-bubble-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  border: none;
   background: var(--red);
   color: var(--white);
-  cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s ease, transform 0.15s ease;
 }
-#send:hover { background: var(--red-hover); transform: scale(1.06); }
-#send:active { transform: scale(0.94); }
-#send:disabled { opacity: 0.4; cursor: default; }
+.conversation-bubble:hover .conversation-bubble-icon { background: var(--red-hover); transform: scale(1.06); }
 
 #save-key {
   flex-shrink: 0;
