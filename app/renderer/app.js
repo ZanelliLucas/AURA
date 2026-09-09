@@ -76,7 +76,7 @@ function startClock() {
   setInterval(tick, 1000);
 }
 
-// Zone de rendu du panneau Contexte (§12.3) : traduit chaque entree du
+// Zone de rendu du panneau Journal (§12.3) : traduit chaque entree du
 // journal backend (succes/echec, deja journalisees cote serveur par
 // core.js/productivity.js/autonomy.js) en un message lisible plutot que
 // d'exposer typeAction/statut bruts.
@@ -130,10 +130,40 @@ async function loadJournal() {
   }
 }
 
-// Rafraichit la zone de rendu si le panneau Contexte est deja ouvert -
+// Rafraichit la zone de rendu si le panneau Journal est deja ouvert -
 // reste purement passif (n'ouvre jamais le panneau lui-meme) sinon.
 function refreshJournalIfOpen() {
   if (document.getElementById('panel-context').classList.contains('open')) loadJournal();
+}
+
+// Point d'alerte sur l'onglet Journal : signale une erreur non vue sans
+// jamais ouvrir le panneau lui-meme (reste purement passif). "Vu" est
+// horodate dans localStorage pour survivre a un redemarrage d'AURA.
+const LAST_SEEN_ERROR_KEY = 'aura_context_last_seen_error';
+
+function getLastSeenErrorAt() {
+  try { return localStorage.getItem(LAST_SEEN_ERROR_KEY) || ''; } catch { return ''; }
+}
+
+function markErrorsSeen() {
+  try { localStorage.setItem(LAST_SEEN_ERROR_KEY, new Date().toISOString()); } catch { /* stockage indisponible */ }
+  document.getElementById('context-alert-dot').hidden = true;
+}
+
+async function checkContextAlert() {
+  try {
+    const entries = await window.aura.getJournal();
+    const lastSeen = getLastSeenErrorAt();
+    const hasUnseenError = entries.some((entry) => entry.statut === 'echoue' && entry.date > lastSeen);
+    document.getElementById('context-alert-dot').hidden = !hasUnseenError;
+  } catch { /* API indisponible, on laisse le point tel quel */ }
+}
+
+// A appeler apres toute commande pouvant reussir/echouer : rafraichit le
+// Journal s'il est visible et met a jour le point d'alerte sinon.
+function afterJournalAction() {
+  refreshJournalIfOpen();
+  checkContextAlert();
 }
 
 const PROVIDER_LABELS = {
@@ -200,6 +230,7 @@ function wirePanels() {
     if (opening) {
       loadJournal();
       loadProviders();
+      markErrorsSeen();
     }
   });
 
@@ -240,7 +271,7 @@ function wireEmergencyStop() {
     try {
       await window.aura.setEstop(stopped);
     } catch { /* backend indisponible, l'UI reste geree localement */ }
-    refreshJournalIfOpen();
+    afterJournalAction();
   });
 }
 
@@ -301,7 +332,7 @@ function wireConversation() {
       addMessage('error', `AURA ne peut pas répondre : ${err.message}`);
       journal(`MESSAGE_ECHEC : ${err.message}`);
     } finally {
-      refreshJournalIfOpen();
+      afterJournalAction();
       setActive('__hub', false);
       input.disabled = false;
       send.disabled = false;
@@ -385,7 +416,7 @@ function renderTasks(tasks) {
         } catch (err) {
           journal(`TACHE_ECHEC : ${err.message}`);
         }
-        refreshJournalIfOpen();
+        afterJournalAction();
       });
     }
     row.querySelector('.row-delete').addEventListener('click', async () => {
@@ -445,7 +476,7 @@ async function checkDueReminders() {
       try { new Notification('AURA — Rappel', { body: reminder.text }); } catch { /* notifications indisponibles */ }
       journal(`RAPPEL_DECLENCHE : ${reminder.text}`);
     });
-    if (fired.length) { loadReminders(); refreshJournalIfOpen(); }
+    if (fired.length) { loadReminders(); afterJournalAction(); }
   } catch {
     // API locale indisponible - reessaiera au prochain intervalle
   }
@@ -467,7 +498,7 @@ function wireProductivity() {
     } catch (err) {
       journal(`TACHE_CREATION_ECHEC : ${err.message}`);
     }
-    refreshJournalIfOpen();
+    afterJournalAction();
   });
 
   document.getElementById('reminder-form').addEventListener('submit', async (e) => {
@@ -485,7 +516,7 @@ function wireProductivity() {
     } catch (err) {
       journal(`RAPPEL_CREATION_ECHEC : ${err.message}`);
     }
-    refreshJournalIfOpen();
+    afterJournalAction();
   });
 }
 
@@ -497,5 +528,7 @@ wireEmergencyStop();
 initConversation();
 loadTasks();
 loadReminders();
+checkContextAlert();
 setInterval(pulseRandomActivity, 2600);
 setInterval(checkDueReminders, 30000);
+setInterval(checkContextAlert, 30000);

@@ -61,7 +61,7 @@ function friendlyErrorMessage(err, providerLabel) {
 
 // getStatus : "configured" reste vrai des que la route par defaut
 // (general -> Claude) a une cle, pour piloter l'ecran de premiere
-// configuration ; le detail par fournisseur alimente le panneau Contexte.
+// configuration ; le detail par fournisseur alimente le panneau Journal.
 function getStatus() {
   const keys = providerKeys();
   return {
