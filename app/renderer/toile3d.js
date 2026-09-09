@@ -97,35 +97,6 @@
   }));
   noyauGroupe.add(particules);
 
-  // Deux anneaux en pointilles, inclines differemment et tournant en sens
-  // oppose - une structure gyroscopique plutot qu'une simple boule
-  // lumineuse, dans l'esprit HUD de l'identite AURA.
-  function creerAnneau(rayon, dashSize, gapSize, opacite) {
-    const segments = 96;
-    const pts = [];
-    for (let i = 0; i <= segments; i++) {
-      const a = (i / segments) * Math.PI * 2;
-      pts.push(new THREE.Vector3(Math.cos(a) * rayon, Math.sin(a) * rayon, 0));
-    }
-    const geo = new THREE.BufferGeometry().setFromPoints(pts);
-    const ligne = new THREE.Line(geo, new THREE.LineDashedMaterial({
-      color: BLANC, transparent: true, opacity: opacite, dashSize, gapSize
-    }));
-    ligne.computeLineDistances();
-    return ligne;
-  }
-
-  const anneauGroupe1 = new THREE.Group();
-  anneauGroupe1.rotation.x = 1.15;
-  anneauGroupe1.add(creerAnneau(19, 1.3, 1.6, 0.35));
-  noyauGroupe.add(anneauGroupe1);
-
-  const anneauGroupe2 = new THREE.Group();
-  anneauGroupe2.rotation.x = -0.55;
-  anneauGroupe2.rotation.y = 0.9;
-  anneauGroupe2.add(creerAnneau(23, 1.1, 1.9, 0.22));
-  noyauGroupe.add(anneauGroupe2);
-
   function redimensionner() {
     const largeur = canvas.clientWidth || 1;
     const hauteur = canvas.clientHeight || 1;
@@ -189,8 +160,6 @@
     coeur.scale.setScalar(respiration);
     particules.scale.setScalar(1 + Math.sin(t * 1.6 + 0.4) * 0.06 + activite * 0.22);
     particules.material.opacity = 0.85 + Math.sin(t * 2.1) * 0.1 + activite * 0.15;
-    anneauGroupe1.rotation.z += 0.004 + activite * 0.01;
-    anneauGroupe2.rotation.z -= 0.0026 + activite * 0.008;
 
     renderer.render(scene, camera);
     requestAnimationFrame(boucle);
