@@ -99,7 +99,7 @@ html, body {
   padding: 10px 6px;
   writing-mode: vertical-rl;
   cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease;
+  transition: color 0.2s ease, border-color 0.2s ease, transform 0.25s ease;
 }
 .edge-tab:hover { color: var(--white); border-color: var(--red); }
 .edge-tab-left { left: 0; border-radius: 0 6px 6px 0; }
@@ -209,6 +209,12 @@ html, body {
 
 .side-panel-right { right: 0; border-right: none; border-left: 1px solid rgba(245, 246, 247, 0.12); transform: translateX(100%); }
 .side-panel-right.open { transform: translateX(0); }
+
+/* L'onglet reste solidaire du bord du panneau plutot que de rester
+   colle au bord de l'ecran et se faire chevaucher par le panneau
+   ouvert (les deux partagent le meme bord gauche/droit). */
+.edge-tab-left:has(+ .side-panel.open) { transform: translateY(-50%) translateX(280px); }
+.edge-tab-right:has(+ .side-panel.open) { transform: translateY(-50%) translateX(-280px); }
 
 #journal-list {
   display: flex;
