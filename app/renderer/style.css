@@ -288,8 +288,8 @@ html, body {
 }
 
 body.estopped #estop {
-  color: var(--white);
-  filter: drop-shadow(0 0 7px var(--red-glow));
+  color: #3fb950;
+  filter: drop-shadow(0 0 7px rgba(63, 185, 80, 0.7));
 }
 body.estopped .estop-dot { background: var(--white); box-shadow: 0 0 6px rgba(255, 255, 255, 0.85); animation: estop-blink 1s ease-in-out infinite; }
 @keyframes estop-blink { 50% { opacity: 0.25; } }
