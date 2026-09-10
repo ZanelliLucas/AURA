@@ -1,4 +1,9 @@
 const GRAPH_NODES = window.AURA_GRAPH.NODES;
+// Un Soma par categorie reelle d'AURA (data.js) plutot qu'un compte
+// decoratif arbitraire - condition necessaire pour que la bulle de
+// conversation puisse cibler un Soma precis par son nom.
+const SOMA_COUNT = GRAPH_NODES.length;
+const ROTATION_IDLE_GLOBE = 0.026;
 
 // Globe stellaire (§13.3, F-21) : le noyau represente AURA elle-meme, les
 // Somas ses domaines fonctionnels. Rendu par la classe GlobeStellaire
@@ -12,6 +17,8 @@ function initGlobe() {
   globe = new window.GlobeStellaire(document.getElementById('web'), {
     fondTransparent: true,
     etoiles: 0,
+    somas: SOMA_COUNT,
+    rotation: ROTATION_IDLE_GLOBE,
     // Densite plus haute : la "peau" et la brume qui ferment la surface
     // du globe (et les amas de particules de chaque Soma) sont plus
     // fournies, pour que la silhouette se lise comme une sphere pleine
@@ -37,8 +44,9 @@ function initGlobe() {
 
 function setActive(nodeId, active) {
   if (!globe || !active) return;
-  if (nodeId === '__hub') globe.pulse();
-  else globe.pulseSoma();
+  if (nodeId === '__hub') { globe.pulse(); return; }
+  const index = GRAPH_NODES.findIndex((n) => n.id === nodeId);
+  globe.pulseSoma(index === -1 ? null : index);
 }
 
 function pulseRandomActivity() {
@@ -56,6 +64,127 @@ function pulseRandomActivity() {
 function pulseNoyau() {
   if (document.body.classList.contains('estopped')) return;
   setActive('__hub', true);
+}
+
+// --- Acces rapide aux categories (bulle de conversation) ---------------
+// Le texte tape est compare aux categories reelles d'AURA (data.js) ;
+// une correspondance declenche un zoom vers le Soma concerne. Pas de
+// langage naturel ni de Terminal complet ici - juste une reconnaissance
+// de nom, en attendant qu'AXIS (§6 du cahier des charges) existe pour de
+// vrai.
+const MOTS_VIDES_ACCES = ['access', 'acceder', 'accede', 'va', 'aller', 'ouvrir', 'ouvre', 'sur', 'a', 'le', 'la', 'les', 'aura'];
+
+function normaliserTexte(texte) {
+  // Decompose les caracteres accentues (NFD) puis retire les marques
+  // diacritiques combinantes (plage Unicode 0x0300-0x036F) par comparaison
+  // de code point plutot qu'une plage \u dans une regex, pour eviter toute
+  // ambiguite d'echappement.
+  const sansAccents = (texte || '').normalize('NFD').split('')
+    .filter((c) => { const code = c.codePointAt(0); return code < 0x0300 || code > 0x036f; })
+    .join('');
+  return sansAccents.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function trouverIndexCategorie(texte) {
+  const mots = normaliserTexte(texte).split(' ').filter((m) => m && !MOTS_VIDES_ACCES.includes(m));
+  const q = mots.join(' ');
+  if (!q) return -1;
+
+  const libelles = GRAPH_NODES.map((n) => normaliserTexte(n.label.replace(/^AURA\s+/i, '')));
+  let index = libelles.findIndex((label) => label === q);
+  if (index !== -1) return index;
+
+  index = GRAPH_NODES.findIndex((n) => n.id.toLowerCase() === q.replace(/ /g, ''));
+  if (index !== -1) return index;
+
+  return libelles.findIndex((label) => label.includes(q) || q.includes(label));
+}
+
+// Zoom la camera vers un Soma donne (index dans GRAPH_NODES). GlobeStellaire
+// n'a pas de "flyTo" integre - ce sont ses champs publics (monde, amas,
+// somas, zoomCible) qui rendent ca possible sans toucher au fichier fourni :
+// on tourne le globe pour amener le Soma face a la camera (slerp du
+// quaternion de monde), et on rapproche zoomCible - la boucle de rendu du
+// composant l'interpole deja en douceur vers la camera a chaque frame.
+// Le rendu est en fondu additif (bloom) : vue de pres, la couronne de
+// particules d'un Soma - et surtout les influx en cours (boules de flux,
+// elles aussi en fondu additif, dont la taille a l'ecran grandit avec la
+// proximite de la camera) - remplissent une bien plus grande partie de
+// l'ecran et leur lumiere s'additionne au point de saturer l'image (tout
+// vire au blanc/orange). On compense en baissant temporairement
+// l'exposition/le bloom ET le volume d'influx pendant que la camera
+// reste rapprochee - pas encore de "retour a la vue globale" dans cette
+// etape (§ juste le zoom), donc pas encore de moment ou les restaurer.
+let zoomAnimationId = null;
+const RENDU_ZOOM = { exposition: 0.4, bloomIntensite: 0.15 };
+const RESEAU_ZOOM = { somaSeuil: [5, 9], rafale: 1, relais: 0.1 };
+
+function zoomVersSoma(index) {
+  if (!globe) return;
+  const somaId = globe.somas[index];
+  const amas = somaId != null ? globe.amas[somaId] : null;
+  if (!amas) return;
+
+  if (zoomAnimationId) cancelAnimationFrame(zoomAnimationId);
+
+  const dirCible = new THREE.Vector3(amas.x, amas.y, amas.z).normalize();
+  const quatCible = new THREE.Quaternion().setFromUnitVectors(dirCible, new THREE.Vector3(0, 0, 1));
+  const quatDepart = globe.monde.quaternion.clone();
+
+  globe.definirOptions({ rotation: 0, rendu: RENDU_ZOOM, reseau: RESEAU_ZOOM });
+  // Vide les influx deja en vol : sans ca, l'activite accumulee avant le
+  // zoom continue de flamber a l'ecran le temps qu'elle s'eteigne d'elle
+  // meme, precisement quand la camera se rapproche et l'amplifie le plus.
+  globe.influx.length = 0;
+  const rayon = globe.o.rayon || 80;
+  globe.zoomCible = Math.max(globe.o.camera.min, rayon * 1.8);
+
+  const duree = 900;
+  const debut = performance.now();
+  function etape(maintenant) {
+    const t = Math.min(1, (maintenant - debut) / duree);
+    const progression = 1 - Math.pow(1 - t, 3);
+    globe.monde.quaternion.slerpQuaternions(quatDepart, quatCible, progression);
+    if (t < 1) {
+      zoomAnimationId = requestAnimationFrame(etape);
+    } else {
+      zoomAnimationId = null;
+      // La rotation idle reprend (le globe continue de vivre une fois le
+      // Soma cadre), mais l'exposition/le flux restent attenues tant que
+      // la camera reste rapprochee - pas de bouton retour dans cette
+      // etape, donc pas encore de moment ou les restaurer.
+      globe.definirOptions({ rotation: ROTATION_IDLE_GLOBE });
+    }
+  }
+  zoomAnimationId = requestAnimationFrame(etape);
+
+  setActive(GRAPH_NODES[index].id, true);
+}
+
+function wireConversation() {
+  const form = document.getElementById('conversation-form');
+  const input = document.getElementById('conversation');
+  const bulle = document.querySelector('.conversation-bubble');
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const texte = input.value.trim();
+    if (!texte) return;
+
+    const index = trouverIndexCategorie(texte);
+    if (index === -1) {
+      bulle.classList.remove('pas-trouve');
+      void bulle.offsetWidth;
+      bulle.classList.add('pas-trouve');
+      journal(`ACCES_CATEGORIE_INTROUVABLE : ${texte}`);
+      return;
+    }
+
+    journal(`ACCES_CATEGORIE : ${GRAPH_NODES[index].label}`);
+    zoomVersSoma(index);
+    input.value = '';
+    input.blur();
+  });
 }
 
 function startClock() {
@@ -197,7 +326,8 @@ function wireEmergencyStop() {
   const btn = document.getElementById('estop');
   const label = document.getElementById('estop-label');
   const banner = document.getElementById('estop-banner');
-  const conversationBtn = document.getElementById('conversation');
+  const conversationInput = document.getElementById('conversation');
+  const conversationSubmit = document.querySelector('#conversation-form .conversation-bubble-icon');
 
   btn.addEventListener('click', async () => {
     const stopped = document.body.classList.toggle('estopped');
@@ -205,7 +335,8 @@ function wireEmergencyStop() {
     banner.hidden = !stopped;
     label.textContent = stopped ? 'REPRENDRE' : 'ARRÊT D’URGENCE';
     btn.title = stopped ? 'Reprendre' : 'Arrêt d’urgence global';
-    conversationBtn.disabled = stopped;
+    conversationInput.disabled = stopped;
+    conversationSubmit.disabled = stopped;
 
     if (stopped) {
       globe?.pause();
@@ -374,6 +505,7 @@ wirePanels();
 wireJournalFilters();
 wireProductivity();
 wireEmergencyStop();
+wireConversation();
 loadTasks();
 loadReminders();
 setInterval(pulseRandomActivity, 1300);

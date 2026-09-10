@@ -302,8 +302,9 @@ body.estopped #conversation-panel {
   width: min(560px, 86vw);
 }
 
-/* Bouton d'acces a la future page Conversation (module non encore
-   construit) - volontairement inerte, pas un veritable champ de saisie. */
+/* Acces rapide aux Somas du globe stellaire : le texte tape est compare
+   aux categories reelles d'AURA et declenche un zoom de la camera vers
+   le Soma trouve (§13.3) - pas encore une vraie conversation. */
 .conversation-bubble {
   display: flex;
   align-items: center;
@@ -312,22 +313,41 @@ body.estopped #conversation-panel {
   border: 1px solid rgba(245, 246, 247, 0.16);
   border-radius: 22px;
   padding: 6px 6px 6px 18px;
-  cursor: pointer;
   font-family: 'IBM Plex Mono', monospace;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.conversation-bubble:hover {
+.conversation-bubble:hover,
+.conversation-bubble:focus-within {
   border-color: rgba(229, 38, 26, 0.6);
   box-shadow: 0 0 0 3px rgba(229, 38, 26, 0.12);
 }
-.conversation-bubble:disabled { opacity: 0.4; cursor: default; }
+.conversation-bubble:has(.conversation-bubble-text:disabled) { opacity: 0.4; }
+
+/* Retour visuel bref quand le texte tape ne correspond a aucune
+   categorie connue - pas de blocage, juste un signal discret. */
+.conversation-bubble.pas-trouve {
+  border-color: var(--red);
+  animation: conversation-secousse 0.3s ease;
+}
+@keyframes conversation-secousse {
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
 
 .conversation-bubble-text {
   flex: 1;
+  min-width: 0;
   text-align: left;
-  color: var(--dim);
+  color: var(--white);
   font-size: 14px;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  padding: 0;
 }
+.conversation-bubble-text::placeholder { color: var(--dim); }
+.conversation-bubble-text:disabled { cursor: default; }
 
 .conversation-bubble-icon {
   display: flex;
@@ -338,10 +358,14 @@ body.estopped #conversation-panel {
   border-radius: 50%;
   background: var(--red);
   color: var(--white);
+  border: none;
   flex-shrink: 0;
+  cursor: pointer;
   transition: background 0.15s ease, transform 0.15s ease;
 }
-.conversation-bubble:hover .conversation-bubble-icon { background: var(--red-hover); transform: scale(1.06); }
+.conversation-bubble:hover .conversation-bubble-icon,
+.conversation-bubble:focus-within .conversation-bubble-icon { background: var(--red-hover); transform: scale(1.06); }
+.conversation-bubble-icon:disabled { cursor: default; }
 
 #save-key {
   flex-shrink: 0;

@@ -75,15 +75,17 @@
   </button>
 
   <div id="conversation-panel">
-    <!-- Bouton d'acces vers la future page/module Conversation - n'ouvre
-         rien pour l'instant (ce module n'existe pas encore), volontairement
-         inerte tant que le systeme de pages/modules n'est pas construit. -->
-    <button id="conversation" type="button" class="conversation-bubble">
-      <span class="conversation-bubble-text">Écrire un message...</span>
-      <span class="conversation-bubble-icon" aria-hidden="true">
+    <!-- Acces rapide aux Somas du globe stellaire (§13.3) : le texte tape
+         est compare aux categories reelles d'AURA (data.js) - une
+         correspondance declenche un zoom de la camera vers le Soma
+         concerne. Pas encore de page de contenu derriere (Systeme de
+         Modules, non construit) - uniquement la navigation visuelle. -->
+    <form id="conversation-form" class="conversation-bubble" autocomplete="off">
+      <input id="conversation" class="conversation-bubble-text" type="text" placeholder="Écrire un message..." autocomplete="off">
+      <button type="submit" class="conversation-bubble-icon" aria-label="Accéder">
         <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 11.5 21 3l-6.5 18-3-7.5L3 11.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-      </span>
-    </button>
+      </button>
+    </form>
   </div>
 
   <script src="vendor/three.min.js"></script>
