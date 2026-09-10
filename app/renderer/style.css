@@ -139,14 +139,18 @@ html, body {
 .app-page-header h1 .invite { color: var(--white); }
 .app-page-header h1 .verbe { color: var(--red); }
 .app-page-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   background: none;
   border: 1px solid rgba(245, 246, 247, 0.16);
   border-radius: 6px;
   color: var(--dim);
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
-  letter-spacing: 0.5px;
-  padding: 7px 12px;
+  font-size: 14px;
+  padding: 0;
   cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
