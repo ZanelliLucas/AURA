@@ -43,12 +43,6 @@ const DEFAUTS = {
   camera: { distance: 210, min: 45, max: 800, fov: 55 },
   rotation: 0.026,          // rad/s ; 0 pour figer
   vitesse: 1,               // multiplicateur global de l'animation
-  // Limite l'inclinaison (rotation.x) atteignable par glisser-depose, pour
-  // empecher de retourner completement le globe. Une visee programmatique
-  // (quaternion impose de l'exterieur, ex. plongee vers un Soma) peut avoir
-  // besoin d'une inclinaison plus forte : passer Infinity la desactive
-  // temporairement (null est ignore par fusion(), qui saute les cles null).
-  inclinaisonMax: 1.2,
 
   reseau: {
     somaSeuil: [2.4, 6.0],  // secondes entre deux décharges spontanées
@@ -1297,8 +1291,7 @@ class GlobeStellaire {
     this.monde.rotation.x += this.vx * dt;
     this.ciel.rotation.y += this.o.rotation * 0.2 * dt;
     this.vx *= 0.94; this.vy *= 0.94;
-    const lim = this.o.inclinaisonMax;
-    this.monde.rotation.x = Math.max(-lim, Math.min(lim, this.monde.rotation.x));
+    this.monde.rotation.x = Math.max(-1.2, Math.min(1.2, this.monde.rotation.x));
     this.camera.position.z += (this.zoomCible - this.camera.position.z) * Math.min(1, brut * 5.5);
 
     const r = this.o.reseau, A = this.amas, don = this.donnees;

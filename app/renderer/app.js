@@ -111,22 +111,20 @@ function trouverIndexCategorie(texte) {
 // Plonge la camera A L'INTERIEUR d'un Soma donne (index dans GRAPH_NODES) -
 // pas une simple approche : la cible de zoom passe sous le rayon du Soma
 // lui-meme, la camera le traverse. GlobeStellaire n'a pas de "flyTo"
-// integre - ce sont ses champs publics (monde, amas, somas, zoomCible) qui
-// rendent ca possible sans toucher au fichier fourni : on tourne le globe
-// pour amener le Soma face a la camera (slerp du quaternion de monde), et
-// on rapproche zoomCible bien en dessous de la taille du Soma - la boucle
-// de rendu du composant l'interpole deja en douceur vers la camera a
-// chaque frame.
-// Le rendu est en fondu additif (bloom) : au coeur du Soma, sa couronne de
-// particules et les influx en cours remplissent tout l'ecran et leur
-// lumiere s'additionne au point de saturer l'image. Plutot que de lutter
-// contre cette saturation, on s'en sert : l'exposition/le bloom sont
-// fortement attenues pour garder la plongee lisible, et un ecran blanc
-// (#zoom-flash) monte au moment ou la camera traverse le Soma - c'est ce
-// blanc qui masque la bascule vers la page plutot qu'un cut brutal.
+// integre - ce sont ses champs publics (monde, amas, somas, camera) qui
+// rendent ca possible sans toucher au fichier fourni.
+//
+// On DEPLACE LA CAMERA elle-meme vers le Soma, plutot que de faire pivoter
+// tout le globe pour amener le Soma sur l'axe fixe de la camera (approche
+// tentee d'abord) : le noyau est TOUJOURS a l'origine, donc TOUJOURS sur cet
+// axe fixe lui aussi - un Soma qu'on y ramene se retrouve exactement
+// aligne avec le noyau, qui l'eclipse visuellement (il est plus gros et
+// plus dense, avec toutes les branches qui en rayonnent). En bougeant la
+// camera plutot que le monde, elle vise reellement l'endroit du Soma sur
+// la coque, qui n'a aucune raison de coincider avec le noyau.
 let zoomAnimationId = null;
 const RENDU_NORMAL = { exposition: 1.35, bloomIntensite: 0.72 };
-const RENDU_ZOOM = { exposition: 0.22, bloomIntensite: 0.06 };
+const RENDU_ZOOM = { exposition: 0.75, bloomIntensite: 0.4 };
 const RESEAU_NORMAL = { somaSeuil: [1.2, 3.0], rafale: 3, relais: 0.32 };
 const RESEAU_ZOOM = { somaSeuil: [8, 14], rafale: 1, relais: 0.05 };
 const DUREE_PLONGEE = 1100;
@@ -139,39 +137,42 @@ function zoomVersSoma(index) {
 
   if (zoomAnimationId) cancelAnimationFrame(zoomAnimationId);
   // Recentre le globe avant de calculer la plongee : le clic droit peut
-  // avoir deplace globe.monde.position, or la visee (posSoma, distanceSoma)
-  // suppose un globe centre sur l'origine - sans ce recentrage, une plongee
-  // declenchee apres un deplacement viserait a cote du Soma reel.
+  // avoir deplace globe.monde.position, or la visee suppose un globe
+  // centre sur l'origine - sans ce recentrage, une plongee declenchee
+  // apres un deplacement viserait a cote du Soma reel. La rotation reste
+  // figee (rotation:0 ci-dessous) pendant toute la plongee, donc la
+  // position MONDE du Soma ne bouge plus une fois ce recentrage fait.
   globe.monde.position.set(0, 0, 0);
-
-  const posSoma = new THREE.Vector3(amas.x, amas.y, amas.z);
+  const posSoma = new THREE.Vector3(amas.x, amas.y, amas.z).applyQuaternion(globe.monde.quaternion);
   const distanceSoma = posSoma.length();
   const dirCible = posSoma.clone().normalize();
-  const quatCible = new THREE.Quaternion().setFromUnitVectors(dirCible, new THREE.Vector3(0, 0, 1));
-  const quatDepart = globe.monde.quaternion.clone();
 
-  // inclinaisonMax desactive (Infinity) : la visee quaternion de la plongee
-  // doit pouvoir incliner le globe au-dela de la limite du glisser-depose -
-  // sinon le clamp de _boucle() ecrase la visee a chaque frame et la
-  // plongee ne s'aligne plus sur le Soma reel (voir reculerDuZoom).
-  globe.definirOptions({ rotation: 0, rendu: RENDU_ZOOM, reseau: RESEAU_ZOOM, inclinaisonMax: Infinity });
+  const camDepart = globe.camera.position.clone();
+  const quatDepart = globe.camera.quaternion.clone();
+  // distanceSoma est la distance du Soma au noyau (donc a l'origine) - pas
+  // sa propre taille (amas.taille, le rayon de son amas de particules,
+  // bien plus petit). On vise juste au-dela de sa coque : la camera ne
+  // s'arrete pas devant le Soma, elle le traverse, vers l'interieur.
+  const distanceArrivee = Math.max(4, distanceSoma - amas.taille * 3);
+  const camArrivee = dirCible.clone().multiplyScalar(distanceArrivee);
+  // Oriente la camera pour qu'elle regarde vers l'interieur du globe
+  // (continuer au-dela du Soma) plutot que de rester tournee vers l'axe Z
+  // d'origine, qui ne correspond plus a rien une fois la camera deplacee.
+  const quatArrivee = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), dirCible.clone().negate());
+
+  globe.definirOptions({ rotation: 0, rendu: RENDU_ZOOM, reseau: RESEAU_ZOOM });
   // Vide les influx deja en vol : sans ca, l'activite accumulee avant la
   // plongee continue de flamber a l'ecran le temps qu'elle s'eteigne
   // d'elle meme, precisement quand la camera s'en approche le plus.
   globe.influx.length = 0;
-  // distanceSoma est la distance du Soma au noyau (donc a la camera, une
-  // fois l'axe aligne) - pas sa propre taille (amas.taille, le rayon de
-  // son amas de particules, bien plus petit). On vise juste au-dela de sa
-  // coque : la camera ne s'arrete pas devant le Soma, elle le traverse.
-  globe.zoomCible = Math.max(4, distanceSoma - amas.taille * 3);
 
   const flash = document.getElementById('zoom-flash');
   // Le blanc ne monte que sur le dernier tiers de la plongee (SEUIL_FLASH) :
-  // avant, ancien code ajoutait .actif des le depart et laissait la
-  // transition CSS (0.5s) monter plus vite que la plongee entiere
-  // (1.1s) - l'ecran devenait blanc avant meme d'avoir vu le globe se
-  // tourner vers le Soma, ce qui se lisait comme un simple flash plutot
-  // qu'un vrai zoom. L'opacite est desormais pilotee frame par frame,
+  // avant, l'ancien code ajoutait .actif des le depart et laissait la
+  // transition CSS (0.5s) monter plus vite que la plongee entiere (1.1s) -
+  // l'ecran devenait blanc avant meme d'avoir vu la camera se deplacer
+  // vers le Soma, ce qui se lisait comme un simple flash plutot qu'un
+  // vrai zoom. L'opacite est desormais pilotee frame par frame,
   // synchronisee sur la progression reelle.
   const SEUIL_FLASH = 0.65;
   // La transition CSS de #zoom-flash (0.5s) rechaine sinon a chaque frame
@@ -184,7 +185,13 @@ function zoomVersSoma(index) {
   function etape(maintenant) {
     const t = Math.min(1, (maintenant - debut) / DUREE_PLONGEE);
     const progression = 1 - Math.pow(1 - t, 3);
-    globe.monde.quaternion.slerpQuaternions(quatDepart, quatCible, progression);
+    globe.camera.position.lerpVectors(camDepart, camArrivee, progression);
+    globe.camera.quaternion.slerpQuaternions(quatDepart, quatArrivee, progression);
+    // La boucle de rendu du composant tire elle-meme camera.position.z
+    // vers zoomCible a chaque frame (son mecanisme de zoom normal) - sans
+    // le maintenir aligne sur la position qu'on vient d'imposer, il la
+    // corrigerait aussitot et casserait le deplacement pilote ici.
+    globe.zoomCible = globe.camera.position.z;
     flash.style.opacity = t > SEUIL_FLASH ? (t - SEUIL_FLASH) / (1 - SEUIL_FLASH) : 0;
     if (t < 1) {
       zoomAnimationId = requestAnimationFrame(etape);
@@ -210,9 +217,15 @@ function zoomVersSoma(index) {
 function reculerDuZoom() {
   if (!globe) return;
   if (zoomAnimationId) { cancelAnimationFrame(zoomAnimationId); zoomAnimationId = null; }
-  globe.definirOptions({ rotation: ROTATION_IDLE_GLOBE, rendu: RENDU_NORMAL, reseau: RESEAU_NORMAL, inclinaisonMax: 1.2 });
-  globe.zoomCible = globe.o.camera.distance;
+  globe.definirOptions({ rotation: ROTATION_IDLE_GLOBE, rendu: RENDU_NORMAL, reseau: RESEAU_NORMAL });
   globe.monde.position.set(0, 0, 0);
+  // La plongee deplace et reoriente la camera elle-meme (voir
+  // zoomVersSoma) - sans ce reset explicite, elle resterait a l'endroit et
+  // a l'angle du dernier Soma visite au lieu de revenir a sa position fixe
+  // habituelle (0,0,distance) face a l'origine.
+  globe.camera.position.set(0, 0, globe.o.camera.distance);
+  globe.camera.quaternion.identity();
+  globe.zoomCible = globe.o.camera.distance;
 }
 
 // --- Pages de categorie (Systeme de Modules, §16) -----------------------
