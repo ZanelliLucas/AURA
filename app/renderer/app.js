@@ -113,10 +113,12 @@ function trouverIndexCategorie(texte) {
 // l'ecran et leur lumiere s'additionne au point de saturer l'image (tout
 // vire au blanc/orange). On compense en baissant temporairement
 // l'exposition/le bloom ET le volume d'influx pendant que la camera
-// reste rapprochee - pas encore de "retour a la vue globale" dans cette
-// etape (§ juste le zoom), donc pas encore de moment ou les restaurer.
+// reste rapprochee, et on les restaure au retour a la vue globale
+// (reculerDuZoom).
 let zoomAnimationId = null;
+const RENDU_NORMAL = { exposition: 1.35, bloomIntensite: 0.72 };
 const RENDU_ZOOM = { exposition: 0.4, bloomIntensite: 0.15 };
+const RESEAU_NORMAL = { somaSeuil: [1.2, 3.0], rafale: 3, relais: 0.32 };
 const RESEAU_ZOOM = { somaSeuil: [5, 9], rafale: 1, relais: 0.1 };
 
 function zoomVersSoma(index) {
@@ -150,15 +152,109 @@ function zoomVersSoma(index) {
     } else {
       zoomAnimationId = null;
       // La rotation idle reprend (le globe continue de vivre une fois le
-      // Soma cadre), mais l'exposition/le flux restent attenues tant que
-      // la camera reste rapprochee - pas de bouton retour dans cette
-      // etape, donc pas encore de moment ou les restaurer.
+      // Soma cadre) ; l'exposition/le flux restent attenues tant que la
+      // camera reste rapprochee, jusqu'au retour a la vue globale.
       globe.definirOptions({ rotation: ROTATION_IDLE_GLOBE });
+      ouvrirPageCategorie(GRAPH_NODES[index].id);
     }
   }
   zoomAnimationId = requestAnimationFrame(etape);
 
   setActive(GRAPH_NODES[index].id, true);
+}
+
+// Rend au globe son cadrage et son exposition normale - a l'inverse de
+// zoomVersSoma. Seul declencheur pour l'instant : le bouton "Retour"
+// d'une page de categorie (fermerPage).
+function reculerDuZoom() {
+  if (!globe) return;
+  if (zoomAnimationId) { cancelAnimationFrame(zoomAnimationId); zoomAnimationId = null; }
+  globe.definirOptions({ rotation: ROTATION_IDLE_GLOBE, rendu: RENDU_NORMAL, reseau: RESEAU_NORMAL });
+  globe.zoomCible = globe.o.camera.distance;
+}
+
+// --- Pages de categorie (Systeme de Modules, §16) -----------------------
+// Premiere page construite : AURA SYSTEM MONITOR, alimentee par le
+// connecteur reel (connectors/systemMonitor.js, §5.7). Les autres
+// categories n'ont pas encore de page - seul le zoom se declenche pour
+// elles (ouvrirPageCategorie ignore silencieusement tout id inconnu).
+let intervalMonitor = null;
+
+function formatOctets(go) {
+  return go == null ? '—' : `${go} Go`;
+}
+
+function rendreSystemMonitor(snap) {
+  const cpu = document.getElementById('monitor-cpu');
+  cpu.innerHTML = `
+    <div class="monitor-row"><span>Modèle</span><span>${snap.cpu.model || '—'}</span></div>
+    <div class="monitor-row"><span>Cœurs</span><span>${snap.cpu.cores ?? '—'}</span></div>
+    <div class="monitor-row"><span>Fréquence</span><span>${snap.cpu.speedGhz ?? '—'} GHz</span></div>
+    <div class="monitor-row"><span>Charge</span><span>${snap.cpu.loadPercent ?? '—'} %</span></div>
+    <div class="monitor-row"><span>Température</span><span>${snap.cpu.temperatureC ?? '—'} °C</span></div>
+  `;
+
+  const mem = document.getElementById('monitor-memory');
+  mem.innerHTML = `
+    <div class="monitor-row"><span>Utilisée</span><span>${formatOctets(snap.memory.usedGB)} / ${formatOctets(snap.memory.totalGB)}</span></div>
+    <div class="monitor-row"><span>Charge</span><span>${snap.memory.usedPercent ?? '—'} %</span></div>
+  `;
+
+  const gpu = document.getElementById('monitor-gpu');
+  gpu.innerHTML = snap.gpu.length
+    ? snap.gpu.map((g) => `
+        <div class="monitor-row"><span>${g.model}</span><span>${g.loadPercent ?? '—'} %</span></div>
+      `).join('')
+    : 'Aucun GPU dédié détecté.';
+
+  const disks = document.getElementById('monitor-disks');
+  disks.innerHTML = snap.disks.length
+    ? snap.disks.map((d) => `
+        <div class="monitor-row"><span>${d.mount}</span><span>${formatOctets(d.usedGB)} / ${formatOctets(d.sizeGB)} (${d.usedPercent ?? '—'} %)</span></div>
+      `).join('')
+    : 'Aucun disque détecté.';
+
+  const network = document.getElementById('monitor-network');
+  network.innerHTML = snap.network.length
+    ? snap.network.map((n) => `
+        <div class="monitor-row"><span>${n.iface}</span><span>↓ ${n.rxKBs ?? 0} Ko/s · ↑ ${n.txKBs ?? 0} Ko/s</span></div>
+      `).join('')
+    : 'Aucune interface active.';
+
+  const processes = document.getElementById('monitor-processes');
+  processes.innerHTML = snap.topProcesses.length
+    ? snap.topProcesses.map((p) => `
+        <div class="monitor-row"><span>${p.name} (${p.pid})</span><span>${p.cpuPercent ?? 0} % CPU · ${p.memPercent ?? 0} % mém.</span></div>
+      `).join('')
+    : 'Aucun processus.';
+}
+
+async function actualiserSystemMonitor() {
+  try {
+    rendreSystemMonitor(await window.aura.getSystemSnapshot());
+  } catch {
+    document.getElementById('monitor-cpu').textContent = 'Indisponible.';
+  }
+}
+
+function ouvrirPageCategorie(id) {
+  if (id !== 'systemMonitor') return;
+  document.getElementById('page-system-monitor').hidden = false;
+  actualiserSystemMonitor();
+  if (intervalMonitor) clearInterval(intervalMonitor);
+  intervalMonitor = setInterval(actualiserSystemMonitor, 3000);
+  journal('PAGE_OUVERTE : AURA SYSTEM MONITOR');
+}
+
+function fermerPage() {
+  document.querySelectorAll('.app-page').forEach((page) => { page.hidden = true; });
+  if (intervalMonitor) { clearInterval(intervalMonitor); intervalMonitor = null; }
+  reculerDuZoom();
+  journal('PAGE_FERMEE : retour au globe');
+}
+
+function wirePages() {
+  document.getElementById('page-back').addEventListener('click', fermerPage);
 }
 
 function wireConversation() {
@@ -506,6 +602,7 @@ wireJournalFilters();
 wireProductivity();
 wireEmergencyStop();
 wireConversation();
+wirePages();
 loadTasks();
 loadReminders();
 setInterval(pulseRandomActivity, 1300);

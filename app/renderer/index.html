@@ -63,6 +63,45 @@
     <div id="web"></div>
   </main>
 
+  <!-- Premiere page de categorie (Systeme de Modules, §16) : ecran interne
+       de la fenetre applicative, jamais une page separee - affichee apres
+       le zoom sur le Soma AURA SYSTEM MONITOR. Alimentee par le
+       connecteur reel (connectors/systemMonitor.js, §5.7). -->
+  <section id="page-system-monitor" class="app-page" hidden>
+    <header class="app-page-header">
+      <button id="page-back" type="button" class="app-page-back">← Retour</button>
+      <h1>AURA SYSTEM MONITOR</h1>
+    </header>
+    <div class="app-page-body custom-scroll">
+      <div class="monitor-grid">
+        <section class="monitor-card">
+          <h2>CPU</h2>
+          <div id="monitor-cpu" class="monitor-card-body muted">—</div>
+        </section>
+        <section class="monitor-card">
+          <h2>Mémoire</h2>
+          <div id="monitor-memory" class="monitor-card-body muted">—</div>
+        </section>
+        <section class="monitor-card">
+          <h2>GPU</h2>
+          <div id="monitor-gpu" class="monitor-card-body muted">—</div>
+        </section>
+        <section class="monitor-card">
+          <h2>Stockage</h2>
+          <div id="monitor-disks" class="monitor-card-body muted">—</div>
+        </section>
+        <section class="monitor-card">
+          <h2>Réseau</h2>
+          <div id="monitor-network" class="monitor-card-body muted">—</div>
+        </section>
+        <section class="monitor-card monitor-card-wide">
+          <h2>Processus (top CPU)</h2>
+          <div id="monitor-processes" class="monitor-card-body muted">—</div>
+        </section>
+      </div>
+    </div>
+  </section>
+
   <div id="estop-banner" hidden>
     <span class="estop-dot"></span> AURA EN PAUSE — ARRÊT D’URGENCE ACTIF — toile et conversation gelées
   </div>
@@ -78,8 +117,9 @@
     <!-- Acces rapide aux Somas du globe stellaire (§13.3) : le texte tape
          est compare aux categories reelles d'AURA (data.js) - une
          correspondance declenche un zoom de la camera vers le Soma
-         concerne. Pas encore de page de contenu derriere (Systeme de
-         Modules, non construit) - uniquement la navigation visuelle. -->
+         concerne, puis (pour AURA SYSTEM MONITOR, premiere page) l'ecran
+         de contenu correspondant. Les autres categories ne zooment
+         encore que sur le globe (leur page reste a construire). -->
     <form id="conversation-form" class="conversation-bubble" autocomplete="off">
       <input id="conversation" class="conversation-bubble-text" type="text" placeholder="Écrire un message..." autocomplete="off">
       <button type="submit" class="conversation-bubble-icon" aria-label="Accéder">

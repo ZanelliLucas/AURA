@@ -9,6 +9,7 @@ const core = require('./core');
 const store = require('./store');
 const productivity = require('./productivity');
 const autonomy = require('./autonomy');
+const systemMonitor = require('./connectors/systemMonitor');
 
 const PORT = 8420;
 const HOST = '127.0.0.1';
@@ -88,6 +89,15 @@ function startServer() {
   // renderer : evite de manquer une echeance si aucun ecran ne l'affiche.
   server.get('/api/reminders/due', (req, res) => {
     res.json(productivity.checkDueReminders());
+  });
+
+  // AURA SYSTEM MONITOR (§5.7) - lecture seule (OBSERVE, §14.2)
+  server.get('/api/system/monitor', async (req, res) => {
+    try {
+      res.json(await systemMonitor.getSnapshot());
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // AURA AUTONOMY (§5.9)

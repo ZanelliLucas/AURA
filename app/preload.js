@@ -48,5 +48,7 @@ contextBridge.exposeInMainWorld('aura', {
   checkDueReminders: () => getJson('/api/reminders/due'),
 
   getEstop: () => getJson('/api/autonomy/estop'),
-  setEstop: (active) => postJson('/api/autonomy/estop', { active })
+  setEstop: (active) => postJson('/api/autonomy/estop', { active }),
+
+  getSystemSnapshot: () => getJson('/api/system/monitor')
 });
