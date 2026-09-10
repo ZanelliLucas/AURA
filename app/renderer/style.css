@@ -92,13 +92,15 @@ html, body {
   height: 100%;
 }
 
-/* Ecran blanc bref quand la camera "entre" dans un Soma (zoomVersSoma,
-   app.js) - masque la bascule vers la page plutot qu'un cut brutal. */
+/* Fondu bref quand la camera "entre" dans un Soma (zoomVersSoma, app.js) -
+   masque la bascule vers la page plutot qu'un cut brutal. Meme couleur que
+   le fond des pages de categorie (.app-page) : un flash blanc creait une
+   inversion brutale juste avant de reveler une page sombre. */
 #zoom-flash {
   position: fixed;
   inset: 0;
   z-index: 9;
-  background: var(--white);
+  background: var(--bg);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.5s ease;

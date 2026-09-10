@@ -155,10 +155,14 @@ function zoomVersSoma(index) {
   // s'arrete pas devant le Soma, elle le traverse, vers l'interieur.
   const distanceArrivee = Math.max(4, distanceSoma - amas.taille * 3);
   const camArrivee = dirCible.clone().multiplyScalar(distanceArrivee);
-  // Oriente la camera pour qu'elle regarde vers l'interieur du globe
-  // (continuer au-dela du Soma) plutot que de rester tournee vers l'axe Z
-  // d'origine, qui ne correspond plus a rien une fois la camera deplacee.
-  const quatArrivee = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), dirCible.clone().negate());
+  // Oriente la camera vers sa direction de trajet (depart -> arrivee), pas
+  // vers l'interieur du globe (donc vers le noyau, puisqu'il est toujours a
+  // l'origine) : regarder vers le noyau a la fin de la plongee redonnait
+  // exactement l'impression de foncer vers lui plutot que vers le Soma. En
+  // regardant droit devant sur sa trajectoire, le Soma - sa destination -
+  // reste au centre de l'image tout du long.
+  const directionTrajet = camArrivee.clone().sub(camDepart).normalize();
+  const quatArrivee = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), directionTrajet);
 
   globe.definirOptions({ rotation: 0, rendu: RENDU_ZOOM, reseau: RESEAU_ZOOM });
   // Vide les influx deja en vol : sans ca, l'activite accumulee avant la
