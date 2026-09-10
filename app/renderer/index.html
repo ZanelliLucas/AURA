@@ -113,15 +113,17 @@
     <span id="estop-label" class="sr-only">ARRÊT D’URGENCE</span>
   </button>
 
-  <div id="conversation-panel">
+  <div id="conversation-panel" class="terminal-panel">
     <!-- Acces rapide aux Somas du globe stellaire (§13.3) : le texte tape
          est compare aux categories reelles d'AURA (data.js) - une
          correspondance declenche un zoom de la camera vers le Soma
          concerne, puis (pour AURA SYSTEM MONITOR, premiere page) l'ecran
          de contenu correspondant. Les autres categories ne zooment
          encore que sur le globe (leur page reste a construire).
-         Habillage Terminal plutot que bulle de conversation : une
-         prefiguration du style AXIS (§6), pas AXIS lui-meme. -->
+         Habillage panneau de Terminal (tete + ligne de commande) plutot
+         que bulle de conversation : une prefiguration du style AXIS
+         (§6), pas AXIS lui-meme. -->
+    <div class="terminal-panel-header">Terminal</div>
     <form id="conversation-form" class="conversation-bubble" autocomplete="off">
       <span class="conversation-prompt" aria-hidden="true">AURA&gt;</span>
       <input id="conversation" class="conversation-bubble-text" type="text" placeholder="nom de la catégorie…" autocomplete="off" spellcheck="false">

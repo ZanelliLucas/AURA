@@ -375,35 +375,49 @@ body.estopped #conversation-panel {
   bottom: 34px;
   transform: translateX(-50%);
   z-index: 5;
-  width: min(560px, 86vw);
+  width: min(640px, 90vw);
 }
 
-/* Acces rapide aux Somas du globe stellaire, habille en Terminal plutot
-   qu'en bulle de conversation (prefiguration du style AXIS, §6) : le
-   texte tape est compare aux categories reelles d'AURA et declenche un
-   zoom de la camera vers le Soma trouve (§13.3). */
+/* Acces rapide aux Somas du globe stellaire, habille en panneau de
+   Terminal (tete d'onglet + ligne de commande) plutot qu'en bulle de
+   conversation - prefiguration du style AXIS (§6) : le texte tape est
+   compare aux categories reelles d'AURA et declenche un zoom de la
+   camera vers le Soma trouve (§13.3). */
+.terminal-panel {
+  background: rgba(5, 5, 5, 0.97);
+  border: 1px solid rgba(245, 246, 247, 0.14);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.terminal-panel:focus-within {
+  border-color: rgba(229, 38, 26, 0.6);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(229, 38, 26, 0.12);
+}
+.terminal-panel:has(.conversation-bubble-text:disabled) { opacity: 0.4; }
+
+.terminal-panel-header {
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--line-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--red);
+}
+
 .conversation-bubble {
   display: flex;
   align-items: center;
   width: 100%;
-  background: rgba(5, 5, 5, 0.95);
-  border: 1px solid rgba(245, 246, 247, 0.16);
-  border-radius: 6px;
-  padding: 10px 8px 10px 16px;
+  padding: 12px 10px 12px 16px;
   font-family: 'IBM Plex Mono', monospace;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.conversation-bubble:hover,
-.conversation-bubble:focus-within {
-  border-color: rgba(229, 38, 26, 0.6);
-  box-shadow: 0 0 0 3px rgba(229, 38, 26, 0.12);
-}
-.conversation-bubble:has(.conversation-bubble-text:disabled) { opacity: 0.4; }
 
 /* Retour visuel bref quand le texte tape ne correspond a aucune
    categorie connue - pas de blocage, juste un signal discret. */
 .conversation-bubble.pas-trouve {
-  border-color: var(--red);
   animation: conversation-secousse 0.3s ease;
 }
 @keyframes conversation-secousse {
