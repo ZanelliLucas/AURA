@@ -16,7 +16,7 @@ function initGlobe() {
     // du globe (et les amas de particules de chaque Soma) sont plus
     // fournies, pour que la silhouette se lise comme une sphere pleine
     // plutot qu'une etoile de branches rayonnant depuis le centre.
-    densite: 1.4,
+    densite: 1.7,
     // Axones amincis : ce sont les branches les plus epaisses de tout le
     // reseau (gaine/corps) - en reduire la largeur laisse la silhouette
     // de la coque (peau/brume/Somas) porter la forme du globe.
@@ -47,6 +47,15 @@ function pulseRandomActivity() {
   const id = candidates[Math.floor(Math.random() * candidates.length)];
   setActive(id, true);
   setTimeout(() => setActive(id, false), 900);
+}
+
+// Battement du noyau (§13.3) : AURA elle-meme emet regulierement un flux
+// vers tous ses Somas, pas seulement en reponse a leurs propres decharges -
+// c'est ce battement de coeur qui donne au globe l'air d'un organisme
+// vivant plutot que d'un simple reseau qui reagit au hasard.
+function pulseNoyau() {
+  if (document.body.classList.contains('estopped')) return;
+  setActive('__hub', true);
 }
 
 function startClock() {
@@ -368,4 +377,5 @@ wireEmergencyStop();
 loadTasks();
 loadReminders();
 setInterval(pulseRandomActivity, 1300);
+setInterval(pulseNoyau, 2600);
 setInterval(checkDueReminders, 30000);
