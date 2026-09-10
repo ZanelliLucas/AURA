@@ -10,12 +10,19 @@
 # en memoire), parfois assez longue pour que l'appel a exit ci-dessous
 # intervienne avant que Windows Terminal n'ait fini de s'attacher a la
 # session, laissant l'onglet ouvert.
-function launched {
+#
+# "start" est normalement un alias PowerShell pour Start-Process ; les
+# alias passent avant les fonctions dans la resolution de commandes, donc
+# sans le retirer ici, "start AURA" appellerait Start-Process AURA (et
+# echouerait) plutot que la fonction ci-dessous.
+Remove-Item Alias:start -Force -ErrorAction SilentlyContinue
+
+function start {
     param([string]$App)
     if ($App -ieq 'AURA') {
         Start-Process -FilePath (Join-Path $PSScriptRoot "aura-launcher.exe")
         exit
     } else {
-        Write-Host "Usage : launched AURA"
+        Write-Host "Usage : start `"AURA`""
     }
 }
