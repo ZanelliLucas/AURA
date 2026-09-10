@@ -1203,27 +1203,36 @@ class GlobeStellaire {
     const it = this.o.interaction;
     this._ecouteurs = [];
     this.vx = 0; this.vy = 0;
-    let drag = false, lx = 0, ly = 0, bouge = false;
+    let drag = false, lx = 0, ly = 0, bouge = false, dragBouton = -1;
 
     const on = (type, fn, opts) => { el.addEventListener(type, fn, opts); this._ecouteurs.push([type, fn]); };
 
     on('pointerdown', e => {
-      if (!it.rotation && !it.clic) return;
-      drag = true; bouge = false; lx = e.clientX; ly = e.clientY;
+      const deplacement = e.button === 2;
+      if (!it.rotation && !it.clic && !deplacement) return;
+      drag = true; bouge = false; lx = e.clientX; ly = e.clientY; dragBouton = e.button;
       el.setPointerCapture?.(e.pointerId);
     });
     on('pointermove', e => {
-      if (!drag || !it.rotation) return;
+      if (!drag) return;
       const dx = e.clientX - lx, dy = e.clientY - ly;
       if (Math.abs(dx) + Math.abs(dy) > 2) bouge = true;
-      this.monde.rotation.y += dx * 0.004; this.monde.rotation.x += dy * 0.004;
-      this.ciel.rotation.y += dx * 0.001; this.ciel.rotation.x += dy * 0.001;
-      this.vx = dx * 0.06; this.vy = dy * 0.06;
+      if (dragBouton === 2) {
+        // Clic droit : deplace le globe dans le plan de la camera, sans le faire tourner.
+        const visible = 2 * Math.tan((this.o.camera.fov * Math.PI / 180) / 2) * this.camera.position.z;
+        const echelle = visible / Math.max(1, el.clientHeight);
+        this.monde.position.x += dx * echelle;
+        this.monde.position.y -= dy * echelle;
+      } else if (it.rotation) {
+        this.monde.rotation.y += dx * 0.004; this.monde.rotation.x += dy * 0.004;
+        this.ciel.rotation.y += dx * 0.001; this.ciel.rotation.x += dy * 0.001;
+        this.vx = dx * 0.06; this.vy = dy * 0.06;
+      }
       lx = e.clientX; ly = e.clientY;
     });
     const relacher = () => {
-      if (drag && !bouge && it.clic) this.pulse();
-      drag = false;
+      if (drag && !bouge && it.clic && dragBouton !== 2) this.pulse();
+      drag = false; dragBouton = -1;
     };
     on('pointerup', relacher);
     on('pointercancel', relacher);

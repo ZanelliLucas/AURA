@@ -384,7 +384,6 @@ html, body {
   font-family: inherit;
   padding: 0;
 }
-.conversation-bubble-text::placeholder { color: var(--dim); }
 .conversation-bubble-text:disabled { cursor: default; }
 
 .conversation-bubble-icon {
