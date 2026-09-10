@@ -133,6 +133,11 @@ html, body {
   color: var(--white);
   font-weight: 500;
 }
+/* Titre ecrit comme la commande du Terminal qui a ouvert cette page (voir
+   #conversation-highlight, app.js) - meme convention de couleur : l'invite
+   en blanc, le verbe de commande en rouge. */
+.app-page-header h1 .invite { color: var(--white); }
+.app-page-header h1 .verbe { color: var(--red); }
 .app-page-back {
   background: none;
   border: 1px solid rgba(245, 246, 247, 0.16);
@@ -158,20 +163,26 @@ html, body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
+/* Meme gabarit que .terminal-panel (bordure, rayon, en-tete) : chaque
+   carte se lit comme une petite console plutot qu'un simple bloc de
+   donnees. */
 .monitor-card {
-  border: 1px solid var(--line-dim);
-  border-radius: 10px;
-  padding: 16px 18px;
+  background: rgba(245, 246, 247, 0.03);
+  border: 1px solid rgba(245, 246, 247, 0.14);
+  border-radius: 8px;
+  overflow: hidden;
 }
 .monitor-card-wide { grid-column: 1 / -1; }
 .monitor-card h2 {
-  margin: 0 0 10px;
-  font-size: 11px;
-  letter-spacing: 1px;
+  margin: 0;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line-dim);
+  font-size: 10px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
   color: var(--red);
 }
-.monitor-card-body { font-size: 13px; line-height: 1.8; }
+.monitor-card-body { padding: 12px 14px; font-size: 13px; line-height: 1.8; }
 .monitor-row {
   display: flex;
   justify-content: space-between;
