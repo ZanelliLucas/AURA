@@ -32,6 +32,11 @@ function initGlobe() {
     // plus de paquets par emission, cascades qui portent un peu plus
     // loin (relais reste sous 1/relaisMax pour ne pas saturer le globe).
     reseau: { somaSeuil: [1.2, 3.0], rafale: 3, relais: 0.32 },
+    // Boules de flux plus petites (defaut halo:9.5, coeur:3.4) : trop
+    // grandes, leur lumiere additive s'accumule sur trop de pixels et le
+    // tonemapping ACES les fait virer vers un rouge plus clair/orange -
+    // reduites, elles restent plus fidèles au rouge normal de l'app.
+    boule: { halo: 5, coeur: 2 },
     couleurs: {
       fond: '#050505',
       reseau: '#F5F6F7',

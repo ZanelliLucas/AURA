@@ -29,11 +29,12 @@
   /* Rouge unique de l'app - une seule teinte partout (horloge, panneaux,
      boutons, bouton Power y compris), sans exception. Ni aussi sombre
      que l'ancien #A51706 de l'horloge, ni aussi vif que l'ancien #ff3b30
-     du bouton Power - a mi-chemin entre les deux. */
+     du bouton Power - a mi-chemin entre les deux. --red-hover vaut
+     desormais --red lui-meme : pas de rouge plus clair, meme au survol. */
   --red: #E5261A;
   --red-dim: rgba(229, 38, 26, 0.35);
   --red-glow: rgba(229, 38, 26, 0.85);
-  --red-hover: #F03D2E;
+  --red-hover: #E5261A;
   --white: #F5F6F7;
   --dim: #8A93A0;
   --line: rgba(245, 246, 247, 0.28);
