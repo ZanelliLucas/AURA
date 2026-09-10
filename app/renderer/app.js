@@ -46,9 +46,9 @@ function initGlobe() {
     }
   });
 
-  // Le glisser-deposer du composant ne filtre pas le bouton de souris -
-  // un clic droit fait donc deja tourner le globe comme le gauche, mais
-  // le menu contextuel natif interromprait le geste sans ce blocage.
+  // Le clic droit deplace le globe (voir _initInteraction dans
+  // globe-stellaire.js) - sans ce blocage, le menu contextuel natif
+  // interromprait le geste des le pointerdown.
   globe.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
@@ -138,6 +138,11 @@ function zoomVersSoma(index) {
   if (!amas) return;
 
   if (zoomAnimationId) cancelAnimationFrame(zoomAnimationId);
+  // Recentre le globe avant de calculer la plongee : le clic droit peut
+  // avoir deplace globe.monde.position, or la visee (posSoma, distanceSoma)
+  // suppose un globe centre sur l'origine - sans ce recentrage, une plongee
+  // declenchee apres un deplacement viserait a cote du Soma reel.
+  globe.monde.position.set(0, 0, 0);
 
   const posSoma = new THREE.Vector3(amas.x, amas.y, amas.z);
   const distanceSoma = posSoma.length();
@@ -189,6 +194,7 @@ function reculerDuZoom() {
   if (zoomAnimationId) { cancelAnimationFrame(zoomAnimationId); zoomAnimationId = null; }
   globe.definirOptions({ rotation: ROTATION_IDLE_GLOBE, rendu: RENDU_NORMAL, reseau: RESEAU_NORMAL });
   globe.zoomCible = globe.o.camera.distance;
+  globe.monde.position.set(0, 0, 0);
 }
 
 // --- Pages de categorie (Systeme de Modules, §16) -----------------------
