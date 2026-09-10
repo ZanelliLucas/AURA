@@ -138,6 +138,12 @@ html, body {
    en blanc, le verbe de commande en rouge. */
 .app-page-header h1 .invite { color: var(--white); }
 .app-page-header h1 .verbe { color: var(--red); }
+.app-page-updated {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+}
 .app-page-back {
   display: flex;
   align-items: center;
@@ -196,6 +202,16 @@ html, body {
 }
 .monitor-row:last-child { border-bottom: none; }
 .monitor-row span:first-child { color: var(--dim); }
+
+/* Jauge de charge/usage : remplissage proportionnel en fond de ligne,
+   plutot qu'un chiffre isole - se lit d'un coup d'oeil. Le pourcentage
+   est pose en variable inline (voir styleJauge, app.js), la largeur du
+   fond etendu au-dela du padding de la carte pour aller bord a bord. */
+.monitor-row.avec-jauge {
+  margin: 0 -14px;
+  padding: 4px 14px;
+  background: linear-gradient(to right, rgba(229, 38, 26, 0.16) var(--jauge, 0%), transparent var(--jauge, 0%));
+}
 
 /* Panneaux retractables (F-21 / §16.1) */
 .edge-tab {

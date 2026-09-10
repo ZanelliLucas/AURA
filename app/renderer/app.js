@@ -284,33 +284,50 @@ function formatOctets(go) {
   return go == null ? '—' : `${go} Go`;
 }
 
+// vramMB/memoryUsedMB (connectors/systemMonitor.js) arrivent en Mo bruts,
+// non arrondis cote serveur contrairement aux autres tailles - convertis et
+// arrondis ici, en preservant null (GPU sans lecture memoire disponible).
+function moEnGo(mo) {
+  return mo == null ? null : Math.round(mo / 100) / 10;
+}
+
+// Jauge de charge en fond de ligne (voir .monitor-row.avec-jauge, style.css) :
+// une classe et une variable CSS inline plutot qu'un chiffre isole, pour
+// que les charges se comparent d'un coup d'oeil.
+function styleJauge(pourcentage) {
+  const p = Math.max(0, Math.min(100, pourcentage ?? 0));
+  return `class="monitor-row avec-jauge" style="--jauge:${p}%"`;
+}
+
 function rendreSystemMonitor(snap) {
   const cpu = document.getElementById('monitor-cpu');
   cpu.innerHTML = `
     <div class="monitor-row"><span>Modèle</span><span>${snap.cpu.model || '—'}</span></div>
     <div class="monitor-row"><span>Cœurs</span><span>${snap.cpu.cores ?? '—'}</span></div>
     <div class="monitor-row"><span>Fréquence</span><span>${snap.cpu.speedGhz ?? '—'} GHz</span></div>
-    <div class="monitor-row"><span>Charge</span><span>${snap.cpu.loadPercent ?? '—'} %</span></div>
+    <div ${styleJauge(snap.cpu.loadPercent)}><span>Charge</span><span>${snap.cpu.loadPercent ?? '—'} %</span></div>
     <div class="monitor-row"><span>Température</span><span>${snap.cpu.temperatureC ?? '—'} °C</span></div>
   `;
 
   const mem = document.getElementById('monitor-memory');
   mem.innerHTML = `
     <div class="monitor-row"><span>Utilisée</span><span>${formatOctets(snap.memory.usedGB)} / ${formatOctets(snap.memory.totalGB)}</span></div>
-    <div class="monitor-row"><span>Charge</span><span>${snap.memory.usedPercent ?? '—'} %</span></div>
+    <div ${styleJauge(snap.memory.usedPercent)}><span>Charge</span><span>${snap.memory.usedPercent ?? '—'} %</span></div>
   `;
 
   const gpu = document.getElementById('monitor-gpu');
   gpu.innerHTML = snap.gpu.length
     ? snap.gpu.map((g) => `
-        <div class="monitor-row"><span>${g.model}</span><span>${g.loadPercent ?? '—'} %</span></div>
+        <div class="monitor-row"><span>${g.model}</span><span>${g.temperatureC != null ? g.temperatureC + ' °C' : '—'}</span></div>
+        <div ${styleJauge(g.loadPercent)}><span>Charge</span><span>${g.loadPercent ?? '—'} %</span></div>
+        <div class="monitor-row"><span>Mémoire</span><span>${formatOctets(moEnGo(g.memoryUsedMB))} / ${formatOctets(moEnGo(g.vramMB))}</span></div>
       `).join('')
     : 'Aucun GPU dédié détecté.';
 
   const disks = document.getElementById('monitor-disks');
   disks.innerHTML = snap.disks.length
     ? snap.disks.map((d) => `
-        <div class="monitor-row"><span>${d.mount}</span><span>${formatOctets(d.usedGB)} / ${formatOctets(d.sizeGB)} (${d.usedPercent ?? '—'} %)</span></div>
+        <div ${styleJauge(d.usedPercent)}><span>${d.mount}</span><span>${formatOctets(d.usedGB)} / ${formatOctets(d.sizeGB)} (${d.usedPercent ?? '—'} %)</span></div>
       `).join('')
     : 'Aucun disque détecté.';
 
@@ -324,9 +341,12 @@ function rendreSystemMonitor(snap) {
   const processes = document.getElementById('monitor-processes');
   processes.innerHTML = snap.topProcesses.length
     ? snap.topProcesses.map((p) => `
-        <div class="monitor-row"><span>${p.name} (${p.pid})</span><span>${p.cpuPercent ?? 0} % CPU · ${p.memPercent ?? 0} % mém.</span></div>
+        <div ${styleJauge(p.cpuPercent)}><span>${p.name} (${p.pid})</span><span>${p.cpuPercent ?? 0} % CPU · ${p.memPercent ?? 0} % mém.</span></div>
       `).join('')
     : 'Aucun processus.';
+
+  const heure = new Date(snap.takenAt).toLocaleTimeString('fr-FR');
+  document.getElementById('monitor-updated').textContent = `Actualisé à ${heure}`;
 }
 
 async function actualiserSystemMonitor() {
