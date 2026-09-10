@@ -12,6 +12,19 @@ function initGlobe() {
   globe = new window.GlobeStellaire(document.getElementById('web'), {
     fondTransparent: true,
     etoiles: 0,
+    // Densite plus haute : la "peau" et la brume qui ferment la surface
+    // du globe (et les amas de particules de chaque Soma) sont plus
+    // fournies, pour que la silhouette se lise comme une sphere pleine
+    // plutot qu'une etoile de branches rayonnant depuis le centre.
+    densite: 1.4,
+    // Axones amincis : ce sont les branches les plus epaisses de tout le
+    // reseau (gaine/corps) - en reduire la largeur laisse la silhouette
+    // de la coque (peau/brume/Somas) porter la forme du globe.
+    epaisseur: { axoneGaine: 12, axone: 6 },
+    // Plus de flux de donnees : decharges spontanees plus frequentes,
+    // plus de paquets par emission, cascades qui portent un peu plus
+    // loin (relais reste sous 1/relaisMax pour ne pas saturer le globe).
+    reseau: { somaSeuil: [1.2, 3.0], rafale: 3, relais: 0.32 },
     couleurs: {
       fond: '#050505',
       reseau: '#F5F6F7',
@@ -354,5 +367,5 @@ wireProductivity();
 wireEmergencyStop();
 loadTasks();
 loadReminders();
-setInterval(pulseRandomActivity, 2600);
+setInterval(pulseRandomActivity, 1300);
 setInterval(checkDueReminders, 30000);
