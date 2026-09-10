@@ -11,6 +11,7 @@ let globe = null;
 function initGlobe() {
   globe = new window.GlobeStellaire(document.getElementById('web'), {
     fondTransparent: true,
+    etoiles: 0,
     couleurs: {
       fond: '#050505',
       reseau: '#F5F6F7',
