@@ -150,7 +150,11 @@ function zoomVersSoma(index) {
   const quatCible = new THREE.Quaternion().setFromUnitVectors(dirCible, new THREE.Vector3(0, 0, 1));
   const quatDepart = globe.monde.quaternion.clone();
 
-  globe.definirOptions({ rotation: 0, rendu: RENDU_ZOOM, reseau: RESEAU_ZOOM });
+  // inclinaisonMax desactive (Infinity) : la visee quaternion de la plongee
+  // doit pouvoir incliner le globe au-dela de la limite du glisser-depose -
+  // sinon le clamp de _boucle() ecrase la visee a chaque frame et la
+  // plongee ne s'aligne plus sur le Soma reel (voir reculerDuZoom).
+  globe.definirOptions({ rotation: 0, rendu: RENDU_ZOOM, reseau: RESEAU_ZOOM, inclinaisonMax: Infinity });
   // Vide les influx deja en vol : sans ca, l'activite accumulee avant la
   // plongee continue de flamber a l'ecran le temps qu'elle s'eteigne
   // d'elle meme, precisement quand la camera s'en approche le plus.
@@ -162,23 +166,37 @@ function zoomVersSoma(index) {
   globe.zoomCible = Math.max(4, distanceSoma - amas.taille * 3);
 
   const flash = document.getElementById('zoom-flash');
-  flash.classList.add('actif');
+  // Le blanc ne monte que sur le dernier tiers de la plongee (SEUIL_FLASH) :
+  // avant, ancien code ajoutait .actif des le depart et laissait la
+  // transition CSS (0.5s) monter plus vite que la plongee entiere
+  // (1.1s) - l'ecran devenait blanc avant meme d'avoir vu le globe se
+  // tourner vers le Soma, ce qui se lisait comme un simple flash plutot
+  // qu'un vrai zoom. L'opacite est desormais pilotee frame par frame,
+  // synchronisee sur la progression reelle.
+  const SEUIL_FLASH = 0.65;
+  // La transition CSS de #zoom-flash (0.5s) rechaine sinon a chaque frame
+  // pendant la montee pilotee ici, ce qui la fait retarder derriere la
+  // valeur reelle - coupee pendant la plongee, elle ne sert que pour la
+  // dissipation finale (voir plus bas).
+  flash.style.transition = 'none';
 
   const debut = performance.now();
   function etape(maintenant) {
     const t = Math.min(1, (maintenant - debut) / DUREE_PLONGEE);
     const progression = 1 - Math.pow(1 - t, 3);
     globe.monde.quaternion.slerpQuaternions(quatDepart, quatCible, progression);
+    flash.style.opacity = t > SEUIL_FLASH ? (t - SEUIL_FLASH) / (1 - SEUIL_FLASH) : 0;
     if (t < 1) {
       zoomAnimationId = requestAnimationFrame(etape);
     } else {
       zoomAnimationId = null;
       // La camera a fini de traverser le Soma - l'ecran est blanc a cet
-      // instant (transition CSS plus courte que la plongee). On ouvre la
-      // page derriere ce blanc puis on le laisse se dissiper pour la
-      // reveler, plutot qu'un cut brutal visible.
+      // instant. On ouvre la page derriere ce blanc puis on retire le style
+      // en ligne : la transition CSS (0.5s) reprend la main et dissipe le
+      // blanc vers la page, plutot qu'un cut brutal visible.
       ouvrirPageCategorie(GRAPH_NODES[index].id);
-      flash.classList.remove('actif');
+      flash.style.transition = '';
+      flash.style.opacity = '';
     }
   }
   zoomAnimationId = requestAnimationFrame(etape);
@@ -192,7 +210,7 @@ function zoomVersSoma(index) {
 function reculerDuZoom() {
   if (!globe) return;
   if (zoomAnimationId) { cancelAnimationFrame(zoomAnimationId); zoomAnimationId = null; }
-  globe.definirOptions({ rotation: ROTATION_IDLE_GLOBE, rendu: RENDU_NORMAL, reseau: RESEAU_NORMAL });
+  globe.definirOptions({ rotation: ROTATION_IDLE_GLOBE, rendu: RENDU_NORMAL, reseau: RESEAU_NORMAL, inclinaisonMax: 1.2 });
   globe.zoomCible = globe.o.camera.distance;
   globe.monde.position.set(0, 0, 0);
 }

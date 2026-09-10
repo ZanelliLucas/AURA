@@ -103,7 +103,6 @@ html, body {
   pointer-events: none;
   transition: opacity 0.5s ease;
 }
-#zoom-flash.actif { opacity: 1; }
 
 /* Premiere page de categorie (Systeme de Modules, §16) : ecran interne
    qui recouvre la toile, jamais une fenetre ou une page separee. */
