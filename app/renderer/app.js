@@ -1,60 +1,30 @@
-const SVG_NS = 'http://www.w3.org/2000/svg';
 const GRAPH_NODES = window.AURA_GRAPH.NODES;
 
-const CENTER = { x: 800, y: 500 };
-const R_PRINCIPAL = 300;
-const VIEW_W = 1600;
-const VIEW_H = 1000;
+// Globe stellaire (§13.3, F-21) : le noyau represente AURA elle-meme, les
+// Somas ses domaines fonctionnels. Rendu par la classe GlobeStellaire
+// (renderer/globe-stellaire.js, chargee avant ce fichier), un composant
+// Three.js autonome fourni tel quel - ce fichier se contente de
+// l'instancier avec l'identite visuelle d'AURA et de lui relayer
+// l'activite generale (pulsation aleatoire, survol, arret d'urgence).
+let globe = null;
 
-function el(tag, attrs) {
-  const node = document.createElementNS(SVG_NS, tag);
-  Object.entries(attrs || {}).forEach(([k, v]) => node.setAttribute(k, v));
-  return node;
-}
-
-// Placeholder : la precedente toile (tendons organiques, maillage,
-// poussiere, flux...) a ete retiree pour repartir de zero sur une
-// nouvelle direction visuelle. Ne reste que le hub et les agents en
-// cercle simple, sans aucune ligne.
-function layout() {
-  const positioned = {};
-  const step = (Math.PI * 2) / GRAPH_NODES.length;
-
-  GRAPH_NODES.forEach((node, i) => {
-    const angle = i * step;
-    const x = CENTER.x + Math.cos(angle) * R_PRINCIPAL;
-    const y = CENTER.y + Math.sin(angle) * R_PRINCIPAL;
-    positioned[node.id] = { ...node, x, y, angle };
+function initGlobe() {
+  globe = new window.GlobeStellaire(document.getElementById('web'), {
+    fondTransparent: true,
+    couleurs: {
+      fond: '#050505',
+      reseau: '#F5F6F7',
+      flux: '#E5261A',
+      fluxSoma: '#E5261A',
+      etoiles: '#F5F6F7'
+    }
   });
-
-  return positioned;
-}
-
-function render() {
-  const svg = document.getElementById('web');
-  svg.innerHTML = '';
-  const positioned = layout();
-  const nodeList = Object.values(positioned);
-
-  nodeList.forEach((p) => {
-    const group = el('g', { class: 'node-group', 'data-node': p.id });
-
-    group.addEventListener('mouseenter', () => setActive(p.id, true));
-    group.addEventListener('mouseleave', () => setActive(p.id, false));
-
-    svg.appendChild(group);
-  });
-
-  // Hub central
-  const hub = el('g', { class: 'node-group', 'data-node': '__hub' });
-  svg.appendChild(hub);
 }
 
 function setActive(nodeId, active) {
-  document.querySelectorAll(`.link[data-node="${nodeId}"]`)
-    .forEach((line) => line.classList.toggle('active', active));
-  document.querySelectorAll(`.link-relation[data-a="${nodeId}"], .link-relation[data-b="${nodeId}"]`)
-    .forEach((path) => path.classList.toggle('active', active));
+  if (!globe || !active) return;
+  if (nodeId === '__hub') globe.pulse();
+  else globe.pulseSoma();
 }
 
 function pulseRandomActivity() {
@@ -215,9 +185,10 @@ function wireEmergencyStop() {
     conversationBtn.disabled = stopped;
 
     if (stopped) {
-      document.querySelectorAll('.link.active, .link-relation.active')
-        .forEach((el) => el.classList.remove('active'));
+      globe?.pause();
       stopSpeaking();
+    } else {
+      globe?.reprendre();
     }
 
     journal(stopped ? 'ARRET_URGENCE_ACTIVE : toile et conversation gelees' : 'ARRET_URGENCE_LEVE : reprise normale');
@@ -374,7 +345,7 @@ function wireProductivity() {
   });
 }
 
-render();
+initGlobe();
 startClock();
 wirePanels();
 wireJournalFilters();
