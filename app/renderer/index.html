@@ -119,7 +119,10 @@
     <div class="terminal-panel-header">Terminal</div>
     <form id="conversation-form" class="conversation-bubble" autocomplete="off">
       <span class="conversation-prompt" aria-hidden="true">AURA&gt;</span>
-      <input id="conversation" class="conversation-bubble-text" type="text" autocomplete="off" spellcheck="false">
+      <span class="conversation-input-wrap">
+        <input id="conversation" class="conversation-bubble-text" type="text" autocomplete="off" spellcheck="false">
+        <div id="conversation-highlight" class="conversation-bubble-text conversation-highlight" aria-hidden="true"></div>
+      </span>
     </form>
   </div>
 

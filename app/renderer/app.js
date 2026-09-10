@@ -80,7 +80,12 @@ function pulseNoyau() {
 // langage naturel ni de Terminal complet ici - juste une reconnaissance
 // de nom, en attendant qu'AXIS (§6 du cahier des charges) existe pour de
 // vrai.
-const MOTS_VIDES_ACCES = ['access', 'acceder', 'accede', 'va', 'aller', 'ouvrir', 'ouvre', 'sur', 'a', 'le', 'la', 'les', 'aura'];
+// Verbes de commande : sous-ensemble des mots vides qui representent une
+// action plutot qu'un simple mot de liaison - ce sont eux qu'on colorise en
+// rouge dans le Terminal (voir actualiserSurbrillanceCommande), pas les
+// articles/prepositions/"aura" qui les accompagnent.
+const VERBES_COMMANDE = ['start', 'access', 'acceder', 'accede', 'va', 'aller', 'ouvrir', 'ouvre'];
+const MOTS_VIDES_ACCES = [...VERBES_COMMANDE, 'sur', 'a', 'le', 'la', 'les', 'aura'];
 
 function normaliserTexte(texte) {
   // Decompose les caracteres accentues (NFD) puis retire les marques
@@ -352,10 +357,38 @@ function wirePages() {
   document.getElementById('page-back').addEventListener('click', fermerPage);
 }
 
+function echapperHtml(texte) {
+  return texte.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Colorise en rouge les verbes de commande (VERBES_COMMANDE, ex. "start")
+// dans le calque #conversation-highlight superpose au champ de saisie -
+// l'input natif ne peut pas colorer une partie de son propre texte, voir
+// le commentaire sur .conversation-input-wrap dans style.css.
+function actualiserSurbrillanceCommande() {
+  const input = document.getElementById('conversation');
+  const surbrillance = document.getElementById('conversation-highlight');
+  surbrillance.innerHTML = input.value
+    .split(/(\s+)/)
+    .map((morceau) => (
+      VERBES_COMMANDE.includes(normaliserTexte(morceau))
+        ? `<span class="mot-commande">${echapperHtml(morceau)}</span>`
+        : echapperHtml(morceau)
+    ))
+    .join('');
+  // L'input natif defile tout seul quand le texte depasse sa largeur
+  // visible (curseur en bout de saisie) - le calque de surbrillance doit
+  // suivre ce defilement pour rester aligne avec le texte reel (invisible).
+  surbrillance.style.transform = `translateX(${-input.scrollLeft}px)`;
+}
+
 function wireConversation() {
   const form = document.getElementById('conversation-form');
   const input = document.getElementById('conversation');
   const bulle = document.querySelector('.conversation-bubble');
+
+  input.addEventListener('input', actualiserSurbrillanceCommande);
+  input.addEventListener('scroll', actualiserSurbrillanceCommande);
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -375,6 +408,7 @@ function wireConversation() {
     zoomVersSoma(index);
     input.value = '';
     input.blur();
+    actualiserSurbrillanceCommande();
   });
 }
 

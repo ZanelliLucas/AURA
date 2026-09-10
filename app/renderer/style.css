@@ -372,19 +372,47 @@ html, body {
   margin-right: 10px;
 }
 
-.conversation-bubble-text {
+/* Le wrapper porte le flex:1 a la place de l'input : ca laisse la place a
+   #conversation-highlight de se superposer exactement dessus (meme boite),
+   pour coloriser certains mots (les "commandes", ex. "start") sans toucher
+   au champ de saisie natif lui-meme - un <input> ne peut pas colorer une
+   partie de son propre texte. */
+.conversation-input-wrap {
+  position: relative;
   flex: 1;
   min-width: 0;
+}
+
+.conversation-bubble-text {
+  width: 100%;
   text-align: left;
-  color: var(--red);
+  color: var(--white);
   font-size: 14px;
   background: none;
   border: none;
   outline: none;
   font-family: inherit;
   padding: 0;
+  white-space: pre;
 }
 .conversation-bubble-text:disabled { cursor: default; }
+
+/* Le texte reel de l'input est transparent (seul le curseur reste visible,
+   en rouge) - c'est #conversation-highlight, superpose exactement par
+   dessus, qui affiche le texte colorise. */
+#conversation {
+  position: relative;
+  color: transparent;
+  caret-color: var(--red);
+}
+
+.conversation-highlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.conversation-highlight .mot-commande { color: var(--red); }
 
 #save-key {
   flex-shrink: 0;
