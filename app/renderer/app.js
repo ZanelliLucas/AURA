@@ -128,6 +128,11 @@ const RENDU_ZOOM = { exposition: 0.75, bloomIntensite: 0.4 };
 const RESEAU_NORMAL = { somaSeuil: [1.2, 3.0], rafale: 3, relais: 0.32 };
 const RESEAU_ZOOM = { somaSeuil: [8, 14], rafale: 1, relais: 0.05 };
 const DUREE_PLONGEE = 1100;
+// Portion de la plongee/du retour reservee au voile (opaque, couleur de
+// #zoom-flash) qui masque la bascule vers/depuis la page : les 35%
+// restants montrent le deplacement de camera en clair (voir zoomVersSoma
+// et reculerDuZoom).
+const SEUIL_FLASH = 0.65;
 
 function zoomVersSoma(index) {
   if (!globe) return;
@@ -171,14 +176,13 @@ function zoomVersSoma(index) {
   globe.influx.length = 0;
 
   const flash = document.getElementById('zoom-flash');
-  // Le blanc ne monte que sur le dernier tiers de la plongee (SEUIL_FLASH) :
+  // Le voile ne monte que sur le dernier tiers de la plongee (SEUIL_FLASH) :
   // avant, l'ancien code ajoutait .actif des le depart et laissait la
   // transition CSS (0.5s) monter plus vite que la plongee entiere (1.1s) -
-  // l'ecran devenait blanc avant meme d'avoir vu la camera se deplacer
+  // l'ecran devenait opaque avant meme d'avoir vu la camera se deplacer
   // vers le Soma, ce qui se lisait comme un simple flash plutot qu'un
   // vrai zoom. L'opacite est desormais pilotee frame par frame,
   // synchronisee sur la progression reelle.
-  const SEUIL_FLASH = 0.65;
   // La transition CSS de #zoom-flash (0.5s) rechaine sinon a chaque frame
   // pendant la montee pilotee ici, ce qui la fait retarder derriere la
   // valeur reelle - coupee pendant la plongee, elle ne sert que pour la
@@ -220,21 +224,48 @@ function zoomVersSoma(index) {
   setActive(GRAPH_NODES[index].id, true);
 }
 
-// Rend au globe son cadrage et son exposition normale - a l'inverse de
-// zoomVersSoma. Seul declencheur pour l'instant : le bouton "Retour"
-// d'une page de categorie (fermerPage).
+// Ramene la camera de l'endroit du dernier Soma visite (ou elle est restee,
+// derriere la page) a sa position fixe habituelle (0,0,distance) face a
+// l'origine - symetrique inverse de zoomVersSoma, meme technique de
+// deplacement/visee anime plutot qu'un cut instantane. Seul declencheur
+// pour l'instant : le bouton "Retour" d'une page de categorie (fermerPage).
 function reculerDuZoom() {
   if (!globe) return;
   if (zoomAnimationId) { cancelAnimationFrame(zoomAnimationId); zoomAnimationId = null; }
   globe.definirOptions({ rotation: ROTATION_IDLE_GLOBE, rendu: RENDU_NORMAL, reseau: RESEAU_NORMAL });
   globe.monde.position.set(0, 0, 0);
-  // La plongee deplace et reoriente la camera elle-meme (voir
-  // zoomVersSoma) - sans ce reset explicite, elle resterait a l'endroit et
-  // a l'angle du dernier Soma visite au lieu de revenir a sa position fixe
-  // habituelle (0,0,distance) face a l'origine.
-  globe.camera.position.set(0, 0, globe.o.camera.distance);
-  globe.camera.quaternion.identity();
-  globe.zoomCible = globe.o.camera.distance;
+
+  const camDepart = globe.camera.position.clone();
+  const quatDepart = globe.camera.quaternion.clone();
+  const camArrivee = new THREE.Vector3(0, 0, globe.o.camera.distance);
+  const quatArrivee = new THREE.Quaternion();
+
+  const flash = document.getElementById('zoom-flash');
+  // La page se ferme derriere un ecran plein (meme couleur qu'elle, voir
+  // #zoom-flash) instantanement, le temps de la reveler puis de dissiper
+  // ce voile progressivement pendant que la camera se retire - symetrique
+  // inverse de la montee du blanc en fin de plongee (zoomVersSoma).
+  flash.style.transition = 'none';
+  flash.style.opacity = '1';
+
+  const debut = performance.now();
+  function etape(maintenant) {
+    const t = Math.min(1, (maintenant - debut) / DUREE_PLONGEE);
+    const progression = 1 - Math.pow(1 - t, 3);
+    globe.camera.position.lerpVectors(camDepart, camArrivee, progression);
+    globe.camera.quaternion.slerpQuaternions(quatDepart, quatArrivee, progression);
+    globe.zoomCible = globe.camera.position.z;
+    const SEUIL_VOILE = 1 - SEUIL_FLASH;
+    flash.style.opacity = t < SEUIL_VOILE ? 1 - t / SEUIL_VOILE : 0;
+    if (t < 1) {
+      zoomAnimationId = requestAnimationFrame(etape);
+    } else {
+      zoomAnimationId = null;
+      flash.style.transition = '';
+      flash.style.opacity = '';
+    }
+  }
+  zoomAnimationId = requestAnimationFrame(etape);
 }
 
 // --- Pages de categorie (Systeme de Modules, §16) -----------------------
