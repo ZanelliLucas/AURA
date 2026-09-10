@@ -100,26 +100,28 @@ function trouverIndexCategorie(texte) {
   return libelles.findIndex((label) => label.includes(q) || q.includes(label));
 }
 
-// Zoom la camera vers un Soma donne (index dans GRAPH_NODES). GlobeStellaire
-// n'a pas de "flyTo" integre - ce sont ses champs publics (monde, amas,
-// somas, zoomCible) qui rendent ca possible sans toucher au fichier fourni :
-// on tourne le globe pour amener le Soma face a la camera (slerp du
-// quaternion de monde), et on rapproche zoomCible - la boucle de rendu du
-// composant l'interpole deja en douceur vers la camera a chaque frame.
-// Le rendu est en fondu additif (bloom) : vue de pres, la couronne de
-// particules d'un Soma - et surtout les influx en cours (boules de flux,
-// elles aussi en fondu additif, dont la taille a l'ecran grandit avec la
-// proximite de la camera) - remplissent une bien plus grande partie de
-// l'ecran et leur lumiere s'additionne au point de saturer l'image (tout
-// vire au blanc/orange). On compense en baissant temporairement
-// l'exposition/le bloom ET le volume d'influx pendant que la camera
-// reste rapprochee, et on les restaure au retour a la vue globale
-// (reculerDuZoom).
+// Plonge la camera A L'INTERIEUR d'un Soma donne (index dans GRAPH_NODES) -
+// pas une simple approche : la cible de zoom passe sous le rayon du Soma
+// lui-meme, la camera le traverse. GlobeStellaire n'a pas de "flyTo"
+// integre - ce sont ses champs publics (monde, amas, somas, zoomCible) qui
+// rendent ca possible sans toucher au fichier fourni : on tourne le globe
+// pour amener le Soma face a la camera (slerp du quaternion de monde), et
+// on rapproche zoomCible bien en dessous de la taille du Soma - la boucle
+// de rendu du composant l'interpole deja en douceur vers la camera a
+// chaque frame.
+// Le rendu est en fondu additif (bloom) : au coeur du Soma, sa couronne de
+// particules et les influx en cours remplissent tout l'ecran et leur
+// lumiere s'additionne au point de saturer l'image. Plutot que de lutter
+// contre cette saturation, on s'en sert : l'exposition/le bloom sont
+// fortement attenues pour garder la plongee lisible, et un ecran blanc
+// (#zoom-flash) monte au moment ou la camera traverse le Soma - c'est ce
+// blanc qui masque la bascule vers la page plutot qu'un cut brutal.
 let zoomAnimationId = null;
 const RENDU_NORMAL = { exposition: 1.35, bloomIntensite: 0.72 };
-const RENDU_ZOOM = { exposition: 0.4, bloomIntensite: 0.15 };
+const RENDU_ZOOM = { exposition: 0.22, bloomIntensite: 0.06 };
 const RESEAU_NORMAL = { somaSeuil: [1.2, 3.0], rafale: 3, relais: 0.32 };
-const RESEAU_ZOOM = { somaSeuil: [5, 9], rafale: 1, relais: 0.1 };
+const RESEAU_ZOOM = { somaSeuil: [8, 14], rafale: 1, relais: 0.05 };
+const DUREE_PLONGEE = 1100;
 
 function zoomVersSoma(index) {
   if (!globe) return;
@@ -129,33 +131,41 @@ function zoomVersSoma(index) {
 
   if (zoomAnimationId) cancelAnimationFrame(zoomAnimationId);
 
-  const dirCible = new THREE.Vector3(amas.x, amas.y, amas.z).normalize();
+  const posSoma = new THREE.Vector3(amas.x, amas.y, amas.z);
+  const distanceSoma = posSoma.length();
+  const dirCible = posSoma.clone().normalize();
   const quatCible = new THREE.Quaternion().setFromUnitVectors(dirCible, new THREE.Vector3(0, 0, 1));
   const quatDepart = globe.monde.quaternion.clone();
 
   globe.definirOptions({ rotation: 0, rendu: RENDU_ZOOM, reseau: RESEAU_ZOOM });
-  // Vide les influx deja en vol : sans ca, l'activite accumulee avant le
-  // zoom continue de flamber a l'ecran le temps qu'elle s'eteigne d'elle
-  // meme, precisement quand la camera se rapproche et l'amplifie le plus.
+  // Vide les influx deja en vol : sans ca, l'activite accumulee avant la
+  // plongee continue de flamber a l'ecran le temps qu'elle s'eteigne
+  // d'elle meme, precisement quand la camera s'en approche le plus.
   globe.influx.length = 0;
-  const rayon = globe.o.rayon || 80;
-  globe.zoomCible = Math.max(globe.o.camera.min, rayon * 1.8);
+  // distanceSoma est la distance du Soma au noyau (donc a la camera, une
+  // fois l'axe aligne) - pas sa propre taille (amas.taille, le rayon de
+  // son amas de particules, bien plus petit). On vise juste au-dela de sa
+  // coque : la camera ne s'arrete pas devant le Soma, elle le traverse.
+  globe.zoomCible = Math.max(4, distanceSoma - amas.taille * 3);
 
-  const duree = 900;
+  const flash = document.getElementById('zoom-flash');
+  flash.classList.add('actif');
+
   const debut = performance.now();
   function etape(maintenant) {
-    const t = Math.min(1, (maintenant - debut) / duree);
+    const t = Math.min(1, (maintenant - debut) / DUREE_PLONGEE);
     const progression = 1 - Math.pow(1 - t, 3);
     globe.monde.quaternion.slerpQuaternions(quatDepart, quatCible, progression);
     if (t < 1) {
       zoomAnimationId = requestAnimationFrame(etape);
     } else {
       zoomAnimationId = null;
-      // La rotation idle reprend (le globe continue de vivre une fois le
-      // Soma cadre) ; l'exposition/le flux restent attenues tant que la
-      // camera reste rapprochee, jusqu'au retour a la vue globale.
-      globe.definirOptions({ rotation: ROTATION_IDLE_GLOBE });
+      // La camera a fini de traverser le Soma - l'ecran est blanc a cet
+      // instant (transition CSS plus courte que la plongee). On ouvre la
+      // page derriere ce blanc puis on le laisse se dissiper pour la
+      // reveler, plutot qu'un cut brutal visible.
       ouvrirPageCategorie(GRAPH_NODES[index].id);
+      flash.classList.remove('actif');
     }
   }
   zoomAnimationId = requestAnimationFrame(etape);

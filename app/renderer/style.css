@@ -86,6 +86,19 @@ html, body {
   height: 100%;
 }
 
+/* Ecran blanc bref quand la camera "entre" dans un Soma (zoomVersSoma,
+   app.js) - masque la bascule vers la page plutot qu'un cut brutal. */
+#zoom-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  background: var(--white);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+#zoom-flash.actif { opacity: 1; }
+
 /* Premiere page de categorie (Systeme de Modules, §16) : ecran interne
    qui recouvre la toile, jamais une fenetre ou une page separee. */
 .app-page {
