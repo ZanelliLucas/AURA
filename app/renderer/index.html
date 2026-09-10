@@ -119,11 +119,14 @@
          correspondance declenche un zoom de la camera vers le Soma
          concerne, puis (pour AURA SYSTEM MONITOR, premiere page) l'ecran
          de contenu correspondant. Les autres categories ne zooment
-         encore que sur le globe (leur page reste a construire). -->
+         encore que sur le globe (leur page reste a construire).
+         Habillage Terminal plutot que bulle de conversation : une
+         prefiguration du style AXIS (§6), pas AXIS lui-meme. -->
     <form id="conversation-form" class="conversation-bubble" autocomplete="off">
-      <input id="conversation" class="conversation-bubble-text" type="text" placeholder="Écrire un message..." autocomplete="off">
-      <button type="submit" class="conversation-bubble-icon" aria-label="Accéder">
-        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 11.5 21 3l-6.5 18-3-7.5L3 11.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <span class="conversation-prompt" aria-hidden="true">AURA&gt;</span>
+      <input id="conversation" class="conversation-bubble-text" type="text" placeholder="nom de la catégorie…" autocomplete="off" spellcheck="false">
+      <button type="submit" class="conversation-bubble-icon" aria-label="Exécuter">
+        <svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 4 19 12 5 20V4Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
       </button>
     </form>
   </div>
