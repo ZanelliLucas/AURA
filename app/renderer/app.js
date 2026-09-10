@@ -45,6 +45,11 @@ function initGlobe() {
       etoiles: '#F5F6F7'
     }
   });
+
+  // Le glisser-deposer du composant ne filtre pas le bouton de souris -
+  // un clic droit fait donc deja tourner le globe comme le gauche, mais
+  // le menu contextuel natif interromprait le geste sans ce blocage.
+  globe.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
 function setActive(nodeId, active) {
@@ -55,7 +60,6 @@ function setActive(nodeId, active) {
 }
 
 function pulseRandomActivity() {
-  if (document.body.classList.contains('estopped')) return;
   const candidates = GRAPH_NODES.map((n) => n.id);
   const id = candidates[Math.floor(Math.random() * candidates.length)];
   setActive(id, true);
@@ -67,7 +71,6 @@ function pulseRandomActivity() {
 // c'est ce battement de coeur qui donne au globe l'air d'un organisme
 // vivant plutot que d'un simple reseau qui reagit au hasard.
 function pulseNoyau() {
-  if (document.body.classList.contains('estopped')) return;
   setActive('__hub', true);
 }
 
@@ -433,48 +436,6 @@ function journal(action) {
   console.log(`[journal] ${new Date().toISOString()} ${action}`);
 }
 
-function wireEmergencyStop() {
-  const btn = document.getElementById('estop');
-  const label = document.getElementById('estop-label');
-  const banner = document.getElementById('estop-banner');
-  const conversationInput = document.getElementById('conversation');
-  const conversationSubmit = document.querySelector('#conversation-form .conversation-bubble-icon');
-
-  btn.addEventListener('click', async () => {
-    const stopped = document.body.classList.toggle('estopped');
-
-    banner.hidden = !stopped;
-    label.textContent = stopped ? 'REPRENDRE' : 'ARRÊT D’URGENCE';
-    btn.title = stopped ? 'Reprendre' : 'Arrêt d’urgence global';
-    conversationInput.disabled = stopped;
-    conversationSubmit.disabled = stopped;
-
-    if (stopped) {
-      globe?.pause();
-      stopSpeaking();
-    } else {
-      globe?.reprendre();
-    }
-
-    journal(stopped ? 'ARRET_URGENCE_ACTIVE : toile et conversation gelees' : 'ARRET_URGENCE_LEVE : reprise normale');
-
-    // Meme bouton, meme etat : suspend aussi les regles AURA AUTONOMY
-    // cote backend (§5.9) - une seule source de verite pour "arrete".
-    try {
-      await window.aura.setEstop(stopped);
-    } catch { /* backend indisponible, l'UI reste geree localement */ }
-    refreshJournalIfOpen();
-  });
-}
-
-// Interrompt une synthese vocale en cours, notamment au declenchement
-// de l'arret d'urgence.
-function stopSpeaking() {
-  if (window.speechSynthesis && window.speechSynthesis.speaking) {
-    window.speechSynthesis.cancel();
-  }
-}
-
 // --- Connecteur Productivite (§7) -------------------------------------
 // task.create / task.complete / reminder.schedule. Les rappels ne sont
 // verifies que pendant qu'une session AURA est ouverte (F-22, §5.9) -
@@ -615,7 +576,6 @@ startClock();
 wirePanels();
 wireJournalFilters();
 wireProductivity();
-wireEmergencyStop();
 wireConversation();
 wirePages();
 loadTasks();

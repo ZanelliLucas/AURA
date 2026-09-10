@@ -74,9 +74,14 @@ html, body {
   text-shadow: 0 0 8px var(--red-dim);
 }
 
+/* Centre le globe entre l'horloge et le Terminal plutot que sur toute la
+   page - sinon il deborde derriere le panneau Terminal en bas. */
 #stage {
   position: fixed;
-  inset: 0;
+  top: 70px;
+  right: 0;
+  bottom: 150px;
+  left: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -299,88 +304,6 @@ html, body {
 .journal-entry.execute { border-left-color: #3fb950; }
 .journal-entry.echoue { border-left-color: var(--red); }
 .journal-time { color: var(--dim); font-size: 10px; letter-spacing: 0.5px; }
-
-/* Arret d'urgence (§5.9, §22) - toujours visible. Simple icone "power"
-   dans un bouton rond, plus depouille qu'un cadre "reticule" avec texte. */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-#estop {
-  position: fixed;
-  top: 9px;
-  right: 22px;
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  background: none;
-  border: none;
-  color: var(--red);
-  cursor: pointer;
-  transition: color 0.2s ease, filter 0.2s ease, transform 0.15s ease;
-}
-#estop svg { width: 26px; height: 26px; display: block; }
-
-#estop:hover {
-  color: var(--red-hover);
-  filter: drop-shadow(0 0 5px var(--red-glow));
-  transform: scale(1.08);
-}
-
-.estop-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--red);
-  box-shadow: 0 0 6px var(--red-glow);
-  flex: none;
-}
-
-body.estopped #estop {
-  filter: drop-shadow(0 0 7px var(--red-glow));
-}
-body.estopped .estop-dot { background: var(--white); box-shadow: 0 0 6px rgba(255, 255, 255, 0.85); animation: estop-blink 1s ease-in-out infinite; }
-@keyframes estop-blink { 50% { opacity: 0.25; } }
-
-/* Verrouillage reel de la toile et de la conversation (§5.9, §22) */
-body.estopped #web,
-body.estopped #conversation-panel {
-  pointer-events: none;
-  filter: grayscale(1) opacity(0.35);
-  transition: filter 0.3s ease;
-}
-
-#estop-banner[hidden] { display: none; }
-#estop-banner {
-  position: fixed;
-  top: 60px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--red);
-  color: var(--white);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  padding: 7px 16px;
-  border-radius: 6px;
-}
-#estop-banner .estop-dot { background: var(--white); box-shadow: 0 0 6px rgba(255, 255, 255, 0.85); }
 
 /* Conversation (F-21 / §16.1) */
 #conversation-panel {
