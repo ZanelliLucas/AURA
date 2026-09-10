@@ -386,29 +386,6 @@ html, body {
 }
 .conversation-bubble-text:disabled { cursor: default; }
 
-.conversation-bubble-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 4px;
-  background: none;
-  color: var(--dim);
-  border: 1px solid rgba(245, 246, 247, 0.16);
-  flex-shrink: 0;
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-}
-.conversation-bubble:hover .conversation-bubble-icon,
-.conversation-bubble:focus-within .conversation-bubble-icon,
-.conversation-bubble-icon:hover {
-  color: var(--white);
-  border-color: var(--red);
-  background: var(--red-dim);
-}
-.conversation-bubble-icon:disabled { cursor: default; }
-
 #save-key {
   flex-shrink: 0;
   background: var(--red);
