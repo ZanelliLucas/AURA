@@ -155,14 +155,14 @@ function zoomVersSoma(index) {
   // s'arrete pas devant le Soma, elle le traverse, vers l'interieur.
   const distanceArrivee = Math.max(4, distanceSoma - amas.taille * 3);
   const camArrivee = dirCible.clone().multiplyScalar(distanceArrivee);
-  // Oriente la camera vers sa direction de trajet (depart -> arrivee), pas
-  // vers l'interieur du globe (donc vers le noyau, puisqu'il est toujours a
-  // l'origine) : regarder vers le noyau a la fin de la plongee redonnait
-  // exactement l'impression de foncer vers lui plutot que vers le Soma. En
-  // regardant droit devant sur sa trajectoire, le Soma - sa destination -
-  // reste au centre de l'image tout du long.
-  const directionTrajet = camArrivee.clone().sub(camDepart).normalize();
-  const quatArrivee = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), directionTrajet);
+  // Regarder dans la direction du trajet (depart -> arrivee) ne vise pas
+  // forcement le Soma lui-meme : cette direction ne passe par le Soma que
+  // si le trajet camera y est deja aligne, ce qui n'est pas garanti pour
+  // un point de depart quelconque - la camera finissait par foncer a cote.
+  // On recalcule donc a chaque frame, ci-dessous, l'orientation qui
+  // regarde reellement le Soma (posSoma) depuis la position courante de la
+  // camera, et on y glisse progressivement depuis l'orientation de depart.
+  const AXE_CAMERA = new THREE.Vector3(0, 0, -1);
 
   globe.definirOptions({ rotation: 0, rendu: RENDU_ZOOM, reseau: RESEAU_ZOOM });
   // Vide les influx deja en vol : sans ca, l'activite accumulee avant la
@@ -190,7 +190,12 @@ function zoomVersSoma(index) {
     const t = Math.min(1, (maintenant - debut) / DUREE_PLONGEE);
     const progression = 1 - Math.pow(1 - t, 3);
     globe.camera.position.lerpVectors(camDepart, camArrivee, progression);
-    globe.camera.quaternion.slerpQuaternions(quatDepart, quatArrivee, progression);
+    // Visee recalculee a chaque frame depuis la position courante : garantit
+    // que la camera regarde exactement le Soma une fois arrivee (t=1), quel
+    // que soit l'angle de depart.
+    const versSoma = posSoma.clone().sub(globe.camera.position).normalize();
+    const quatVise = new THREE.Quaternion().setFromUnitVectors(AXE_CAMERA, versSoma);
+    globe.camera.quaternion.slerpQuaternions(quatDepart, quatVise, progression);
     // La boucle de rendu du composant tire elle-meme camera.position.z
     // vers zoomCible a chaque frame (son mecanisme de zoom normal) - sans
     // le maintenir aligne sur la position qu'on vient d'imposer, il la
