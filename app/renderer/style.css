@@ -341,9 +341,19 @@ html, body {
    declencheur/action a champs multiples deployes (ex. Seuil). Chaque
    groupe garde .inline-form pour l'habillage des champs (fond, bordure,
    bouton), seul l'empilement autour change. */
-.autonomy-form { display: flex; flex-direction: column; gap: 16px; }
+.autonomy-form { display: flex; flex-direction: column; }
 .autonomy-form-group { display: flex; flex-direction: column; gap: 7px; }
 .autonomy-form-group .inline-form { margin-bottom: 0; }
+/* Separateur entre groupes (Nom / Declencheur / Action) - meme filet que
+   .autonomy-form-footer ci-dessous, pour que les trois sections se
+   lisent comme des blocs distincts plutot qu'un simple espacement
+   vertical uniforme, facile a confondre avec l'espacement interne d'un
+   groupe (label -> champs). Pas sur le premier groupe (rien au-dessus). */
+.autonomy-form-group + .autonomy-form-group {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-dim);
+}
 .autonomy-form-label {
   font-size: 10px;
   letter-spacing: 1.5px;
@@ -1077,12 +1087,31 @@ html, body {
   gap: 12px;
   padding: 10px 2px;
   border-bottom: 1px solid rgba(245, 246, 247, 0.08);
+  transition: background 0.1s ease;
 }
 .rule-row:last-child { border-bottom: none; }
+.rule-row:hover { background: rgba(245, 246, 247, 0.04); }
 .rule-row input[type='checkbox'] { accent-color: var(--red); flex-shrink: 0; }
 .rule-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.rule-title-row { display: flex; align-items: center; gap: 8px; }
 .rule-name { font-size: 13px; color: var(--white); }
 .rule-row.disabled .rule-name { color: var(--dim); text-decoration: line-through; }
+/* Mode de la regle (§16, amelioration design) : badge visible d'un coup
+   d'oeil plutot que noye dans le texte du resume (auparavant seule
+   "simulation" y apparaissait, "live" restait implicite). Live en rouge
+   - meme logique que task-priority-dot.haute - une regle live declenche
+   de vraies actions, contrairement a la simulation. */
+.rule-mode {
+  flex-shrink: 0;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+  line-height: 1.5;
+}
+.rule-mode-simulation { color: var(--dim); border: 1px solid rgba(245, 246, 247, 0.18); background: rgba(245, 246, 247, 0.04); }
+.rule-mode-live { color: var(--red); border: 1px solid rgba(229, 38, 26, 0.4); background: rgba(229, 38, 26, 0.1); }
 .rule-meta {
   font-size: 11px;
   color: var(--dim);
@@ -1090,7 +1119,22 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.rule-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.rule-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+/* Fond arrondi au survol (au lieu du seul changement de couleur herite
+   de .row-test/.row-delete) - cible de clic plus visible sur des icones
+   aussi petites. Scope a .rule-actions pour ne pas affecter les memes
+   classes reutilisees sur les taches/rappels (Productivity). */
+.rule-actions .row-test, .rule-actions .row-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.rule-actions .row-test:hover { background: rgba(245, 246, 247, 0.08); }
+.rule-actions .row-delete:hover { background: rgba(229, 38, 26, 0.14); }
 .rule-empty { color: var(--dim); font-size: 12px; font-style: italic; margin: 4px 0; }
 
 #panel-projects .inline-form { margin-bottom: 16px; }

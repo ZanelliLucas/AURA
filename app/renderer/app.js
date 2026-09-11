@@ -1316,10 +1316,10 @@ function resumeAction(action) {
   return '';
 }
 
-// Construit la ligne DOM d'une regle - reutilise le gabarit visuel
-// .task-row/.row-delete (Productivite) plutot que d'en creer un nouveau :
-// meme besoin (case a cocher, libelle, meta, suppression), et .completed
-// (texte barre + attenue) rend deja tres bien l'etat "regle desactivee".
+// Construit la ligne DOM d'une regle : case a cocher, nom + mode (badge
+// Simulation/Live, §16 amelioration design - auparavant du texte noye
+// dans le resume, peu visible), resume declencheur->action + derniere
+// execution en dessous, actions (tester/supprimer) a droite.
 // "Derniere execution" (§16, idee 1) : meme principe que formatDemarrage
 // (System Monitor) mais sur un ISOString deja normalise (lastRunAt,
 // store.js) - pas besoin du reformatage espace->T de analyserDateProcessus.
@@ -1332,11 +1332,16 @@ function formatDerniereExecution(lastRunAt) {
 function construireLigneRegle(rule) {
   const row = document.createElement('div');
   row.className = `rule-row ${rule.enabled ? '' : 'disabled'}`;
-  const meta = `${resumeDeclencheur(rule.trigger)} → ${resumeAction(rule.action)}${rule.mode === 'simulation' ? ' · simulation' : ''} · ${formatDerniereExecution(rule.lastRunAt)}`;
+  const meta = `${resumeDeclencheur(rule.trigger)} → ${resumeAction(rule.action)} · ${formatDerniereExecution(rule.lastRunAt)}`;
+  const modeClasse = rule.mode === 'simulation' ? 'rule-mode-simulation' : 'rule-mode-live';
+  const modeLabel = rule.mode === 'simulation' ? 'Simulation' : 'Live';
   row.innerHTML = `
     <input type="checkbox" ${rule.enabled ? 'checked' : ''}>
     <div class="rule-info">
-      <span class="rule-name">${echapperHtml(rule.name)}</span>
+      <div class="rule-title-row">
+        <span class="rule-name">${echapperHtml(rule.name)}</span>
+        <span class="rule-mode ${modeClasse}">${modeLabel}</span>
+      </div>
       <span class="rule-meta">${echapperHtml(meta)}</span>
     </div>
     <div class="rule-actions">
