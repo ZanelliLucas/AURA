@@ -84,6 +84,14 @@
         <label><span>Mémoire</span><input id="monitor-seuil-memory" type="number" min="50" max="99" step="1"><span>%</span></label>
         <label><span>GPU</span><input id="monitor-seuil-gpu" type="number" min="50" max="99" step="1"><span>%</span></label>
         <label><span>Disque</span><input id="monitor-seuil-disk" type="number" min="50" max="99" step="1"><span>%</span></label>
+        <label class="monitor-seuils-intervalle"><span>Rafraîchissement</span>
+          <select id="monitor-intervalle">
+            <option value="1000">1 s</option>
+            <option value="3000">3 s</option>
+            <option value="5000">5 s</option>
+            <option value="10000">10 s</option>
+          </select>
+        </label>
       </div>
       <div class="monitor-grid">
         <section class="monitor-card">
@@ -116,7 +124,8 @@
         </section>
         <section class="monitor-card monitor-card-wide">
           <h2>
-            Gestionnaire des tâches
+            <span class="monitor-card-titre">Gestionnaire des tâches</span>
+            <input type="text" id="monitor-filtre-processus" class="monitor-filtre" placeholder="Filtrer un processus…" autocomplete="off" spellcheck="false">
             <span class="monitor-tri">
               <button type="button" id="monitor-tri-cpu" class="filter-btn active" data-tri="cpu">CPU</button>
               <button type="button" id="monitor-tri-memory" class="filter-btn" data-tri="memory">Mémoire</button>
@@ -124,6 +133,20 @@
           </h2>
           <div id="monitor-all-processes" class="monitor-card-body monitor-scroll custom-scroll muted">Chargement…</div>
         </section>
+      </div>
+    </div>
+
+    <!-- Historique complet d'une sparkline (CPU ou Memoire, ouvert au clic
+         sur la sparkline reduite de la carte - voir ouvrirSparklineModal,
+         app.js) : meme historique que la version reduite, juste une
+         fenetre glissante plus longue (HISTORIQUE_LONG_MAX). -->
+    <div id="monitor-sparkline-modal" class="monitor-sparkline-modal" hidden>
+      <div class="monitor-sparkline-modal-panneau">
+        <header>
+          <h3 id="monitor-sparkline-modal-titre"></h3>
+          <button type="button" id="monitor-sparkline-modal-fermer" aria-label="Fermer">✕</button>
+        </header>
+        <div id="monitor-sparkline-modal-graphe" class="monitor-sparkline-modal-graphe"></div>
       </div>
     </div>
   </section>

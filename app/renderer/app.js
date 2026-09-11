@@ -279,6 +279,10 @@ function reculerDuZoom() {
 // categories n'ont pas encore de page - seul le zoom se declenche pour
 // elles (ouvrirPageCategorie ignore silencieusement tout id inconnu).
 let intervalMonitor = null;
+// Dernier instantane recu (getSystemSnapshot) - permet au tri et au
+// filtre de la liste de processus de se reappliquer instantanement (voir
+// rendreListeProcessus) sans attendre un nouveau cycle de rafraichissement.
+let dernierSnapshot = null;
 
 function formatOctets(go) {
   return go == null ? '—' : `${go} Go`;
@@ -340,32 +344,79 @@ function styleJauge(pourcentage, seuilAlerte) {
   return `class="monitor-row avec-jauge${alerte}" style="--jauge:${p}%"`;
 }
 
-// Historique court (façon sparkline) de la charge CPU/Memoire, pousse a
-// chaque cycle de rafraichissement (3s) - assez pour ~1 minute de recul
-// visuel sans garder un historique complet en memoire.
+// Historique de charge CPU/Memoire, pousse a chaque cycle de
+// rafraichissement. Une seule liste par metrique sert les deux vues : la
+// sparkline reduite de la carte (derniers HISTORIQUE_MAX points) et
+// l'historique complet ouvert au clic (derniers HISTORIQUE_LONG_MAX
+// points, voir ouvrirSparklineModal) - HISTORIQUE_LONG_MAX borne aussi la
+// taille memoire de la liste elle-meme.
 const HISTORIQUE_MAX = 20;
+const HISTORIQUE_LONG_MAX = 100;
 let historiqueCpu = [];
 let historiqueMemoire = [];
 
 function pousserHistorique(liste, valeur) {
   liste.push(valeur ?? 0);
-  if (liste.length > HISTORIQUE_MAX) liste.shift();
+  if (liste.length > HISTORIQUE_LONG_MAX) liste.shift();
 }
 
 // stroke="currentColor" plutot qu'une couleur fixe : la teinte suit
 // .monitor-sparkline en CSS, coherent avec le reste du thème.
-function sparkline(liste) {
+// fenetre fixe la largeur "en nombre de points" que represente le graphe
+// (les points manquants au debut d'un historique encore court restent
+// alignes a droite, comme une fenetre qui se remplit progressivement) -
+// HISTORIQUE_MAX pour la version reduite, HISTORIQUE_LONG_MAX pour la
+// modale (voir ouvrirSparklineModal). metrique alimente data-metrique,
+// utilise par le clic delegue (voir wireSparklineModal) pour savoir quel
+// historique ouvrir en plein ecran.
+function sparkline(liste, fenetre, metrique) {
   if (liste.length < 2) return '';
   const largeur = 100;
   const hauteur = 26;
-  const pas = largeur / (HISTORIQUE_MAX - 1);
-  const decalage = HISTORIQUE_MAX - liste.length;
+  const pas = largeur / (fenetre - 1);
+  const decalage = fenetre - liste.length;
   const points = liste.map((v, i) => {
     const x = (decalage + i) * pas;
     const y = hauteur - (Math.max(0, Math.min(100, v)) / 100) * hauteur;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(' ');
-  return `<svg class="monitor-sparkline" viewBox="0 0 ${largeur} ${hauteur}" preserveAspectRatio="none"><polyline points="${points}" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>`;
+  return `<svg class="monitor-sparkline" data-metrique="${metrique}" viewBox="0 0 ${largeur} ${hauteur}" preserveAspectRatio="none" title="Cliquer pour l'historique complet"><polyline points="${points}" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>`;
+}
+
+// Tendance CPU/Memoire (§5.7) : compare le dernier point d'historique au
+// precedent (donc "depuis le dernier rafraichissement") - une marge morte
+// de 2 points evite de faire clignoter la fleche sur le simple bruit de
+// mesure d'un systeme par ailleurs stable.
+function tendance(liste) {
+  if (liste.length < 2) return '';
+  const delta = liste[liste.length - 1] - liste[liste.length - 2];
+  if (Math.abs(delta) < 2) return '<span class="monitor-tendance" title="Stable">→</span>';
+  return delta > 0
+    ? '<span class="monitor-tendance" title="En hausse">↑</span>'
+    : '<span class="monitor-tendance" title="En baisse">↓</span>';
+}
+
+// Intervalle de rafraichissement configurable (§5.7) - preference locale
+// (localStorage), comme les seuils. Une valeur hors de la liste des
+// options (select, index.html) retombe sur le defaut plutot que d'etre
+// acceptee telle quelle - pas de saisie libre ici, donc pas besoin d'un
+// clamp min/max comme pour les seuils.
+const CLE_INTERVALLE = 'aura.monitorIntervalle';
+const INTERVALLE_DEFAUT = 3000;
+const INTERVALLES_VALIDES = [1000, 3000, 5000, 10000];
+let intervalleConfigure = INTERVALLE_DEFAUT;
+
+function chargerIntervalle() {
+  const brut = Number(localStorage.getItem(CLE_INTERVALLE));
+  intervalleConfigure = INTERVALLES_VALIDES.includes(brut) ? brut : INTERVALLE_DEFAUT;
+  return intervalleConfigure;
+}
+
+function definirIntervalle(valeur) {
+  const v = INTERVALLES_VALIDES.includes(valeur) ? valeur : INTERVALLE_DEFAUT;
+  intervalleConfigure = v;
+  try { localStorage.setItem(CLE_INTERVALLE, String(v)); } catch { /* stockage indisponible - le reglage reste actif pour la session */ }
+  return v;
 }
 
 // Meme jauge que styleJauge, mais l'alerte se declenche EN DESSOUS du
@@ -378,6 +429,7 @@ function styleJaugeBatterie(pourcentage, seuilAlerte = 20) {
 }
 
 function rendreSystemMonitor(snap) {
+  dernierSnapshot = snap;
   pousserHistorique(historiqueCpu, snap.cpu.loadPercent);
   pousserHistorique(historiqueMemoire, snap.memory.usedPercent);
 
@@ -386,16 +438,16 @@ function rendreSystemMonitor(snap) {
     <div class="monitor-row"><span>Modèle</span><span>${snap.cpu.model || '—'}</span></div>
     <div class="monitor-row"><span>Cœurs</span><span>${snap.cpu.cores ?? '—'}</span></div>
     <div class="monitor-row"><span>Fréquence</span><span>${snap.cpu.speedGhz ?? '—'} GHz</span></div>
-    <div ${styleJauge(snap.cpu.loadPercent, seuilsConfigures.cpu)}><span>Charge</span><span>${snap.cpu.loadPercent ?? '—'} %</span></div>
-    ${sparkline(historiqueCpu)}
+    <div ${styleJauge(snap.cpu.loadPercent, seuilsConfigures.cpu)}><span>Charge</span><span>${snap.cpu.loadPercent ?? '—'} %${tendance(historiqueCpu)}</span></div>
+    ${sparkline(historiqueCpu.slice(-HISTORIQUE_MAX), HISTORIQUE_MAX, 'cpu')}
     <div class="monitor-row"><span>Actif depuis</span><span>${formatDuree(snap.uptimeSec)}</span></div>
   `;
 
   const mem = document.getElementById('monitor-memory');
   mem.innerHTML = `
     <div class="monitor-row"><span>Utilisée</span><span>${formatOctets(snap.memory.usedGB)} / ${formatOctets(snap.memory.totalGB)}</span></div>
-    <div ${styleJauge(snap.memory.usedPercent, seuilsConfigures.memory)}><span>Charge</span><span>${snap.memory.usedPercent ?? '—'} %</span></div>
-    ${sparkline(historiqueMemoire)}
+    <div ${styleJauge(snap.memory.usedPercent, seuilsConfigures.memory)}><span>Charge</span><span>${snap.memory.usedPercent ?? '—'} %${tendance(historiqueMemoire)}</span></div>
+    ${sparkline(historiqueMemoire.slice(-HISTORIQUE_MAX), HISTORIQUE_MAX, 'memory')}
     ${snap.memory.swapTotalGB ? `
     <div class="monitor-row"><span>Swap</span><span>${formatOctets(snap.memory.swapUsedGB)} / ${formatOctets(snap.memory.swapTotalGB)}</span></div>
     ` : ''}
@@ -435,18 +487,7 @@ function rendreSystemMonitor(snap) {
       `).join('')
     : 'Aucun processus.');
 
-  // Liste complete (facon Gestionnaire des taches) - toutes les
-  // applications/processus en cours, pas seulement le top 8 par CPU.
-  // Triable par CPU ou par memoire (triProcessus, boutons #monitor-tri-*).
-  const tousProcessus = document.getElementById('monitor-all-processes');
-  const processusTries = snap.allProcesses ? snap.allProcesses.slice().sort((a, b) =>
-    triProcessus === 'memory' ? (b.memPercent ?? 0) - (a.memPercent ?? 0) : (b.cpuPercent ?? 0) - (a.cpuPercent ?? 0)
-  ) : [];
-  tousProcessus.innerHTML = processusTries.length
-    ? processusTries.map((p) => `
-        <div ${styleJauge(p.cpuPercent, 101)}><span>${p.name} (${p.pid})</span><span>${p.cpuPercent ?? 0} % CPU · ${p.memPercent ?? 0} % mém.</span></div>
-      `).join('')
-    : 'Aucun processus.';
+  rendreListeProcessus();
 
   const batteryCard = document.getElementById('monitor-battery-card');
   batteryCard.hidden = !snap.battery;
@@ -473,6 +514,38 @@ function rendreSystemMonitor(snap) {
     void carte.offsetWidth;
     carte.classList.add('actualise');
   });
+
+  // Si la modale d'historique complet est ouverte, son graphe suit lui
+  // aussi les nouveaux points plutot que de rester fige au moment ou elle
+  // a ete ouverte.
+  if (metriqueModalOuverte) ouvrirSparklineModal(metriqueModalOuverte);
+}
+
+// Liste complete (facon Gestionnaire des taches) - toutes les
+// applications/processus en cours, pas seulement le top 8 par CPU.
+// Triable par CPU ou par memoire (triProcessus) et filtrable par nom
+// (filtreProcessus, boutons/champ #monitor-tri-*/#monitor-filtre-processus).
+// Fonction dediee (plutot qu'inline dans rendreSystemMonitor) : le tri et
+// le filtre se reappliquent instantanement sur dernierSnapshot, sans
+// attendre un nouveau cycle de rafraichissement (qui peut prendre
+// plusieurs secondes, voir si.processes() dans le connecteur).
+function rendreListeProcessus() {
+  const tousProcessus = document.getElementById('monitor-all-processes');
+  if (!dernierSnapshot || !dernierSnapshot.allProcesses) { tousProcessus.textContent = 'Chargement…'; return; }
+
+  const filtre = normaliserTexte(filtreProcessus);
+  const processusFiltres = filtre
+    ? dernierSnapshot.allProcesses.filter((p) => normaliserTexte(p.name).includes(filtre))
+    : dernierSnapshot.allProcesses;
+  const processusTries = processusFiltres.slice().sort((a, b) =>
+    triProcessus === 'memory' ? (b.memPercent ?? 0) - (a.memPercent ?? 0) : (b.cpuPercent ?? 0) - (a.cpuPercent ?? 0)
+  );
+
+  tousProcessus.innerHTML = processusTries.length
+    ? processusTries.map((p) => `
+        <div ${styleJauge(p.cpuPercent, 101)}><span>${p.name} (${p.pid})</span><span>${p.cpuPercent ?? 0} % CPU · ${p.memPercent ?? 0} % mém.</span></div>
+      `).join('')
+    : (filtre ? 'Aucun processus ne correspond.' : 'Aucun processus.');
 }
 
 // Sur echec, les cartes qui n'affichaient encore que "Chargement…"
@@ -480,11 +553,24 @@ function rendreSystemMonitor(snap) {
 // d'erreur explicite, pas seulement le CPU.
 const CARTES_MONITEUR = ['monitor-cpu', 'monitor-memory', 'monitor-gpu', 'monitor-disks', 'monitor-network', 'monitor-processes', 'monitor-all-processes'];
 
+// getSystemSnapshot() peut prendre plusieurs secondes (si.processes(), voir
+// connectors/systemMonitor.js) - avec l'intervalle le plus court disponible
+// (1s, §5.7 "Rafraichissement"), un nouveau cycle peut demarrer avant que
+// le precedent n'ait fini. Sans ce garde-fou, les appels s'empileraient
+// indefiniment et pourraient se resoudre dans le desordre (un fetch plus
+// ancien mais plus lent ecrasant un rendu plus recent) - un cycle deja en
+// cours se contente d'etre ignore, le suivant reprendra normalement.
+let recuperationEnCours = false;
+
 async function actualiserSystemMonitor() {
+  if (recuperationEnCours) return;
+  recuperationEnCours = true;
   try {
     rendreSystemMonitor(await window.aura.getSystemSnapshot());
   } catch {
     CARTES_MONITEUR.forEach((id) => { document.getElementById(id).textContent = 'Indisponible.'; });
+  } finally {
+    recuperationEnCours = false;
   }
 }
 
@@ -493,7 +579,7 @@ function ouvrirPageCategorie(id) {
   document.getElementById('page-system-monitor').hidden = false;
   actualiserSystemMonitor();
   if (intervalMonitor) clearInterval(intervalMonitor);
-  intervalMonitor = setInterval(actualiserSystemMonitor, 3000);
+  intervalMonitor = setInterval(actualiserSystemMonitor, intervalleConfigure);
   journal('PAGE_OUVERTE : AURA SYSTEM MONITOR');
 }
 
@@ -507,7 +593,10 @@ function fermerPage() {
 function wirePages() {
   document.getElementById('page-back').addEventListener('click', fermerPage);
   wireSeuils();
+  wireIntervalle();
   wireTriProcessus();
+  wireFiltreProcessus();
+  wireSparklineModal();
 }
 
 // Seuils d'alerte configurables (§5.7) : charge les valeurs enregistrees au
@@ -525,9 +614,26 @@ function wireSeuils() {
   });
 }
 
+// Intervalle de rafraichissement configurable (§5.7) : charge la valeur
+// enregistree au demarrage, relance la minuterie avec la nouvelle periode
+// des le changement (au lieu d'attendre que l'ancienne s'ecoule).
+function wireIntervalle() {
+  const select = document.getElementById('monitor-intervalle');
+  select.value = String(chargerIntervalle());
+  select.addEventListener('change', () => {
+    const v = definirIntervalle(Number(select.value));
+    select.value = String(v);
+    if (!document.getElementById('page-system-monitor').hidden && intervalMonitor) {
+      clearInterval(intervalMonitor);
+      intervalMonitor = setInterval(actualiserSystemMonitor, intervalleConfigure);
+      actualiserSystemMonitor();
+    }
+  });
+}
+
 // Tri du Gestionnaire des taches (§5.7) : CPU par defaut, bascule sur
-// memoire au clic - reactualise immediatement plutot que d'attendre le
-// prochain cycle, comme pour les seuils.
+// memoire au clic - reapplique instantanement sur dernierSnapshot (voir
+// rendreListeProcessus), pas de nouvel appel reseau.
 let triProcessus = 'cpu';
 
 function wireTriProcessus() {
@@ -539,7 +645,53 @@ function definirTriProcessus(tri) {
   triProcessus = tri;
   document.getElementById('monitor-tri-cpu').classList.toggle('active', tri === 'cpu');
   document.getElementById('monitor-tri-memory').classList.toggle('active', tri === 'memory');
-  if (!document.getElementById('page-system-monitor').hidden) actualiserSystemMonitor();
+  rendreListeProcessus();
+}
+
+// Filtre par nom du Gestionnaire des taches (§5.7) : reapplique lui aussi
+// instantanement sur dernierSnapshot a chaque frappe, sans requete reseau.
+let filtreProcessus = '';
+
+function wireFiltreProcessus() {
+  document.getElementById('monitor-filtre-processus').addEventListener('input', (e) => {
+    filtreProcessus = e.target.value;
+    rendreListeProcessus();
+  });
+}
+
+// Historique complet d'une sparkline (§5.7), ouvert au clic sur la
+// version reduite - un seul ecouteur delegue sur la grille plutot qu'un
+// ecouteur par sparkline (elles sont regenerees a chaque rendu, un
+// ecouteur direct serait perdu des le cycle suivant).
+let metriqueModalOuverte = null;
+
+function wireSparklineModal() {
+  document.querySelector('.monitor-grid').addEventListener('click', (e) => {
+    const svg = e.target.closest('.monitor-sparkline');
+    if (svg) ouvrirSparklineModal(svg.dataset.metrique);
+  });
+  document.getElementById('monitor-sparkline-modal-fermer').addEventListener('click', fermerSparklineModal);
+  document.getElementById('monitor-sparkline-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'monitor-sparkline-modal') fermerSparklineModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !document.getElementById('monitor-sparkline-modal').hidden) fermerSparklineModal();
+  });
+}
+
+function ouvrirSparklineModal(metrique) {
+  const liste = metrique === 'memory' ? historiqueMemoire : historiqueCpu;
+  const titre = metrique === 'memory' ? 'Mémoire — historique' : 'CPU — historique';
+  metriqueModalOuverte = metrique;
+  document.getElementById('monitor-sparkline-modal-titre').textContent = titre;
+  document.getElementById('monitor-sparkline-modal-graphe').innerHTML =
+    sparkline(liste, HISTORIQUE_LONG_MAX, metrique) || '<p>Pas encore assez de données.</p>';
+  document.getElementById('monitor-sparkline-modal').hidden = false;
+}
+
+function fermerSparklineModal() {
+  metriqueModalOuverte = null;
+  document.getElementById('monitor-sparkline-modal').hidden = true;
 }
 
 function echapperHtml(texte) {

@@ -181,6 +181,24 @@ html, body {
   text-align: right;
 }
 .monitor-seuils input:focus { outline: none; border-color: var(--red); }
+/* Intervalle de rafraichissement configurable (§5.7) - meme bar, meme
+   habillage que les champs de seuil (fond/bordure/police), separe par une
+   bordure fine plutot qu'un simple espace pour marquer que ce n'est pas
+   un cinquieme seuil. */
+.monitor-seuils-intervalle {
+  padding-left: 18px;
+  border-left: 1px solid var(--line-dim);
+}
+.monitor-seuils-intervalle select {
+  background: rgba(245, 246, 247, 0.06);
+  border: 1px solid rgba(245, 246, 247, 0.16);
+  border-radius: 5px;
+  color: var(--white);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  padding: 3px 6px;
+}
+.monitor-seuils-intervalle select:focus { outline: none; border-color: var(--red); }
 
 .app-page-updated {
   margin-left: auto;
@@ -300,8 +318,33 @@ html, body {
 /* Tri du Gestionnaire des taches (CPU/Memoire) - boutons plus discrets
    que .filter-btn habituel (deja utilise pour les filtres Activite),
    pour rester lisibles dans un en-tete de carte deja petit (10px). */
-.monitor-tri { display: flex; gap: 4px; text-transform: none; letter-spacing: normal; }
+.monitor-tri { display: flex; gap: 4px; text-transform: none; letter-spacing: normal; flex: none; }
 .monitor-tri .filter-btn { font-size: 9px; padding: 3px 7px; text-shadow: none; }
+/* Titre du Gestionnaire des taches (§5.7) : margin-right:auto absorbe tout
+   l'espace libre du h2 avant que justify-content:space-between (herite de
+   .monitor-card h2) n'entre en jeu - filtre et tri restent ainsi cote a
+   cote a droite plutot que separes par un grand vide. */
+.monitor-card-titre { margin-right: auto; }
+/* Filtre par nom (§5.7) : largeur fixe (pas de flex-grow, deja inutile
+   une fois le titre pousse a gauche par la regle ci-dessus). text-
+   transform/letter-spacing remis a plat (sinon herites de .monitor-card
+   h2, qui mettrait la saisie et le placeholder en MAJUSCULES espacees). */
+.monitor-filtre {
+  flex: none;
+  width: 150px;
+  background: rgba(245, 246, 247, 0.06);
+  border: 1px solid rgba(245, 246, 247, 0.16);
+  border-radius: 5px;
+  color: var(--white);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: normal;
+  text-shadow: none;
+  padding: 4px 8px;
+}
+.monitor-filtre::placeholder { color: var(--dim); }
+.monitor-filtre:focus { outline: none; border-color: var(--red); }
 /* flex-direction:column + justify-content:space-between repartit les
    lignes sur toute la hauteur de la carte plutot que de les laisser
    collees en haut avec un vide en dessous - les cartes d'une meme
@@ -379,7 +422,8 @@ html, body {
 /* Sparkline (§5.7) : petit historique de charge CPU/Memoire sous la
    jauge courante. couleur suit currentColor (voir sparkline(), app.js)
    plutot qu'une couleur fixe dans le SVG, pour rester coherent au thème
-   depuis une seule declaration CSS. */
+   depuis une seule declaration CSS. Cliquable (voir ouvrirSparklineModal,
+   app.js) pour un historique plus long en plein ecran. */
 .monitor-sparkline {
   display: block;
   width: 100%;
@@ -387,7 +431,76 @@ html, body {
   margin: 10px 0 2px;
   color: var(--red);
   opacity: 0.75;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
 }
+.monitor-sparkline:hover { opacity: 1; }
+
+/* Tendance CPU/Memoire (§5.7) : fleche derivee de l'historique (voir
+   tendance(), app.js), posee juste apres le pourcentage courant - sans
+   nouvelle couleur (le theme reste rouge/blanc), juste une opacite
+   reduite au repos pour ne pas concurrencer la valeur elle-meme. */
+.monitor-tendance { margin-left: 5px; opacity: 0.7; }
+
+/* Historique complet d'une sparkline, ouvert au clic (§5.7) - memes
+   tons que le reste de la page (fond radial, bordure fine) plutot qu'un
+   habillage de modale generique, pour rester coherent avec .app-page. */
+.monitor-sparkline-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 5, 5, 0.75);
+}
+.monitor-sparkline-modal[hidden] { display: none; }
+.monitor-sparkline-modal-panneau {
+  width: min(720px, 90vw);
+  background: radial-gradient(ellipse 900px 500px at 50% -10%, rgba(229, 38, 26, 0.08), transparent 70%), var(--bg);
+  border: 1px solid rgba(245, 246, 247, 0.16);
+  border-radius: 8px;
+  box-shadow: 0 0 48px rgba(229, 38, 26, 0.1), 0 16px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.monitor-sparkline-modal-panneau header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line-dim);
+}
+.monitor-sparkline-modal-panneau h3 {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--red);
+  text-shadow: 0 0 10px rgba(229, 38, 26, 0.4);
+}
+.monitor-sparkline-modal-panneau #monitor-sparkline-modal-fermer {
+  background: none;
+  border: 1px solid rgba(245, 246, 247, 0.16);
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.monitor-sparkline-modal-panneau #monitor-sparkline-modal-fermer:hover { color: var(--white); border-color: var(--red); }
+.monitor-sparkline-modal-graphe {
+  padding: 28px 24px 32px;
+  color: var(--red);
+}
+.monitor-sparkline-modal-graphe .monitor-sparkline {
+  height: 220px;
+  opacity: 0.9;
+  cursor: default;
+}
+.monitor-sparkline-modal-graphe p { margin: 0; text-align: center; color: var(--dim); font-size: 12px; }
 
 /* Panneaux retractables (F-21 / §16.1) */
 .edge-tab {
