@@ -345,9 +345,11 @@ function rendreSystemMonitor(snap) {
   const gpu = document.getElementById('monitor-gpu');
   gpu.innerHTML = snap.gpu.length
     ? snap.gpu.map((g) => `
-        <div class="monitor-row"><span>${g.model}</span><span>${g.temperatureC != null ? g.temperatureC + ' °C' : '—'}</span></div>
-        <div ${styleJauge(g.loadPercent)}><span>Charge</span><span>${g.loadPercent ?? '—'} %</span></div>
-        <div class="monitor-row"><span>Mémoire</span><span>${formatOctets(moEnGo(g.memoryUsedMB))} / ${formatOctets(moEnGo(g.vramMB))}</span></div>
+        <div class="monitor-gpu-bloc">
+          <div class="monitor-row"><span>${g.model}</span><span>${g.temperatureC != null ? g.temperatureC + ' °C' : '—'}</span></div>
+          <div ${styleJauge(g.loadPercent)}><span>Charge</span><span>${g.loadPercent ?? '—'} %</span></div>
+          <div class="monitor-row"><span>Mémoire</span><span>${formatOctets(moEnGo(g.memoryUsedMB))} / ${formatOctets(moEnGo(g.vramMB))}</span></div>
+        </div>
       `).join('')
     : 'Aucun GPU dédié détecté.';
 
@@ -368,7 +370,7 @@ function rendreSystemMonitor(snap) {
 
   const processes = document.getElementById('monitor-processes');
   const compteProcessus = snap.processCount != null
-    ? `<div class="monitor-row"><span>Affichés</span><span>${snap.topProcesses.length} sur ${snap.processCount} processus actifs</span></div>`
+    ? `<div class="monitor-row legende"><span>Affichés</span><span>${snap.topProcesses.length} sur ${snap.processCount} processus actifs</span></div>`
     : '';
   processes.innerHTML = compteProcessus + (snap.topProcesses.length
     ? snap.topProcesses.map((p) => `

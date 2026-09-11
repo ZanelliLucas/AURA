@@ -140,9 +140,27 @@ html, body {
 .app-page-header h1 .verbe { color: var(--red); }
 .app-page-updated {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 10px;
   letter-spacing: 0.5px;
   color: var(--dim);
+}
+/* Point clignotant : rappelle que la page se rafraichit toute seule
+   (actualiserSystemMonitor, toutes les 3s) plutot que de le laisser
+   implicite dans le seul changement d'horodatage. */
+.app-page-updated::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  animation: monitor-pouls 2s ease-in-out infinite;
+}
+@keyframes monitor-pouls {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
 }
 .app-page-back {
   display: flex;
@@ -202,6 +220,20 @@ html, body {
 }
 .monitor-row:last-child { border-bottom: none; }
 .monitor-row span:first-child { color: var(--dim); }
+
+/* Ligne de contexte ("8 sur 305 processus actifs") : une legende, pas
+   une donnee parmi d'autres - distincte des lignes de processus. */
+.monitor-row.legende {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--dim);
+}
+.monitor-row.legende span:first-child { color: var(--dim); }
+.monitor-row.legende span:last-child { color: var(--dim); }
+
+/* Separateur entre plusieurs GPU dans la meme carte - sans ca, deux GPU
+   s'enchainent sans distinction visuelle claire. */
+.monitor-gpu-bloc + .monitor-gpu-bloc { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-dim); }
 
 /* Jauge de charge/usage : remplissage proportionnel en fond de ligne,
    plutot qu'un chiffre isole - se lit d'un coup d'oeil. Le pourcentage
