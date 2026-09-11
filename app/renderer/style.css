@@ -233,6 +233,11 @@ html, body {
   pointer-events: none;
 }
 .monitor-seuil-chip:focus-within .monitor-select-wrap::after { border-color: var(--red); }
+/* Regle generique (au-dela du seul contexte .monitor-seuil-chip) - le
+   chevron doit suivre le focus du <select> partout ou monitor-select-wrap
+   est reutilise (ex. formulaire "Nouvelle regle", AURA AUTONOMY), pas
+   seulement dans les jetons de seuils/intervalle d'origine. */
+.monitor-select-wrap:focus-within::after { border-color: var(--red); }
 .monitor-seuils-intervalle select {
   appearance: none;
   -webkit-appearance: none;
@@ -1021,6 +1026,16 @@ html, body {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;
   padding: 6px 8px;
+  transition: border-color 0.15s ease;
+}
+.inline-form input::placeholder { color: var(--dim); }
+/* Sans ceci, le focus retombe sur le contour bleu par defaut du
+   navigateur (Chromium) - tranche fort avec le theme sombre rouge/blanc.
+   Meme logique que .monitor-filtre:focus/.monitor-seuils input:focus :
+   bordure rouge, pas de halo (box-shadow). */
+.inline-form input:focus, .inline-form select:focus {
+  outline: none;
+  border-color: var(--red);
 }
 .inline-form button {
   background: var(--red);
