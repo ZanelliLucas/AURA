@@ -284,6 +284,16 @@ function formatOctets(go) {
   return go == null ? '—' : `${go} Go`;
 }
 
+function formatDuree(secondes) {
+  if (secondes == null) return '—';
+  const j = Math.floor(secondes / 86400);
+  const h = Math.floor((secondes % 86400) / 3600);
+  const min = Math.floor((secondes % 3600) / 60);
+  if (j > 0) return `${j} j ${h} h`;
+  if (h > 0) return `${h} h ${min} min`;
+  return `${min} min`;
+}
+
 // vramMB/memoryUsedMB (connectors/systemMonitor.js) arrivent en Mo bruts,
 // non arrondis cote serveur contrairement aux autres tailles - convertis et
 // arrondis ici, en preservant null (GPU sans lecture memoire disponible).
@@ -311,6 +321,7 @@ function rendreSystemMonitor(snap) {
     <div class="monitor-row"><span>Fréquence</span><span>${snap.cpu.speedGhz ?? '—'} GHz</span></div>
     <div ${styleJauge(snap.cpu.loadPercent)}><span>Charge</span><span>${snap.cpu.loadPercent ?? '—'} %</span></div>
     <div class="monitor-row"><span>Température</span><span>${snap.cpu.temperatureC ?? '—'} °C</span></div>
+    <div class="monitor-row"><span>Actif depuis</span><span>${formatDuree(snap.uptimeSec)}</span></div>
   `;
 
   const mem = document.getElementById('monitor-memory');
@@ -329,11 +340,12 @@ function rendreSystemMonitor(snap) {
     : 'Aucun GPU dédié détecté.';
 
   const disks = document.getElementById('monitor-disks');
-  disks.innerHTML = snap.disks.length
+  disks.innerHTML = (snap.disks.length
     ? snap.disks.map((d) => `
         <div ${styleJauge(d.usedPercent)}><span>${d.mount}</span><span>${formatOctets(d.usedGB)} / ${formatOctets(d.sizeGB)} (${d.usedPercent ?? '—'} %)</span></div>
       `).join('')
-    : 'Aucun disque détecté.';
+    : 'Aucun disque détecté.')
+    + `<div class="monitor-row"><span>Débit</span><span>↓ ${snap.diskIO.readKBs ?? 0} Ko/s · ↑ ${snap.diskIO.writeKBs ?? 0} Ko/s</span></div>`;
 
   const network = document.getElementById('monitor-network');
   network.innerHTML = snap.network.length
@@ -353,11 +365,16 @@ function rendreSystemMonitor(snap) {
   document.getElementById('monitor-updated').textContent = `Actualisé à ${heure}`;
 }
 
+// Sur echec, les cartes qui n'affichaient encore que "Chargement…"
+// restaient ainsi indefiniment - toutes doivent basculer sur un etat
+// d'erreur explicite, pas seulement le CPU.
+const CARTES_MONITEUR = ['monitor-cpu', 'monitor-memory', 'monitor-gpu', 'monitor-disks', 'monitor-network', 'monitor-processes'];
+
 async function actualiserSystemMonitor() {
   try {
     rendreSystemMonitor(await window.aura.getSystemSnapshot());
   } catch {
-    document.getElementById('monitor-cpu').textContent = 'Indisponible.';
+    CARTES_MONITEUR.forEach((id) => { document.getElementById(id).textContent = 'Indisponible.'; });
   }
 }
 

@@ -20,13 +20,16 @@ function nomCpu(cpu) {
 }
 
 async function getSnapshot() {
-  const [cpu, load, temp, mem, graphics, fsSize, netStats, processes] = await Promise.all([
+  const [cpu, load, temp, mem, graphics, fsSize, fsStats, netStats, processes] = await Promise.all([
     si.cpu(),
     si.currentLoad(),
     si.cpuTemperature().catch(() => ({ main: null })),
     si.mem(),
     si.graphics().catch(() => ({ controllers: [] })),
     si.fsSize(),
+    // Resout parfois avec null plutot que de rejeter (pas d'echec a
+    // rattraper) quand la lecture des compteurs disque echoue.
+    si.fsStats().then((r) => r || { rx_sec: null, wx_sec: null }).catch(() => ({ rx_sec: null, wx_sec: null })),
     si.networkStats().catch(() => []),
     si.processes()
   ]);
@@ -39,6 +42,7 @@ async function getSnapshot() {
       loadPercent: round1(load.currentLoad),
       temperatureC: temp.main
     },
+    uptimeSec: si.time().uptime,
     memory: {
       totalGB: round1(mem.total / 1e9),
       usedGB: round1(mem.used / 1e9),
@@ -59,6 +63,13 @@ async function getSnapshot() {
       usedGB: round1(d.used / 1e9),
       usedPercent: round1(d.use)
     })),
+    // Agrege tous les disques (systeminformation ne ventile pas les debits
+    // par point de montage) - lecture/ecriture globales, comme le total
+    // reseau ci-dessous mais pour le stockage.
+    diskIO: {
+      readKBs: fsStats.rx_sec == null ? null : round1(fsStats.rx_sec / 1024),
+      writeKBs: fsStats.wx_sec == null ? null : round1(fsStats.wx_sec / 1024)
+    },
     network: netStats
       .filter((n) => n.operstate === 'up')
       .map((n) => ({
