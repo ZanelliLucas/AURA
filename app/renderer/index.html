@@ -153,6 +153,19 @@
         <div id="monitor-sparkline-modal-graphe" class="monitor-sparkline-modal-graphe"></div>
       </div>
     </div>
+
+    <!-- Details d'un processus (ou groupe de processus, §5.7), ouvert au
+         clic sur une ligne du Gestionnaire des taches - voir
+         ouvrirDetailsProcessus, app.js. -->
+    <div id="monitor-processus-modal" class="monitor-sparkline-modal" hidden>
+      <div class="monitor-sparkline-modal-panneau monitor-processus-modal-panneau">
+        <header>
+          <h3 id="monitor-processus-modal-titre"></h3>
+          <button type="button" id="monitor-processus-modal-fermer" aria-label="Fermer">✕</button>
+        </header>
+        <div id="monitor-processus-modal-corps" class="monitor-processus-modal-corps custom-scroll"></div>
+      </div>
+    </div>
   </section>
 
   <div id="conversation-panel" class="terminal-panel">

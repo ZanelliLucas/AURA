@@ -305,6 +305,34 @@ function moEnGo(mo) {
   return mo == null ? null : Math.round(mo / 100) / 10;
 }
 
+function formatMo(ko) {
+  return ko == null ? '—' : `${Math.round(ko / 1024 * 10) / 10} Mo`;
+}
+
+// started (connectors/systemMonitor.js) arrive au format "AAAA-MM-JJ
+// HH:MM:SS" (deja mis en forme par systeminformation cote Windows,
+// verifie en pratique - pas le CIM_DATETIME brut de WMI) - remplacer
+// l'espace par un T suffit a obtenir un ISO 8601 valide, interprete
+// comme heure locale (on reste sur la meme machine que celle mesuree).
+function analyserDateProcessus(brut) {
+  if (!brut || typeof brut !== 'string') return null;
+  const d = new Date(brut.replace(' ', 'T'));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// "Demarre depuis" tient lieu de temps CPU cumule (§5.7, idee 4) : la
+// valeur exacte n'est pas exposee proprement par systeminformation cote
+// Windows (utime/stime WMI restent internes, deja consommes pour calculer
+// le % de charge) - la duree depuis le lancement reste une information
+// utile et disponible, quand WMI l'expose (souvent absente pour un
+// processus protege interroge sans privilege eleve).
+function formatDemarrage(brut) {
+  const d = analyserDateProcessus(brut);
+  if (!d) return '—';
+  const secondes = Math.max(0, Math.round((Date.now() - d.getTime()) / 1000));
+  return `il y a ${formatDuree(secondes)}`;
+}
+
 // Seuils d'alerte configurables, un par metrique (§5.7, "Alertes
 // configurables") : au-dela de sa propre charge, chaque metrique
 // (CPU/Memoire/GPU/Disques) se signale visuellement (voir styleJauge).
@@ -556,6 +584,10 @@ function rendreSystemMonitor(snap) {
 // liste sous des lignes quasi identiques. cpuPercent/memPercent sont deja
 // des pourcentages du total systeme (voir connectors/systemMonitor.js) :
 // les additionner reste donc un pourcentage valide pour le groupe.
+// instances garde l'objet complet de chaque processus du groupe (pas
+// seulement son pid) : les details au clic (path/started/priority, voir
+// ouvrirDetailsProcessus) sont propres a chaque instance et n'ont pas de
+// sens additionnes, contrairement a cpuPercent/memPercent.
 function grouperProcessus(liste) {
   const parNom = new Map();
   liste.forEach((p) => {
@@ -564,12 +596,18 @@ function grouperProcessus(liste) {
       groupe.cpuPercent = Math.round((groupe.cpuPercent + (p.cpuPercent ?? 0)) * 10) / 10;
       groupe.memPercent = Math.round((groupe.memPercent + (p.memPercent ?? 0)) * 10) / 10;
       groupe.pids.push(p.pid);
+      groupe.instances.push(p);
     } else {
-      parNom.set(p.name, { name: p.name, cpuPercent: p.cpuPercent ?? 0, memPercent: p.memPercent ?? 0, pids: [p.pid] });
+      parNom.set(p.name, { name: p.name, cpuPercent: p.cpuPercent ?? 0, memPercent: p.memPercent ?? 0, pids: [p.pid], instances: [p] });
     }
   });
   return Array.from(parNom.values());
 }
+
+// Dernier regroupement rendu (§5.7) : ouvrirDetailsProcessus y retrouve
+// les instances du groupe sur lequel on vient de cliquer, sans reder
+// une deuxieme fois le regroupement au clic.
+let dernierGroupesProcessus = [];
 
 function rendreListeProcessus() {
   const tousProcessus = document.getElementById('monitor-all-processes');
@@ -583,10 +621,11 @@ function rendreListeProcessus() {
   const processusTries = processusFiltres.slice().sort((a, b) =>
     triProcessus === 'memory' ? (b.memPercent ?? 0) - (a.memPercent ?? 0) : (b.cpuPercent ?? 0) - (a.cpuPercent ?? 0)
   );
+  dernierGroupesProcessus = processusTries;
 
   tousProcessus.innerHTML = processusTries.length
     ? processusTries.map((p) => `
-        <div ${styleJauge(p.cpuPercent, 101)}><span>${p.name} ${p.pids.length > 1 ? `(×${p.pids.length})` : `(${p.pids[0]})`}</span><span>${p.cpuPercent} % CPU · ${p.memPercent} % mém.</span></div>
+        <div ${styleJauge(p.cpuPercent, 101)} data-nom="${echapperHtml(p.name)}"><span>${p.name} ${p.pids.length > 1 ? `(×${p.pids.length})` : `(${p.pids[0]})`}</span><span>${p.cpuPercent} % CPU · ${p.memPercent} % mém.</span></div>
       `).join('')
     : (filtre ? 'Aucun processus ne correspond.' : 'Aucun processus.');
 }
@@ -645,6 +684,7 @@ function wirePages() {
   wireTriProcessus();
   wireFiltreProcessus();
   wireSparklineModal();
+  wireDetailsProcessus();
 }
 
 // Seuils d'alerte configurables (§5.7) : charge les valeurs enregistrees au
@@ -740,6 +780,46 @@ function ouvrirSparklineModal(metrique) {
 function fermerSparklineModal() {
   metriqueModalOuverte = null;
   document.getElementById('monitor-sparkline-modal').hidden = true;
+}
+
+// Details d'un processus (ou groupe, §5.7, idee 4), ouverts au clic sur
+// une ligne du Gestionnaire des taches - meme principe delegue que la
+// sparkline (les lignes sont regenerees a chaque rendu).
+function wireDetailsProcessus() {
+  document.getElementById('monitor-all-processes').addEventListener('click', (e) => {
+    const ligne = e.target.closest('.monitor-row');
+    if (ligne && ligne.dataset.nom) ouvrirDetailsProcessus(ligne.dataset.nom);
+  });
+  document.getElementById('monitor-processus-modal-fermer').addEventListener('click', fermerDetailsProcessus);
+  document.getElementById('monitor-processus-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'monitor-processus-modal') fermerDetailsProcessus();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !document.getElementById('monitor-processus-modal').hidden) fermerDetailsProcessus();
+  });
+}
+
+function ouvrirDetailsProcessus(nom) {
+  const groupe = dernierGroupesProcessus.find((g) => g.name === nom);
+  if (!groupe) return;
+  document.getElementById('monitor-processus-modal-titre').textContent =
+    groupe.instances.length > 1 ? `${groupe.name} (×${groupe.instances.length})` : groupe.name;
+  document.getElementById('monitor-processus-modal-corps').innerHTML = groupe.instances
+    .slice()
+    .sort((a, b) => (b.cpuPercent ?? 0) - (a.cpuPercent ?? 0))
+    .map((p) => `
+      <div class="monitor-processus-detail">
+        <div class="monitor-row"><span>PID</span><span>${p.pid}${p.priority != null ? ' · priorité ' + p.priority : ''}</span></div>
+        <div class="monitor-row"><span>Charge</span><span>${p.cpuPercent ?? 0} % CPU · ${p.memPercent ?? 0} % mém. (${formatMo(p.memRssKB)})</span></div>
+        <div class="monitor-row"><span>Démarré</span><span>${formatDemarrage(p.started)}</span></div>
+        ${p.path ? `<div class="monitor-processus-chemin"><span>Chemin</span><div>${echapperHtml(p.path)}</div></div>` : ''}
+      </div>
+    `).join('');
+  document.getElementById('monitor-processus-modal').hidden = false;
+}
+
+function fermerDetailsProcessus() {
+  document.getElementById('monitor-processus-modal').hidden = true;
 }
 
 function echapperHtml(texte) {

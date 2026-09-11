@@ -103,7 +103,21 @@ async function getSnapshot() {
       ajouter(processes.list.slice().sort((a, b) => b.mem - a.mem).slice(0, 40));
       return Array.from(parPid.values())
         .sort((a, b) => b.cpu - a.cpu)
-        .map((p) => ({ pid: p.pid, name: p.name, cpuPercent: round1(p.cpu), memPercent: round1(p.mem) }));
+        .map((p) => ({
+          pid: p.pid,
+          name: p.name,
+          cpuPercent: round1(p.cpu),
+          memPercent: round1(p.mem),
+          // Details au clic (§5.7) : chemin/priorite/demarrage restent
+          // souvent null pour un processus protege interroge sans
+          // privilege eleve (WMI ne remplit ExecutablePath/CreationDate
+          // que si l'utilisateur courant y a acces) - traite cote rendu
+          // comme une donnee simplement indisponible, pas une erreur.
+          path: p.path || null,
+          started: p.started || null,
+          memRssKB: p.memRss ?? null,
+          priority: p.priority ?? null
+        }));
     })(),
     battery: battery.hasBattery ? {
       percent: round1(battery.percent),

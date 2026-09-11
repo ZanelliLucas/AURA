@@ -617,6 +617,50 @@ html, body {
 }
 .monitor-sparkline-modal-graphe p { margin: 0; text-align: center; color: var(--dim); font-size: 12px; }
 
+/* Lignes cliquables du Gestionnaire des taches (§5.7, details au clic) -
+   affordance discrete (leger eclaircissement au survol) plutot qu'un
+   curseur seul, facile a manquer sur une ligne deja dense. */
+#monitor-all-processes .monitor-row { cursor: pointer; transition: background 0.1s ease; }
+#monitor-all-processes .monitor-row:hover { background: rgba(245, 246, 247, 0.05); }
+#monitor-all-processes .monitor-row.avec-jauge:hover { background: linear-gradient(to right, var(--red) var(--jauge, 0%), rgba(245, 246, 247, 0.05) var(--jauge, 0%)); }
+
+/* Details d'un processus (§5.7) : meme habillage de modale que
+   l'historique de sparkline, panneau plus etroit (pas de graphe a
+   afficher) et hauteur plafonnee - un groupe multi-instance (ex.
+   firefox.exe x19) peut lister beaucoup d'entrees. */
+.monitor-processus-modal-panneau { width: min(560px, 90vw); }
+.monitor-processus-modal-corps {
+  padding: 8px 24px 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.monitor-processus-detail {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line-dim);
+}
+.monitor-processus-detail:last-child { border-bottom: none; }
+.monitor-processus-detail .monitor-row { cursor: default; }
+.monitor-processus-detail .monitor-row:hover { background: none; }
+/* Chemin d'executable : ligne separee (pas monitor-row/space-between,
+   un chemin long n'a pas de "valeur" a droite) - retour a la ligne
+   plutot que debordement horizontal, la modale ne defile pas lateralement. */
+.monitor-processus-chemin {
+  padding: 6px 0 0;
+  font-size: 12px;
+  color: var(--dim);
+}
+.monitor-processus-chemin span {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 10px;
+  margin-bottom: 3px;
+}
+.monitor-processus-chemin div {
+  color: var(--white);
+  word-break: break-all;
+}
+
 /* Panneaux retractables (F-21 / §16.1) */
 .edge-tab {
   position: fixed;
