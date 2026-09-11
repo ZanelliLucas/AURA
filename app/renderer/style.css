@@ -150,55 +150,101 @@ html, body {
   font-weight: 500;
 }
 /* Seuils d'alerte configurables, un par metrique (§5.7) - preference
-   d'affichage locale, voir chargerSeuils/definirSeuil, app.js. Barre
-   posee au-dessus de la grille plutot que dans l'en-tete : 4 champs
-   n'y tiendraient pas proprement a cote du titre et de l'horodatage. */
+   d'affichage locale, voir chargerSeuils/definirSeuil, app.js. Panneau
+   pose au-dessus de la grille (meme habillage que .monitor-card : fond,
+   bordure, coins arrondis) plutot qu'une simple ligne de texte flottante -
+   se lit comme un vrai panneau de reglages, pas un residu d'en-tete. */
 .monitor-seuils {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 18px;
+  gap: 10px;
   margin-bottom: 22px;
+  padding: 13px 16px;
+  background: rgba(245, 246, 247, 0.03);
+  border: 1px solid rgba(245, 246, 247, 0.12);
+  border-radius: 8px;
   font-size: 12px;
   color: var(--dim);
 }
-.monitor-seuils-label { letter-spacing: 1px; text-transform: uppercase; font-size: 10px; }
-.monitor-seuils label {
+.monitor-seuils-label {
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: var(--red);
+  text-shadow: 0 0 10px rgba(229, 38, 26, 0.35);
+  margin-right: 6px;
+}
+/* Chaque seuil (et l'intervalle) forme son propre "jeton" plutot que du
+   texte separe par des espaces - la bordure du jeton entier reagit au
+   focus (:focus-within), pas seulement celle du champ : label et valeur
+   restent lies visuellement en une seule unite cliquable. */
+.monitor-seuil-chip {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  padding: 5px 10px;
+  background: rgba(245, 246, 247, 0.04);
+  border: 1px solid rgba(245, 246, 247, 0.1);
+  border-radius: 6px;
   letter-spacing: 0.3px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.monitor-seuil-chip:focus-within {
+  border-color: var(--red);
+  box-shadow: 0 0 8px rgba(229, 38, 26, 0.18);
 }
 .monitor-seuils input {
-  width: 48px;
-  background: rgba(245, 246, 247, 0.06);
-  border: 1px solid rgba(245, 246, 247, 0.16);
-  border-radius: 5px;
+  width: 26px;
+  background: none;
+  border: none;
   color: var(--white);
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;
-  padding: 3px 6px;
+  padding: 0;
   text-align: right;
 }
-.monitor-seuils input:focus { outline: none; border-color: var(--red); }
-/* Intervalle de rafraichissement configurable (§5.7) - meme bar, meme
-   habillage que les champs de seuil (fond/bordure/police), separe par une
-   bordure fine plutot qu'un simple espace pour marquer que ce n'est pas
-   un cinquieme seuil. */
-.monitor-seuils-intervalle {
-  padding-left: 18px;
-  border-left: 1px solid var(--line-dim);
+.monitor-seuils input:focus { outline: none; }
+/* Fleches natives du <input type=number> (visibles par defaut, hors
+   style de l'appli) retirees - le clavier/la molette suffisent a
+   ajuster la valeur, pas besoin de boutons dedies dans un jeton deja
+   compact. */
+.monitor-seuils input[type='number']::-webkit-inner-spin-button,
+.monitor-seuils input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
+.monitor-seuils input[type='number'] { -moz-appearance: textfield; }
+
+/* Intervalle de rafraichissement (§5.7) : meme jeton que les seuils.
+   Chevron dessine en CSS sur le conteneur plutot que la fleche systeme
+   par defaut du <select> (non restylable directement) - meme technique
+   que la loupe du filtre de processus (voir .monitor-filtre-wrap). */
+.monitor-select-wrap { position: relative; display: flex; align-items: center; }
+.monitor-select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 1px;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--dim);
+  border-bottom: 1.5px solid var(--dim);
+  transform: rotate(45deg) translateY(-1px);
+  pointer-events: none;
+}
+.monitor-seuil-chip:focus-within .monitor-select-wrap::after { border-color: var(--red); }
 .monitor-seuils-intervalle select {
-  background: rgba(245, 246, 247, 0.06);
-  border: 1px solid rgba(245, 246, 247, 0.16);
-  border-radius: 5px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: none;
   color: var(--white);
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;
-  padding: 3px 6px;
+  padding: 0 14px 0 0;
+  cursor: pointer;
 }
-.monitor-seuils-intervalle select:focus { outline: none; border-color: var(--red); }
+.monitor-seuils-intervalle select:focus { outline: none; }
 
 .app-page-updated {
   margin-left: auto;

@@ -80,17 +80,19 @@
     <div class="app-page-body custom-scroll">
       <div class="monitor-seuils" title="Charge a partir de laquelle une jauge se signale en alerte">
         <span class="monitor-seuils-label">Seuils d'alerte</span>
-        <label><span>CPU</span><input id="monitor-seuil-cpu" type="number" min="50" max="99" step="1"><span>%</span></label>
-        <label><span>Mémoire</span><input id="monitor-seuil-memory" type="number" min="50" max="99" step="1"><span>%</span></label>
-        <label><span>GPU</span><input id="monitor-seuil-gpu" type="number" min="50" max="99" step="1"><span>%</span></label>
-        <label><span>Disque</span><input id="monitor-seuil-disk" type="number" min="50" max="99" step="1"><span>%</span></label>
-        <label class="monitor-seuils-intervalle"><span>Rafraîchissement</span>
-          <select id="monitor-intervalle">
-            <option value="1000">1 s</option>
-            <option value="3000">3 s</option>
-            <option value="5000">5 s</option>
-            <option value="10000">10 s</option>
-          </select>
+        <label class="monitor-seuil-chip"><span>CPU</span><input id="monitor-seuil-cpu" type="number" min="50" max="99" step="1"><span>%</span></label>
+        <label class="monitor-seuil-chip"><span>Mémoire</span><input id="monitor-seuil-memory" type="number" min="50" max="99" step="1"><span>%</span></label>
+        <label class="monitor-seuil-chip"><span>GPU</span><input id="monitor-seuil-gpu" type="number" min="50" max="99" step="1"><span>%</span></label>
+        <label class="monitor-seuil-chip"><span>Disque</span><input id="monitor-seuil-disk" type="number" min="50" max="99" step="1"><span>%</span></label>
+        <label class="monitor-seuil-chip monitor-seuils-intervalle"><span>Rafraîchissement</span>
+          <span class="monitor-select-wrap">
+            <select id="monitor-intervalle">
+              <option value="1000">1 s</option>
+              <option value="3000">3 s</option>
+              <option value="5000">5 s</option>
+              <option value="10000">10 s</option>
+            </select>
+          </span>
         </label>
       </div>
       <div class="monitor-grid">
