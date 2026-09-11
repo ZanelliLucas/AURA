@@ -158,8 +158,8 @@ html, body {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 10px;
+  gap: 8px;
+  font-size: 14px;
   letter-spacing: 0.5px;
   color: var(--dim);
 }
@@ -311,27 +311,22 @@ html, body {
    est pose en variable inline (voir styleJauge, app.js), la largeur du
    fond etendu au-dela du padding de la carte pour aller bord a bord. */
 .monitor-row.avec-jauge {
-  --jauge-couleur: rgba(229, 38, 26, 0.16);
-  --jauge-bord: rgba(229, 38, 26, 0.7);
   margin: 0 -18px;
   padding: 6px 18px;
-  background: linear-gradient(
-    to right,
-    var(--jauge-couleur) calc(var(--jauge, 0%) - 2px),
-    var(--jauge-bord) calc(var(--jauge, 0%) - 2px),
-    var(--jauge-bord) var(--jauge, 0%),
-    transparent var(--jauge, 0%)
-  );
+  background: linear-gradient(to right, var(--red) var(--jauge, 0%), transparent var(--jauge, 0%));
 }
-/* Seuil critique (§5.7, "Alertes configurables") : remplissage plus dense
-   et valeur en rouge vif plutot qu'un chiffre neutre parmi d'autres -
-   voir styleJauge(pourcentage, seuilAlerte), app.js. */
-.monitor-row.jauge-alerte {
-  --jauge-couleur: rgba(229, 38, 26, 0.4);
-  --jauge-bord: var(--red);
-  box-shadow: inset 0 0 18px rgba(229, 38, 26, 0.18);
+/* Rouge plein (pas de transparence) : le texte doit rester lisible
+   par-dessus, donc blanc plutot que le gris attenue des autres lignes. */
+.monitor-row.avec-jauge span:first-child,
+.monitor-row.avec-jauge span:last-child {
+  color: var(--white);
 }
-.monitor-row.jauge-alerte span:last-child { color: var(--red); font-weight: 600; text-shadow: 0 0 8px rgba(229, 38, 26, 0.5); }
+/* Seuil critique (§5.7, "Alertes configurables") : se distingue par un
+   halo et un texte en gras plutot qu'une couleur de remplissage
+   differente (deja au rouge plein au repos) - voir
+   styleJauge(pourcentage, seuilAlerte), app.js. */
+.monitor-row.jauge-alerte { box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.25); }
+.monitor-row.jauge-alerte span:last-child { font-weight: 600; text-shadow: 0 0 8px rgba(255, 255, 255, 0.6); }
 
 /* Panneaux retractables (F-21 / §16.1) */
 .edge-tab {
