@@ -208,6 +208,10 @@ html, body {
    resterait visible et vide sur un poste sans batterie. */
 .monitor-card[hidden] { display: none; }
 .monitor-card-wide { grid-column: 1 / -1; }
+/* Comble la case vide laissee par la carte Batterie quand elle est
+   masquee (poste fixe) - Reseau s'etend alors sur 2 colonnes plutot que
+   de laisser une case vide a cote de Stockage (voir app.js). */
+.monitor-card-2col { grid-column: span 2; }
 .monitor-card h2 {
   margin: 0;
   padding: 9px 14px;

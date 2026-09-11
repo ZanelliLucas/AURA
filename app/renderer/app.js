@@ -378,6 +378,9 @@ function rendreSystemMonitor(snap) {
 
   const batteryCard = document.getElementById('monitor-battery-card');
   batteryCard.hidden = !snap.battery;
+  // Sans batterie, Reseau s'etend sur 2 colonnes pour combler la case
+  // vide que laisserait sinon la carte Batterie masquee.
+  document.getElementById('monitor-network-card').classList.toggle('monitor-card-2col', !snap.battery);
   if (snap.battery) {
     const b = snap.battery;
     document.getElementById('monitor-battery').innerHTML = `
