@@ -293,10 +293,14 @@ function moEnGo(mo) {
 
 // Jauge de charge en fond de ligne (voir .monitor-row.avec-jauge, style.css) :
 // une classe et une variable CSS inline plutot qu'un chiffre isole, pour
-// que les charges se comparent d'un coup d'oeil.
-function styleJauge(pourcentage) {
+// que les charges se comparent d'un coup d'oeil. Au-dela de seuilAlerte,
+// la jauge et la valeur se distinguent visuellement (§5.7, "Alertes
+// configurables") - passer 101 desactive l'alerte (ex. charge par
+// processus, ou un pic isole n'indique pas un probleme systeme).
+function styleJauge(pourcentage, seuilAlerte = 85) {
   const p = Math.max(0, Math.min(100, pourcentage ?? 0));
-  return `class="monitor-row avec-jauge" style="--jauge:${p}%"`;
+  const alerte = p >= seuilAlerte ? ' jauge-alerte' : '';
+  return `class="monitor-row avec-jauge${alerte}" style="--jauge:${p}%"`;
 }
 
 function rendreSystemMonitor(snap) {
@@ -341,7 +345,7 @@ function rendreSystemMonitor(snap) {
   const processes = document.getElementById('monitor-processes');
   processes.innerHTML = snap.topProcesses.length
     ? snap.topProcesses.map((p) => `
-        <div ${styleJauge(p.cpuPercent)}><span>${p.name} (${p.pid})</span><span>${p.cpuPercent ?? 0} % CPU · ${p.memPercent ?? 0} % mém.</span></div>
+        <div ${styleJauge(p.cpuPercent, 101)}><span>${p.name} (${p.pid})</span><span>${p.cpuPercent ?? 0} % CPU · ${p.memPercent ?? 0} % mém.</span></div>
       `).join('')
     : 'Aucun processus.';
 

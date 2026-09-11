@@ -6,6 +6,19 @@ function round1(n) {
   return n === null || n === undefined ? null : Math.round(n * 10) / 10;
 }
 
+// cpu.brand contient deja souvent le nom du fabricant (ex. brand="Intel(R)
+// Core(TM) i9-12900KF" avec manufacturer="Intel Gen") - le reprefixer sans
+// verification donne un nom double ("Intel Gen Intel(R) Core(TM)...").
+// Comparer seulement le premier mot du fabricant (le vrai nom de marque,
+// "Intel"/"AMD"...) suffit a detecter ce doublon.
+function nomCpu(cpu) {
+  const brand = (cpu.brand || '').trim();
+  const fabricant = (cpu.manufacturer || '').trim();
+  const premierMot = fabricant.split(/\s+/)[0] || '';
+  if (!fabricant || (premierMot && brand.toLowerCase().includes(premierMot.toLowerCase()))) return brand;
+  return `${fabricant} ${brand}`.trim();
+}
+
 async function getSnapshot() {
   const [cpu, load, temp, mem, graphics, fsSize, netStats, processes] = await Promise.all([
     si.cpu(),
@@ -20,7 +33,7 @@ async function getSnapshot() {
 
   return {
     cpu: {
-      model: `${cpu.manufacturer} ${cpu.brand}`.trim(),
+      model: nomCpu(cpu),
       cores: cpu.cores,
       speedGhz: cpu.speed,
       loadPercent: round1(load.currentLoad),

@@ -208,10 +208,16 @@ html, body {
    est pose en variable inline (voir styleJauge, app.js), la largeur du
    fond etendu au-dela du padding de la carte pour aller bord a bord. */
 .monitor-row.avec-jauge {
+  --jauge-couleur: rgba(229, 38, 26, 0.16);
   margin: 0 -14px;
   padding: 4px 14px;
-  background: linear-gradient(to right, rgba(229, 38, 26, 0.16) var(--jauge, 0%), transparent var(--jauge, 0%));
+  background: linear-gradient(to right, var(--jauge-couleur) var(--jauge, 0%), transparent var(--jauge, 0%));
 }
+/* Seuil critique (§5.7, "Alertes configurables") : remplissage plus dense
+   et valeur en rouge vif plutot qu'un chiffre neutre parmi d'autres -
+   voir styleJauge(pourcentage, seuilAlerte), app.js. */
+.monitor-row.jauge-alerte { --jauge-couleur: rgba(229, 38, 26, 0.4); }
+.monitor-row.jauge-alerte span:last-child { color: var(--red); font-weight: 600; }
 
 /* Panneaux retractables (F-21 / §16.1) */
 .edge-tab {
