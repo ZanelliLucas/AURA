@@ -593,19 +593,39 @@ html, body {
   color: var(--red);
   text-shadow: 0 0 10px rgba(229, 38, 26, 0.4);
 }
-.monitor-sparkline-modal-panneau #monitor-sparkline-modal-fermer {
-  background: none;
-  border: 1px solid rgba(245, 246, 247, 0.16);
-  border-radius: 6px;
-  width: 26px;
-  height: 26px;
+/* Bouton de fermeture des modales (historique + details processus) :
+   pastille circulaire plutot qu'un carre a bordure fine - se detache
+   mieux du panneau et le halo rouge au survol reprend le langage visuel
+   utilise partout ailleurs (alertes, boutons actifs). Selecteur partage
+   par les deux IDs plutot que juste le premier (avant ce correctif, le
+   bouton de la modale de details processus n'avait AUCUN style et
+   retombait sur l'apparence par defaut du navigateur - un carre blanc
+   tranchant sur le theme sombre). */
+#monitor-sparkline-modal-fermer,
+#monitor-processus-modal-fermer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(245, 246, 247, 0.05);
+  border: 1px solid rgba(245, 246, 247, 0.18);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   color: var(--dim);
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1;
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-.monitor-sparkline-modal-panneau #monitor-sparkline-modal-fermer:hover { color: var(--white); border-color: var(--red); }
+#monitor-sparkline-modal-fermer:hover,
+#monitor-processus-modal-fermer:hover {
+  color: var(--white);
+  border-color: var(--red);
+  background: rgba(229, 38, 26, 0.16);
+  box-shadow: 0 0 10px rgba(229, 38, 26, 0.3);
+}
 .monitor-sparkline-modal-graphe {
   padding: 28px 24px 32px;
   color: var(--red);
@@ -628,7 +648,11 @@ html, body {
    l'historique de sparkline, panneau plus etroit (pas de graphe a
    afficher) et hauteur plafonnee - un groupe multi-instance (ex.
    firefox.exe x19) peut lister beaucoup d'entrees. */
-.monitor-processus-modal-panneau { width: min(560px, 90vw); }
+/* Fond noir uni plutot que le degrade radial rouge herite de
+   .monitor-sparkline-modal-panneau (pertinent pour un graphe qu'il met
+   en valeur, superflu ici ou le contenu est une simple liste de texte -
+   le degrade se lisait comme une teinte brunatre sur cette liste). */
+.monitor-processus-modal-panneau { width: min(560px, 90vw); background: var(--bg); }
 .monitor-processus-modal-corps {
   padding: 8px 24px 24px;
   max-height: 60vh;
