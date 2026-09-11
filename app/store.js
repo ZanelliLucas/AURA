@@ -130,8 +130,8 @@ function deleteReminder(id) {
 }
 
 // --- Regles d'automatisation (§12.2 Policy, AURA AUTONOMY §5.9) ------
-// Lues/mises a jour par autonomy.js#tick() ; la creation/suppression de
-// regles se faisait depuis l'ecran AURA AUTONOMY (retire).
+// Lues/evaluees par autonomy.js#tick() ; creees/supprimees via
+// autonomy.js#ruleCreate/ruleDelete, exposees a l'ecran AURA AUTONOMY.
 
 function getRules() {
   return readJson('rules.json', []);
@@ -144,6 +144,38 @@ function markRuleRun(id) {
     rule.lastRunAt = new Date().toISOString();
     writeJson('rules.json', rules);
   }
+  return rule;
+}
+
+function createRule({ name, enabled, mode, trigger, action }) {
+  const rules = getRules();
+  const rule = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    name,
+    enabled: enabled !== false,
+    mode: mode || 'simulation',
+    trigger,
+    action,
+    createdAt: new Date().toISOString(),
+    lastRunAt: null
+  };
+  rules.push(rule);
+  writeJson('rules.json', rules);
+  return rule;
+}
+
+function deleteRule(id) {
+  const rules = getRules().filter((r) => r.id !== id);
+  writeJson('rules.json', rules);
+  return rules;
+}
+
+function setRuleEnabled(id, enabled) {
+  const rules = getRules();
+  const rule = rules.find((r) => r.id === id);
+  if (!rule) throw new Error('Règle introuvable.');
+  rule.enabled = !!enabled;
+  writeJson('rules.json', rules);
   return rule;
 }
 
@@ -179,6 +211,9 @@ module.exports = {
   deleteReminder,
   getRules,
   markRuleRun,
+  createRule,
+  deleteRule,
+  setRuleEnabled,
   getJournal,
   logAction
 };

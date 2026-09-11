@@ -30,6 +30,66 @@ function getEstop() {
   return { active: estopped };
 }
 
+const TRIGGER_TYPES = ['interval', 'daily', 'threshold'];
+const ACTION_TYPES = ['notify', 'task.create', 'system.snapshot'];
+
+function validateTrigger(trigger) {
+  if (!trigger || !TRIGGER_TYPES.includes(trigger.type)) return 'Type de déclencheur invalide.';
+  if (trigger.type === 'interval') {
+    if (!(Number(trigger.minutes) > 0)) return 'Intervalle invalide (minutes > 0 attendu).';
+  } else if (trigger.type === 'daily') {
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(trigger.time || '')) return 'Heure invalide (format HH:MM attendu).';
+  } else if (trigger.type === 'threshold') {
+    if (!['cpu', 'ram', 'gpu'].includes(trigger.metric)) return 'Métrique invalide.';
+    if (!['below', 'above'].includes(trigger.operator)) return 'Opérateur invalide.';
+    if (!(Number(trigger.value) >= 0)) return 'Seuil invalide.';
+  }
+  return null;
+}
+
+function validateAction(action) {
+  if (!action || !ACTION_TYPES.includes(action.type)) return 'Type d\'action invalide.';
+  const params = action.params || {};
+  if (action.type === 'notify' && !(params.message && params.message.trim())) return 'Message de notification manquant.';
+  if (action.type === 'task.create' && !(params.title && params.title.trim())) return 'Titre de tâche manquant.';
+  return null;
+}
+
+// rule.create (§5.9, Reversible) : la regle elle-meme ne fait rien tant
+// que tick() ne l'evalue pas - creer une regle est donc une action
+// reversible, meme si son action associee (une fois declenchee) ne
+// l'est pas forcement au meme degre (§14.1, deja restreint a
+// notify/task.create/system.snapshot).
+function ruleCreate({ name, enabled, mode, trigger, action }) {
+  const error = (!name || !name.trim()) ? 'Nom de règle manquant.' : (validateTrigger(trigger) || validateAction(action));
+  if (error) {
+    store.logAction({
+      typeAction: 'rule.create', sensibilite: 'reversible', statut: 'echoue',
+      details: { error }
+    });
+    throw new Error(error);
+  }
+  const rule = store.createRule({ name: name.trim(), enabled, mode, trigger, action });
+  store.logAction({
+    typeAction: 'rule.create', sensibilite: 'reversible', statut: 'execute',
+    details: { id: rule.id, name: rule.name, trigger: rule.trigger, action: rule.action }
+  });
+  return rule;
+}
+
+function ruleDelete(id) {
+  return store.deleteRule(id);
+}
+
+function ruleSetEnabled(id, enabled) {
+  const rule = store.setRuleEnabled(id, enabled);
+  store.logAction({
+    typeAction: 'rule.toggle', sensibilite: 'reversible', statut: 'execute',
+    details: { id: rule.id, name: rule.name, enabled: rule.enabled }
+  });
+  return rule;
+}
+
 function metricValue(snapshot, metric) {
   if (metric === 'cpu') return snapshot.cpu.loadPercent;
   if (metric === 'ram') return snapshot.memory.usedPercent;
@@ -135,5 +195,9 @@ async function tick() {
 module.exports = {
   setEstop,
   getEstop,
+  getRules: store.getRules,
+  ruleCreate,
+  ruleDelete,
+  ruleSetEnabled,
   tick
 };

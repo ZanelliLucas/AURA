@@ -217,6 +217,88 @@
     </div>
   </section>
 
+  <!-- Troisieme page de categorie (Systeme de Modules, §16) : AURA
+       AUTONOMY (§5.9). Moteur de regles reel (autonomy.js#tick(), deja
+       lance en continu par main.js) - cette page n'ajoute que la gestion
+       (creation/activation/suppression) des regles et l'arret d'urgence,
+       deja expose cote backend (getEstop/setEstop). -->
+  <section id="page-autonomy" class="app-page" hidden>
+    <header class="app-page-header">
+      <button id="autonomy-back" type="button" class="app-page-back" aria-label="Retour">←</button>
+      <h1>Autonomy</h1>
+      <span id="autonomy-updated" class="app-page-updated"></span>
+    </header>
+    <div class="app-page-body custom-scroll">
+      <div class="monitor-seuils" title="Coupe immediatement toute regle, quel que soit son mode">
+        <span class="monitor-seuils-label">Arrêt d'urgence</span>
+        <label class="monitor-seuil-chip">
+          <span>Règles actives</span>
+          <input type="checkbox" id="autonomy-estop-toggle" checked>
+        </label>
+      </div>
+      <div class="productivity-grid">
+        <section class="monitor-card">
+          <h2><span class="monitor-card-titre">Nouvelle règle</span></h2>
+          <div class="monitor-card-body productivity-card-body">
+            <form id="autonomy-rule-form" class="inline-form">
+              <input id="autonomy-rule-name" type="text" placeholder="Nom de la règle…">
+              <span class="monitor-select-wrap">
+                <select id="autonomy-rule-trigger-type">
+                  <option value="interval">Intervalle</option>
+                  <option value="daily">Quotidien</option>
+                  <option value="threshold">Seuil</option>
+                </select>
+              </span>
+              <span id="autonomy-trigger-interval" class="autonomy-trigger-fields">
+                <input id="autonomy-trigger-minutes" type="number" min="1" step="1" value="30" title="Minutes">
+              </span>
+              <span id="autonomy-trigger-daily" class="autonomy-trigger-fields" hidden>
+                <input id="autonomy-trigger-time" type="time" value="09:00">
+              </span>
+              <span id="autonomy-trigger-threshold" class="autonomy-trigger-fields" hidden>
+                <span class="monitor-select-wrap">
+                  <select id="autonomy-trigger-metric">
+                    <option value="cpu">CPU</option>
+                    <option value="ram">Mémoire</option>
+                    <option value="gpu">GPU</option>
+                  </select>
+                </span>
+                <span class="monitor-select-wrap">
+                  <select id="autonomy-trigger-operator">
+                    <option value="above">Au-dessus de</option>
+                    <option value="below">En-dessous de</option>
+                  </select>
+                </span>
+                <input id="autonomy-trigger-value" type="number" min="0" max="100" step="1" placeholder="%" title="Seuil (%)">
+              </span>
+              <span class="monitor-select-wrap">
+                <select id="autonomy-rule-action-type">
+                  <option value="notify">Notifier</option>
+                  <option value="task.create">Créer une tâche</option>
+                  <option value="system.snapshot">Instantané système</option>
+                </select>
+              </span>
+              <span id="autonomy-action-notify" class="autonomy-action-fields">
+                <input id="autonomy-action-message" type="text" placeholder="Message…">
+              </span>
+              <span id="autonomy-action-task" class="autonomy-action-fields" hidden>
+                <input id="autonomy-action-title" type="text" placeholder="Titre de la tâche…">
+              </span>
+              <label class="autonomy-mode-chip"><input type="checkbox" id="autonomy-rule-simulation" checked> Simulation</label>
+              <button type="submit">Créer</button>
+            </form>
+          </div>
+        </section>
+        <section class="monitor-card">
+          <h2><span class="monitor-card-titre">Règles</span></h2>
+          <div class="monitor-card-body productivity-card-body">
+            <div id="autonomy-rules-list" class="monitor-scroll custom-scroll">Chargement…</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+
   <div id="conversation-panel" class="terminal-panel">
     <!-- Acces rapide aux Somas du globe stellaire (§13.3) : le texte tape
          est compare aux categories reelles d'AURA (data.js) - une

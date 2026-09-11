@@ -711,6 +711,10 @@ function ouvrirPageCategorie(id) {
     loadTasks();
     loadReminders();
     journal('PAGE_OUVERTE : AURA PRODUCTIVITY');
+  } else if (id === 'autonomy') {
+    document.getElementById('page-autonomy').hidden = false;
+    loadRules();
+    journal('PAGE_OUVERTE : AURA AUTONOMY');
   }
 }
 
@@ -736,6 +740,7 @@ function wirePages() {
   wireSparklineModal();
   wireDetailsProcessus();
   wireProductivityPage();
+  wireAutonomyPage();
 }
 
 // Seuils d'alerte configurables (§5.7) : charge les valeurs enregistrees au
@@ -971,7 +976,9 @@ const TYPE_LABELS = {
   'config.api_key': 'Clé API',
   'autonomy.estop': 'Arrêt d’urgence',
   'autonomy.rule_fired': 'Règle AUTONOMY',
-  'autonomy.simulation': 'Règle AUTONOMY (simulation)'
+  'autonomy.simulation': 'Règle AUTONOMY (simulation)',
+  'rule.create': 'Règle créée',
+  'rule.toggle': 'Règle modifiée'
 };
 
 function formatJournalMessage(entry) {
@@ -981,6 +988,11 @@ function formatJournalMessage(entry) {
   if (entry.typeAction === 'task.create' || entry.typeAction === 'task.complete') return `${label} : ${d.title || ''}`;
   if (entry.typeAction === 'reminder.schedule' || entry.typeAction === 'reminder.fired') return `${label} : ${d.text || ''}`;
   if (entry.typeAction === 'config.api_key') return `${label} : ${d.provider || ''}`;
+  if (entry.typeAction === 'rule.create') return `${label} : ${d.name || ''}`;
+  if (entry.typeAction === 'rule.toggle') return `${label} : ${d.name || ''} (${d.enabled ? 'activée' : 'désactivée'})`;
+  if (entry.typeAction === 'autonomy.rule_fired' || entry.typeAction === 'autonomy.simulation') {
+    return `${label} : ${d.name || ''}${d.summary ? ' — ' + d.summary : ''}`;
+  }
   return label;
 }
 
@@ -1275,6 +1287,186 @@ function wireProductivityPage() {
   document.getElementById('productivity-back').addEventListener('click', fermerPage);
   wireFormulaireTache('productivity-');
   wireFormulaireRappel('productivity-');
+}
+
+// --- Page AURA AUTONOMY (§5.9) -----------------------------------------
+// Gestion des regles (creation/activation/suppression) au-dessus du
+// moteur reel (autonomy.js#tick(), deja lance en continu par main.js) -
+// et arret d'urgence, deja expose cote backend (getEstop/setEstop).
+
+const METRIQUE_LABELS = { cpu: 'CPU', ram: 'Mémoire', gpu: 'GPU' };
+
+function resumeDeclencheur(trigger) {
+  if (trigger.type === 'interval') return `toutes les ${trigger.minutes} min`;
+  if (trigger.type === 'daily') return `chaque jour à ${trigger.time}`;
+  if (trigger.type === 'threshold') {
+    const metrique = METRIQUE_LABELS[trigger.metric] || trigger.metric;
+    const op = trigger.operator === 'below' ? '<' : '>';
+    return `${metrique} ${op} ${trigger.value}%`;
+  }
+  return '';
+}
+
+function resumeAction(action) {
+  const params = action.params || {};
+  if (action.type === 'notify') return `notifier « ${params.message || ''} »`;
+  if (action.type === 'task.create') return `créer tâche « ${params.title || ''} »`;
+  if (action.type === 'system.snapshot') return 'instantané système';
+  return '';
+}
+
+// Construit la ligne DOM d'une regle - reutilise le gabarit visuel
+// .task-row/.row-delete (Productivite) plutot que d'en creer un nouveau :
+// meme besoin (case a cocher, libelle, meta, suppression), et .completed
+// (texte barre + attenue) rend deja tres bien l'etat "regle desactivee".
+function construireLigneRegle(rule) {
+  const row = document.createElement('div');
+  row.className = `task-row ${rule.enabled ? '' : 'completed'}`;
+  const meta = `${resumeDeclencheur(rule.trigger)} → ${resumeAction(rule.action)}${rule.mode === 'simulation' ? ' (simulation)' : ''}`;
+  row.innerHTML = `
+    <input type="checkbox" ${rule.enabled ? 'checked' : ''}>
+    <span class="task-title">${echapperHtml(rule.name)}</span>
+    <span class="task-due">${echapperHtml(meta)}</span>
+    <button type="button" class="row-delete" title="Supprimer">✕</button>
+  `;
+  row.querySelector('input[type="checkbox"]').addEventListener('change', async (e) => {
+    const active = e.target.checked;
+    try {
+      await window.aura.toggleRule(rule.id, active);
+      journal(`REGLE_${active ? 'ACTIVEE' : 'DESACTIVEE'} : ${rule.name}`);
+      loadRules();
+    } catch (err) {
+      e.target.checked = !active;
+      journal(`REGLE_ECHEC : ${err.message}`);
+    }
+    refreshJournalIfOpen();
+  });
+  row.querySelector('.row-delete').addEventListener('click', async () => {
+    await window.aura.deleteRule(rule.id);
+    journal(`REGLE_SUPPRIMEE : ${rule.name}`);
+    loadRules();
+    refreshJournalIfOpen();
+  });
+  return row;
+}
+
+function actualiserHorodatageAutonomy() {
+  const el = document.getElementById('autonomy-updated');
+  if (el) el.textContent = new Date().toLocaleTimeString('fr-FR');
+}
+
+function renderRules(rules) {
+  const list = document.getElementById('autonomy-rules-list');
+  if (!rules.length) {
+    list.textContent = 'Aucune règle.';
+  } else {
+    list.innerHTML = '';
+    rules.forEach((rule) => list.appendChild(construireLigneRegle(rule)));
+  }
+  actualiserHorodatageAutonomy();
+}
+
+async function loadRules() {
+  try {
+    renderRules(await window.aura.getRules());
+  } catch {
+    document.getElementById('autonomy-rules-list').textContent = 'Règles indisponibles.';
+  }
+}
+
+// Affiche uniquement les champs pertinents pour le type choisi (§5.9) -
+// les trois types de declencheur/action partagent le meme formulaire,
+// mais leurs parametres sont disjoints (minutes / heure / metrique+
+// operateur+valeur, message / titre / aucun).
+function wireChampsConditionnels(select, groupes) {
+  const appliquer = () => {
+    Object.entries(groupes).forEach(([valeur, id]) => {
+      document.getElementById(id).hidden = valeur !== select.value;
+    });
+  };
+  select.addEventListener('change', appliquer);
+  appliquer();
+}
+
+function wireAutonomyEstop() {
+  const toggle = document.getElementById('autonomy-estop-toggle');
+  // toggle.checked represente "regles actives" (§16), l'inverse de
+  // l'estop.active retourne par l'API (actif = regles bloquees).
+  window.aura.getEstop().then(({ active }) => { toggle.checked = !active; }).catch(() => {});
+  toggle.addEventListener('change', async () => {
+    const actif = toggle.checked;
+    try {
+      await window.aura.setEstop(!actif);
+      journal(`AUTONOMY_ESTOP : ${actif ? 'règles réactivées' : 'arrêt d’urgence activé'}`);
+    } catch (err) {
+      toggle.checked = !actif;
+      journal(`AUTONOMY_ESTOP_ECHEC : ${err.message}`);
+    }
+    refreshJournalIfOpen();
+  });
+}
+
+function wireFormulaireRegle() {
+  document.getElementById('autonomy-rule-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nomInput = document.getElementById('autonomy-rule-name');
+    const name = nomInput.value.trim();
+    if (!name) return;
+
+    const triggerType = document.getElementById('autonomy-rule-trigger-type').value;
+    let trigger;
+    if (triggerType === 'interval') {
+      trigger = { type: 'interval', minutes: Number(document.getElementById('autonomy-trigger-minutes').value) };
+    } else if (triggerType === 'daily') {
+      trigger = { type: 'daily', time: document.getElementById('autonomy-trigger-time').value };
+    } else {
+      trigger = {
+        type: 'threshold',
+        metric: document.getElementById('autonomy-trigger-metric').value,
+        operator: document.getElementById('autonomy-trigger-operator').value,
+        value: Number(document.getElementById('autonomy-trigger-value').value)
+      };
+    }
+
+    const actionType = document.getElementById('autonomy-rule-action-type').value;
+    let action;
+    if (actionType === 'notify') {
+      action = { type: 'notify', params: { message: document.getElementById('autonomy-action-message').value.trim() } };
+    } else if (actionType === 'task.create') {
+      action = { type: 'task.create', params: { title: document.getElementById('autonomy-action-title').value.trim() } };
+    } else {
+      action = { type: 'system.snapshot', params: {} };
+    }
+
+    const mode = document.getElementById('autonomy-rule-simulation').checked ? 'simulation' : 'live';
+
+    try {
+      await window.aura.createRule({ name, enabled: true, mode, trigger, action });
+      nomInput.value = '';
+      document.getElementById('autonomy-action-message').value = '';
+      document.getElementById('autonomy-action-title').value = '';
+      journal(`REGLE_CREEE : ${name}`);
+      loadRules();
+    } catch (err) {
+      journal(`REGLE_CREATION_ECHEC : ${err.message}`);
+    }
+    refreshJournalIfOpen();
+  });
+}
+
+function wireAutonomyPage() {
+  document.getElementById('autonomy-back').addEventListener('click', fermerPage);
+  wireAutonomyEstop();
+  wireChampsConditionnels(document.getElementById('autonomy-rule-trigger-type'), {
+    interval: 'autonomy-trigger-interval',
+    daily: 'autonomy-trigger-daily',
+    threshold: 'autonomy-trigger-threshold'
+  });
+  wireChampsConditionnels(document.getElementById('autonomy-rule-action-type'), {
+    notify: 'autonomy-action-notify',
+    'task.create': 'autonomy-action-task'
+  });
+  wireFormulaireRegle();
 }
 
 initGlobe();

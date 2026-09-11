@@ -204,6 +204,7 @@ html, body {
   text-align: right;
 }
 .monitor-seuils input:focus { outline: none; }
+.monitor-seuils input[type='checkbox'] { width: auto; accent-color: var(--red); }
 /* Fleches natives du <input type=number> (visibles par defaut, hors
    style de l'appli) retirees - le clavier/la molette suffisent a
    ajuster la valeur, pas besoin de boutons dedies dans un jeton deja
@@ -321,6 +322,19 @@ html, body {
    toute la hauteur, pas pour un formulaire suivi d'une liste). */
 .productivity-card-body { justify-content: flex-start; gap: 14px; }
 .productivity-card-body .inline-form { margin-bottom: 0; }
+/* Champs specifiques au type de declencheur/action selectionne (AURA
+   AUTONOMY) : groupes affiches/masques ensemble par wireAutonomyPage()
+   selon le <select> correspondant, plutot que des champs individuels. */
+.autonomy-trigger-fields, .autonomy-action-fields { display: inline-flex; gap: 6px; }
+.autonomy-mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.autonomy-mode-chip input { accent-color: var(--red); }
 /* Meme gabarit que .terminal-panel (bordure, rayon, en-tete) : chaque
    carte se lit comme une petite console plutot qu'un simple bloc de
    donnees. Pas de halo (box-shadow neutre uniquement, pour la

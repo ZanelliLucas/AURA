@@ -49,6 +49,10 @@ contextBridge.exposeInMainWorld('aura', {
 
   getEstop: () => getJson('/api/autonomy/estop'),
   setEstop: (active) => postJson('/api/autonomy/estop', { active }),
+  getRules: () => getJson('/api/autonomy/rules'),
+  createRule: (rule) => postJson('/api/autonomy/rules', rule),
+  toggleRule: (id, enabled) => postJson(`/api/autonomy/rules/${encodeURIComponent(id)}/toggle`, { enabled }),
+  deleteRule: (id) => delJson(`/api/autonomy/rules/${encodeURIComponent(id)}`),
 
   getSystemSnapshot: () => getJson('/api/system/monitor')
 });

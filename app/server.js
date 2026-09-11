@@ -109,6 +109,30 @@ function startServer() {
     res.json(autonomy.setEstop(!!req.body.active));
   });
 
+  server.get('/api/autonomy/rules', (req, res) => {
+    res.json(autonomy.getRules());
+  });
+
+  server.post('/api/autonomy/rules', (req, res) => {
+    try {
+      res.json(autonomy.ruleCreate(req.body));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/autonomy/rules/:id/toggle', (req, res) => {
+    try {
+      res.json(autonomy.ruleSetEnabled(req.params.id, !!req.body.enabled));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.delete('/api/autonomy/rules/:id', (req, res) => {
+    res.json(autonomy.ruleDelete(req.params.id));
+  });
+
   return new Promise((resolve, reject) => {
     const instance = server.listen(PORT, HOST, () => {
       console.log(`[server] API AURA locale sur http://${HOST}:${PORT}`);
