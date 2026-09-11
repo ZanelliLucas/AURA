@@ -1070,6 +1070,19 @@ html, body {
   margin: 0;
 }
 .inline-form input[type='number'] { -moz-appearance: textfield; }
+/* Icone native du <input type=time> (declencheur Quotidien) : seul
+   controle interactif de la page sans retour au survol, contrairement
+   aux chevrons/boutons/checkbox deja reactifs ailleurs. Pas de filtre de
+   recoloration (fragile, l'icone par defaut est deja d'un gris neutre
+   qui se fond dans le theme) - juste le meme retour au survol. */
+.inline-form input[type='time']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+.inline-form input[type='time']::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
 .inline-form button {
   background: var(--red);
   border: none;
