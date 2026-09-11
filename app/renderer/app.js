@@ -586,6 +586,11 @@ function ouvrirPageCategorie(id) {
 function fermerPage() {
   document.querySelectorAll('.app-page').forEach((page) => { page.hidden = true; });
   if (intervalMonitor) { clearInterval(intervalMonitor); intervalMonitor = null; }
+  // Sans ceci, une modale d'historique (ouvrirSparklineModal) laissee
+  // ouverte en quittant la page reapparaitrait seule a la prochaine
+  // ouverture (elle vit dans le DOM de la page, masquee avec elle par
+  // [hidden], mais son propre etat hidden n'aurait jamais ete remis).
+  if (metriqueModalOuverte) fermerSparklineModal();
   reculerDuZoom();
   journal('PAGE_FERMEE : retour au globe');
 }
