@@ -393,8 +393,11 @@ html, body {
 .autonomy-form-buttons { display: flex; align-items: center; gap: 10px; }
 /* Bouton "Annuler" (mode edition, idee 4) : texte seul, meme registre
    discret que .row-test/.row-delete plutot qu'un deuxieme bouton plein
-   qui concurrencerait "Enregistrer". */
-.autonomy-cancel-btn {
+   qui concurrencerait "Enregistrer". Selecteur par id (specificite
+   superieure a .inline-form button, class+element) - sans ca, le rouge
+   plein de .inline-form button l'emportait malgre .autonomy-cancel-btn,
+   et "Annuler" se retrouvait identique a "Enregistrer". */
+#autonomy-rule-cancel {
   background: none;
   border: none;
   color: var(--dim);
@@ -402,7 +405,7 @@ html, body {
   font-size: 11px;
   cursor: pointer;
 }
-.autonomy-cancel-btn:hover { color: var(--white); }
+#autonomy-rule-cancel:hover { color: var(--white); }
 .autonomy-mode-chip {
   display: inline-flex;
   align-items: center;

@@ -1355,7 +1355,14 @@ function lireActionFormulaire() {
 function actualiserApercuRegle() {
   const preview = document.getElementById('autonomy-form-preview');
   if (!preview) return;
-  preview.textContent = `${resumeDeclencheur(lireTriggerFormulaire())} → ${resumeAction(lireActionFormulaire())}`;
+  const action = lireActionFormulaire();
+  // Espace reservateur (…) plutot que des guillemets vides « » - message/
+  // titre non encore saisis pendant qu'on construit la regle, contrairement
+  // a une regle reelle (validee, donc jamais vide a ce stade dans la liste).
+  const params = action.params || {};
+  if (action.type === 'notify' && !params.message) params.message = '…';
+  if (action.type === 'task.create' && !params.title) params.title = '…';
+  preview.textContent = `${resumeDeclencheur(lireTriggerFormulaire())} → ${resumeAction(action)}`;
 }
 
 // Construit la ligne DOM d'une regle : case a cocher, nom + mode (badge
@@ -1388,7 +1395,7 @@ function construireLigneRegle(rule) {
     </div>
     <div class="rule-actions">
       <button type="button" class="row-test" title="Tester maintenant">▶</button>
-      <button type="button" class="row-edit" title="Modifier">✎</button>
+      <button type="button" class="row-edit" title="Modifier">✎︎</button>
       <button type="button" class="row-duplicate" title="Dupliquer">⧉</button>
       <button type="button" class="row-delete" title="Supprimer">✕</button>
     </div>
