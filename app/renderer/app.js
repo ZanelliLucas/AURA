@@ -344,12 +344,10 @@ function rendreSystemMonitor(snap) {
 
   const gpu = document.getElementById('monitor-gpu');
   gpu.innerHTML = snap.gpu.length
-    ? snap.gpu.map((g) => `
-        <div class="monitor-gpu-bloc">
-          <div class="monitor-row"><span>${g.model}</span><span>${g.temperatureC != null ? g.temperatureC + ' °C' : '—'}</span></div>
-          <div ${styleJauge(g.loadPercent)}><span>Charge</span><span>${g.loadPercent ?? '—'} %</span></div>
-          <div class="monitor-row"><span>Mémoire</span><span>${formatOctets(moEnGo(g.memoryUsedMB))} / ${formatOctets(moEnGo(g.vramMB))}</span></div>
-        </div>
+    ? snap.gpu.map((g, i) => `
+        <div class="monitor-row${i > 0 ? ' gpu-separateur' : ''}"><span>${g.model}</span><span>${g.temperatureC != null ? g.temperatureC + ' °C' : '—'}</span></div>
+        <div ${styleJauge(g.loadPercent)}><span>Charge</span><span>${g.loadPercent ?? '—'} %</span></div>
+        <div class="monitor-row"><span>Mémoire</span><span>${formatOctets(moEnGo(g.memoryUsedMB))} / ${formatOctets(moEnGo(g.vramMB))}</span></div>
       `).join('')
     : 'Aucun GPU dédié détecté.';
 

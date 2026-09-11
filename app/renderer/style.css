@@ -195,11 +195,18 @@ html, body {
    carte se lit comme une petite console plutot qu'un simple bloc de
    donnees. */
 .monitor-card {
+  display: flex;
+  flex-direction: column;
   background: rgba(245, 246, 247, 0.03);
   border: 1px solid rgba(245, 246, 247, 0.14);
   border-radius: 8px;
   overflow: hidden;
 }
+/* display:flex ci-dessus prend le pas sur la regle [hidden]{display:none}
+   du navigateur (meme specificite, origine "auteur" prioritaire) - sans
+   ceci, la carte Batterie masquee (monitor-battery-card.hidden, app.js)
+   resterait visible et vide sur un poste sans batterie. */
+.monitor-card[hidden] { display: none; }
 .monitor-card-wide { grid-column: 1 / -1; }
 .monitor-card h2 {
   margin: 0;
@@ -210,7 +217,20 @@ html, body {
   text-transform: uppercase;
   color: var(--red);
 }
-.monitor-card-body { padding: 12px 14px; font-size: 13px; line-height: 1.8; }
+/* flex-direction:column + justify-content:space-between repartit les
+   lignes sur toute la hauteur de la carte plutot que de les laisser
+   collees en haut avec un vide en dessous - les cartes d'une meme
+   rangee (CPU/Memoire/GPU) ont toutes la meme hauteur (etirees par la
+   grille), mais pas le meme nombre de lignes. */
+.monitor-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.8;
+}
 .monitor-row {
   display: flex;
   justify-content: space-between;
@@ -232,8 +252,12 @@ html, body {
 .monitor-row.legende span:last-child { color: var(--dim); }
 
 /* Separateur entre plusieurs GPU dans la meme carte - sans ca, deux GPU
-   s'enchainent sans distinction visuelle claire. */
-.monitor-gpu-bloc + .monitor-gpu-bloc { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-dim); }
+   s'enchainent sans distinction visuelle claire. Une classe sur la
+   premiere ligne de chaque GPU au-dela du premier (pas un conteneur
+   enveloppant) : .monitor-card-body distribue ses lignes par
+   justify-content:space-between, un conteneur intermediaire y
+   compterait comme un seul enfant et casserait cette repartition. */
+.monitor-row.gpu-separateur { margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--line-dim); }
 
 /* Jauge de charge/usage : remplissage proportionnel en fond de ligne,
    plutot qu'un chiffre isole - se lit d'un coup d'oeil. Le pourcentage
@@ -241,14 +265,21 @@ html, body {
    fond etendu au-dela du padding de la carte pour aller bord a bord. */
 .monitor-row.avec-jauge {
   --jauge-couleur: rgba(229, 38, 26, 0.16);
+  --jauge-bord: rgba(229, 38, 26, 0.7);
   margin: 0 -14px;
   padding: 4px 14px;
-  background: linear-gradient(to right, var(--jauge-couleur) var(--jauge, 0%), transparent var(--jauge, 0%));
+  background: linear-gradient(
+    to right,
+    var(--jauge-couleur) calc(var(--jauge, 0%) - 2px),
+    var(--jauge-bord) calc(var(--jauge, 0%) - 2px),
+    var(--jauge-bord) var(--jauge, 0%),
+    transparent var(--jauge, 0%)
+  );
 }
 /* Seuil critique (§5.7, "Alertes configurables") : remplissage plus dense
    et valeur en rouge vif plutot qu'un chiffre neutre parmi d'autres -
    voir styleJauge(pourcentage, seuilAlerte), app.js. */
-.monitor-row.jauge-alerte { --jauge-couleur: rgba(229, 38, 26, 0.4); }
+.monitor-row.jauge-alerte { --jauge-couleur: rgba(229, 38, 26, 0.4); --jauge-bord: var(--red); }
 .monitor-row.jauge-alerte span:last-child { color: var(--red); font-weight: 600; }
 
 /* Panneaux retractables (F-21 / §16.1) */
