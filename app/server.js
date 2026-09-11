@@ -133,6 +133,14 @@ function startServer() {
     res.json(autonomy.ruleDelete(req.params.id));
   });
 
+  server.post('/api/autonomy/rules/:id/run', async (req, res) => {
+    try {
+      res.json(await autonomy.ruleRunNow(req.params.id));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   return new Promise((resolve, reject) => {
     const instance = server.listen(PORT, HOST, () => {
       console.log(`[server] API AURA locale sur http://${HOST}:${PORT}`);

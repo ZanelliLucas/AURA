@@ -144,6 +144,35 @@ async function executeAction(rule, snapshot) {
   throw new Error(`Action inconnue : ${type}`);
 }
 
+// Simule ou execute reellement une regle deja jugee "a declencher"
+// (par tick() ou par un test manuel, ruleRunNow) - marque son heure de
+// derniere execution et journalise dans les deux cas, factorise pour
+// que les deux appelants restent strictement coherents.
+async function fireRule(rule, snapshot) {
+  store.markRuleRun(rule.id);
+
+  if (rule.mode === 'simulation') {
+    store.logAction({
+      typeAction: 'autonomy.simulation', sensibilite: 'lecture', statut: 'execute',
+      details: { ruleId: rule.id, name: rule.name, aurait_execute: rule.action }
+    });
+    return;
+  }
+
+  try {
+    const summary = await executeAction(rule, snapshot);
+    store.logAction({
+      typeAction: 'autonomy.rule_fired', sensibilite: 'reversible', statut: 'execute',
+      details: { ruleId: rule.id, name: rule.name, summary }
+    });
+  } catch (err) {
+    store.logAction({
+      typeAction: 'autonomy.rule_fired', sensibilite: 'reversible', statut: 'echoue',
+      details: { ruleId: rule.id, name: rule.name, error: err.message }
+    });
+  }
+}
+
 // task.schedule (§15) : evalue tous les declencheurs actifs et execute
 // (ou simule) l'action correspondante. Appele periodiquement par
 // main.js pendant la session.
@@ -167,29 +196,27 @@ async function tick() {
     else if (rule.trigger.type === 'threshold') fired = shouldFireThreshold(rule, snapshot, now);
 
     if (!fired) continue;
-    store.markRuleRun(rule.id);
-
-    if (rule.mode === 'simulation') {
-      store.logAction({
-        typeAction: 'autonomy.simulation', sensibilite: 'lecture', statut: 'execute',
-        details: { ruleId: rule.id, name: rule.name, aurait_execute: rule.action }
-      });
-      continue;
-    }
-
-    try {
-      const summary = await executeAction(rule, snapshot);
-      store.logAction({
-        typeAction: 'autonomy.rule_fired', sensibilite: 'reversible', statut: 'execute',
-        details: { ruleId: rule.id, name: rule.name, summary }
-      });
-    } catch (err) {
-      store.logAction({
-        typeAction: 'autonomy.rule_fired', sensibilite: 'reversible', statut: 'echoue',
-        details: { ruleId: rule.id, name: rule.name, error: err.message }
-      });
-    }
+    await fireRule(rule, snapshot);
   }
+}
+
+// Declenchement manuel depuis l'ecran AURA AUTONOMY ("Tester maintenant",
+// §16) : ignore le declencheur (interval/daily/threshold) et l'etat
+// active/inactive de la regle - seul l'arret d'urgence reste respecte,
+// une regle testee doit se comporter exactement comme si elle avait
+// declenche naturellement (meme mode simulation/live, meme journalisation).
+async function ruleRunNow(id) {
+  if (estopped) throw new Error('Arrêt d\'urgence actif : aucune règle ne peut s\'exécuter.');
+  const rule = store.getRules().find((r) => r.id === id);
+  if (!rule) throw new Error('Règle introuvable.');
+
+  let snapshot = null;
+  if (rule.trigger.type === 'threshold' || rule.action.type === 'system.snapshot') {
+    try { snapshot = await sysinfo.getSnapshot(); } catch { /* system.snapshot retentera elle-meme si besoin */ }
+  }
+
+  await fireRule(rule, snapshot);
+  return store.getRules().find((r) => r.id === id);
 }
 
 module.exports = {
@@ -199,5 +226,6 @@ module.exports = {
   ruleCreate,
   ruleDelete,
   ruleSetEnabled,
+  ruleRunNow,
   tick
 };

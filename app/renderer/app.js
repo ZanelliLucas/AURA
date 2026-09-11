@@ -714,6 +714,7 @@ function ouvrirPageCategorie(id) {
   } else if (id === 'autonomy') {
     document.getElementById('page-autonomy').hidden = false;
     loadRules();
+    chargerEstop();
     journal('PAGE_OUVERTE : AURA AUTONOMY');
   }
 }
@@ -1319,14 +1320,24 @@ function resumeAction(action) {
 // .task-row/.row-delete (Productivite) plutot que d'en creer un nouveau :
 // meme besoin (case a cocher, libelle, meta, suppression), et .completed
 // (texte barre + attenue) rend deja tres bien l'etat "regle desactivee".
+// "Derniere execution" (§16, idee 1) : meme principe que formatDemarrage
+// (System Monitor) mais sur un ISOString deja normalise (lastRunAt,
+// store.js) - pas besoin du reformatage espace->T de analyserDateProcessus.
+function formatDerniereExecution(lastRunAt) {
+  if (!lastRunAt) return 'jamais';
+  const secondes = Math.max(0, Math.round((Date.now() - new Date(lastRunAt).getTime()) / 1000));
+  return `il y a ${formatDuree(secondes)}`;
+}
+
 function construireLigneRegle(rule) {
   const row = document.createElement('div');
   row.className = `task-row ${rule.enabled ? '' : 'completed'}`;
-  const meta = `${resumeDeclencheur(rule.trigger)} → ${resumeAction(rule.action)}${rule.mode === 'simulation' ? ' (simulation)' : ''}`;
+  const meta = `${resumeDeclencheur(rule.trigger)} → ${resumeAction(rule.action)}${rule.mode === 'simulation' ? ' (simulation)' : ''} · ${formatDerniereExecution(rule.lastRunAt)}`;
   row.innerHTML = `
     <input type="checkbox" ${rule.enabled ? 'checked' : ''}>
     <span class="task-title">${echapperHtml(rule.name)}</span>
     <span class="task-due">${echapperHtml(meta)}</span>
+    <button type="button" class="row-test" title="Tester maintenant">▶</button>
     <button type="button" class="row-delete" title="Supprimer">✕</button>
   `;
   row.querySelector('input[type="checkbox"]').addEventListener('change', async (e) => {
@@ -1338,6 +1349,18 @@ function construireLigneRegle(rule) {
     } catch (err) {
       e.target.checked = !active;
       journal(`REGLE_ECHEC : ${err.message}`);
+    }
+    refreshJournalIfOpen();
+  });
+  row.querySelector('.row-test').addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    try {
+      await window.aura.runRule(rule.id);
+      journal(`REGLE_TESTEE : ${rule.name}`);
+      loadRules();
+    } catch (err) {
+      journal(`REGLE_TEST_ECHEC : ${err.message}`);
+      e.target.disabled = false;
     }
     refreshJournalIfOpen();
   });
@@ -1388,15 +1411,36 @@ function wireChampsConditionnels(select, groupes) {
   appliquer();
 }
 
+// Bandeau d'alerte (§16, idee 2) : l'unique case a cocher est facile a
+// manquer, surtout au retour sur la page - affiche/masque un bandeau
+// explicite en plus, sur le meme etat.
+function actualiserBanniereEstop(active) {
+  const banner = document.getElementById('autonomy-estop-banner');
+  if (banner) banner.hidden = !active;
+}
+
+// Recharge l'etat reel de l'arret d'urgence (plutot que de se fier au
+// dernier clic local) : appelee au chargement initial et a chaque
+// reouverture de la page, au cas ou tick() ou une autre voie l'aurait
+// change entre-temps.
+async function chargerEstop() {
+  try {
+    const { active } = await window.aura.getEstop();
+    // toggle.checked represente "regles actives" (§16), l'inverse de
+    // l'estop.active retourne par l'API (actif = regles bloquees).
+    document.getElementById('autonomy-estop-toggle').checked = !active;
+    actualiserBanniereEstop(active);
+  } catch { /* API locale indisponible */ }
+}
+
 function wireAutonomyEstop() {
   const toggle = document.getElementById('autonomy-estop-toggle');
-  // toggle.checked represente "regles actives" (§16), l'inverse de
-  // l'estop.active retourne par l'API (actif = regles bloquees).
-  window.aura.getEstop().then(({ active }) => { toggle.checked = !active; }).catch(() => {});
+  chargerEstop();
   toggle.addEventListener('change', async () => {
     const actif = toggle.checked;
     try {
       await window.aura.setEstop(!actif);
+      actualiserBanniereEstop(!actif);
       journal(`AUTONOMY_ESTOP : ${actif ? 'règles réactivées' : 'arrêt d’urgence activé'}`);
     } catch (err) {
       toggle.checked = !actif;

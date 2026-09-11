@@ -335,6 +335,19 @@ html, body {
   white-space: nowrap;
 }
 .autonomy-mode-chip input { accent-color: var(--red); }
+/* Bandeau d'alerte (§16, idee 2) : arret d'urgence actif, facile a
+   manquer avec la seule case a cocher. Fond teinte + bordure, pas de
+   halo (box-shadow) - meme choix que les autres cartes de la page. */
+.autonomy-banner {
+  background: rgba(229, 38, 26, 0.12);
+  border: 1px solid rgba(229, 38, 26, 0.4);
+  color: var(--white);
+  border-radius: 6px;
+  padding: 9px 14px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+}
 /* Meme gabarit que .terminal-panel (bordure, rayon, en-tete) : chaque
    carte se lit comme une petite console plutot qu'un simple bloc de
    donnees. Pas de halo (box-shadow neutre uniquement, pour la
@@ -1008,6 +1021,16 @@ html, body {
   flex-shrink: 0;
 }
 .row-delete:hover { color: var(--red); }
+.row-test {
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.row-test:hover { color: var(--white); }
+.row-test:disabled { opacity: 0.4; cursor: default; }
 
 #panel-projects .inline-form { margin-bottom: 16px; }
 #panel-projects .inline-form input, #panel-projects .inline-form select { font-size: 11px; padding: 5px 6px; }
