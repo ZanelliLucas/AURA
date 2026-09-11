@@ -245,14 +245,22 @@ html, body {
   cursor: pointer;
 }
 .monitor-seuils-intervalle select:focus { outline: none; }
+/* Le menu deroulant natif d'un <select> reste rendu par l'OS (fond blanc
+   par defaut), independant du style "transparent" du select lui-meme -
+   sans ceci, le texte blanc herite se retrouvait illisible sur ce fond
+   (seule l'option selectionnee, surlignee par l'OS, restait visible). */
+.monitor-seuils-intervalle select option {
+  background: var(--bg-panel);
+  color: var(--white);
+}
 
 .app-page-updated {
   margin-left: auto;
   display: flex;
   flex-direction: row-reverse;
   align-items: center;
-  gap: 10px;
-  font-size: 19px;
+  gap: 9px;
+  font-size: 15px;
   letter-spacing: 0.5px;
   color: var(--dim);
 }
@@ -261,8 +269,8 @@ html, body {
    implicite dans le seul changement d'horodatage. */
 .app-page-updated::before {
   content: '';
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--red);
   box-shadow: 0 0 6px 1px var(--red);
@@ -387,8 +395,8 @@ html, body {
 }
 .monitor-tri .filter-btn:hover { background: rgba(245, 246, 247, 0.07); }
 .monitor-tri .filter-btn.active {
-  background: rgba(229, 38, 26, 0.18);
-  box-shadow: 0 0 10px rgba(229, 38, 26, 0.22);
+  background: rgba(229, 38, 26, 0.4);
+  box-shadow: 0 0 14px rgba(229, 38, 26, 0.5), inset 0 0 0 1px rgba(229, 38, 26, 0.55);
 }
 /* Titre du Gestionnaire des taches (§5.7) : margin-right:auto absorbe tout
    l'espace libre du h2 avant que justify-content:space-between (herite de
