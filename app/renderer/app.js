@@ -1093,11 +1093,14 @@ function journal(action) {
 function construireLigneTache(task) {
   const row = document.createElement('div');
   row.className = `task-row ${task.status === 'completed' ? 'completed' : ''}`;
+  // Titre echappe (echapperHtml) : insere via innerHTML, un titre de
+  // tache contenant "<"/">" casserait sinon la structure de la ligne
+  // (bouton de suppression masque, balises etrangeres injectees).
   row.innerHTML = `
     <input type="checkbox" ${task.status === 'completed' ? 'checked disabled' : ''}>
     <span class="task-priority-dot ${task.priority}"></span>
-    <span class="task-title">${task.title}</span>
-    ${task.dueDate ? `<span class="task-due">${task.dueDate}</span>` : ''}
+    <span class="task-title">${echapperHtml(task.title)}</span>
+    ${task.dueDate ? `<span class="task-due">${echapperHtml(task.dueDate)}</span>` : ''}
     <button type="button" class="row-delete" title="Supprimer">✕</button>
   `;
   if (task.status !== 'completed') {
@@ -1152,8 +1155,9 @@ function construireLigneRappel(reminder) {
   row.className = 'reminder-row';
   const when = new Date(reminder.at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
   const recur = reminder.recurring === 'daily' ? ' ↻ jour' : reminder.recurring === 'weekly' ? ' ↻ semaine' : '';
+  // Texte echappe (voir construireLigneTache) - meme raison.
   row.innerHTML = `
-    <span class="task-title">${reminder.text}</span>
+    <span class="task-title">${echapperHtml(reminder.text)}</span>
     <span class="task-due">${when}${recur}</span>
     <button type="button" class="row-delete" title="Supprimer">✕</button>
   `;
