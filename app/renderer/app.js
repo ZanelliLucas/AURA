@@ -382,6 +382,14 @@ const HISTORIQUE_MAX = 20;
 const HISTORIQUE_LONG_MAX = 100;
 let historiqueCpu = [];
 let historiqueMemoire = [];
+// GPU et disques peuvent etre plusieurs (plusieurs cartes, plusieurs
+// volumes) - une liste par CPU/Memoire ne suffit pas, il faut une liste
+// par entree. Indexees par position pour le GPU (ordre stable d'un
+// cycle a l'autre, voir si.graphics()) et par point de montage pour les
+// disques (identifiant naturel, contrairement a une position qui
+// changerait si un volume apparait/disparait).
+let historiqueGpu = {};
+let historiqueDisques = {};
 
 // Persistance de l'historique entre sessions (§5.7) : sans ceci, sparkline
 // et historique complet repartaient de zero a chaque lancement d'AURA -
@@ -391,21 +399,51 @@ let historiqueMemoire = [];
 // pas une promesse de cadence reguliere entre les points les plus anciens.
 const CLE_HISTORIQUE = 'aura.monitorHistorique';
 
+// Recharge un dictionnaire {cle: [valeurs]} (GPU/disques) depuis sa forme
+// brute JSON - factorise la validation commune a chargerHistorique.
+function chargerHistoriqueIndexe(brut) {
+  const resultat = {};
+  if (brut && typeof brut === 'object') {
+    Object.keys(brut).forEach((cle) => {
+      if (Array.isArray(brut[cle])) resultat[cle] = brut[cle].slice(-HISTORIQUE_LONG_MAX);
+    });
+  }
+  return resultat;
+}
+
 function chargerHistorique() {
   try {
     const brut = JSON.parse(localStorage.getItem(CLE_HISTORIQUE));
     if (brut && Array.isArray(brut.cpu)) historiqueCpu = brut.cpu.slice(-HISTORIQUE_LONG_MAX);
     if (brut && Array.isArray(brut.memory)) historiqueMemoire = brut.memory.slice(-HISTORIQUE_LONG_MAX);
+    if (brut) historiqueGpu = chargerHistoriqueIndexe(brut.gpu);
+    if (brut) historiqueDisques = chargerHistoriqueIndexe(brut.disks);
   } catch { /* valeur absente ou corrompue - demarre a vide, comme avant cette fonctionnalite */ }
 }
 
 function sauvegarderHistorique() {
-  try { localStorage.setItem(CLE_HISTORIQUE, JSON.stringify({ cpu: historiqueCpu, memory: historiqueMemoire })); } catch { /* stockage indisponible - reste actif pour la session en cours */ }
+  try {
+    localStorage.setItem(CLE_HISTORIQUE, JSON.stringify({
+      cpu: historiqueCpu,
+      memory: historiqueMemoire,
+      gpu: historiqueGpu,
+      disks: historiqueDisques
+    }));
+  } catch { /* stockage indisponible - reste actif pour la session en cours */ }
 }
 
 function pousserHistorique(liste, valeur) {
   liste.push(valeur ?? 0);
   if (liste.length > HISTORIQUE_LONG_MAX) liste.shift();
+}
+
+// Variante indexee (GPU/disques, voir historiqueGpu/historiqueDisques
+// ci-dessus) : cree la liste au premier passage pour cette cle plutot
+// que d'exiger une initialisation prealable pour chaque GPU/disque
+// possible (leur nombre n'est connu qu'a la lecture du premier snapshot).
+function pousserHistoriqueIndexe(dictionnaire, cle, valeur) {
+  if (!dictionnaire[cle]) dictionnaire[cle] = [];
+  pousserHistorique(dictionnaire[cle], valeur);
 }
 
 // stroke="currentColor" plutot qu'une couleur fixe : la teinte suit
@@ -504,18 +542,28 @@ function rendreSystemMonitor(snap) {
 
   const gpu = document.getElementById('monitor-gpu');
   gpu.innerHTML = snap.gpu.length
-    ? snap.gpu.map((g, i) => `
+    ? snap.gpu.map((g, i) => {
+        pousserHistoriqueIndexe(historiqueGpu, i, g.loadPercent);
+        const hist = historiqueGpu[i];
+        return `
         <div class="monitor-row${i > 0 ? ' gpu-separateur' : ''}"><span>${g.model}</span><span>${g.temperatureC != null ? g.temperatureC + ' °C' : '—'}</span></div>
-        <div ${styleJauge(g.loadPercent, seuilsConfigures.gpu)}><span>Charge</span><span>${g.loadPercent ?? '—'} %</span></div>
+        <div ${styleJauge(g.loadPercent, seuilsConfigures.gpu)}><span>Charge</span><span>${g.loadPercent ?? '—'} %${tendance(hist)}</span></div>
+        ${sparkline(hist.slice(-HISTORIQUE_MAX), HISTORIQUE_MAX, `gpu:${i}`)}
         <div class="monitor-row"><span>Mémoire</span><span>${formatOctets(moEnGo(g.memoryUsedMB))} / ${formatOctets(moEnGo(g.vramMB))}</span></div>
-      `).join('')
+      `;
+      }).join('')
     : 'Aucun GPU dédié détecté.';
 
   const disks = document.getElementById('monitor-disks');
   disks.innerHTML = (snap.disks.length
-    ? snap.disks.map((d) => `
-        <div ${styleJauge(d.usedPercent, seuilsConfigures.disk)}><span>${d.mount}</span><span>${formatOctets(d.usedGB)} / ${formatOctets(d.sizeGB)} (${d.usedPercent ?? '—'} %)</span></div>
-      `).join('')
+    ? snap.disks.map((d) => {
+        pousserHistoriqueIndexe(historiqueDisques, d.mount, d.usedPercent);
+        const hist = historiqueDisques[d.mount];
+        return `
+        <div ${styleJauge(d.usedPercent, seuilsConfigures.disk)}><span>${d.mount}</span><span>${formatOctets(d.usedGB)} / ${formatOctets(d.sizeGB)} (${d.usedPercent ?? '—'} %)${tendance(hist)}</span></div>
+        ${sparkline(hist.slice(-HISTORIQUE_MAX), HISTORIQUE_MAX, `disk:${d.mount}`)}
+      `;
+      }).join('')
     : 'Aucun disque détecté.')
     + `<div class="monitor-row"><span>Débit</span><span>↓ ${snap.diskIO.readKBs ?? 0} Ko/s · ↑ ${snap.diskIO.writeKBs ?? 0} Ko/s</span></div>`;
 
@@ -767,9 +815,26 @@ function wireSparklineModal() {
   });
 }
 
+// Resout un identifiant de metrique ('cpu', 'memory', 'gpu:<index>',
+// 'disk:<point de montage>', voir sparkline()) vers sa liste d'historique
+// et un titre lisible - centralise la logique commune a l'ouverture et
+// au suivi en direct (voir la fin de rendreSystemMonitor) de la modale.
+function obtenirHistorique(metrique) {
+  if (metrique === 'memory') return { liste: historiqueMemoire, titre: 'Mémoire — historique' };
+  if (metrique.startsWith('gpu:')) {
+    const index = metrique.slice(4);
+    const g = dernierSnapshot && dernierSnapshot.gpu && dernierSnapshot.gpu[index];
+    return { liste: historiqueGpu[index] || [], titre: `${g ? g.model : 'GPU'} — historique` };
+  }
+  if (metrique.startsWith('disk:')) {
+    const mount = metrique.slice(5);
+    return { liste: historiqueDisques[mount] || [], titre: `${mount} — historique` };
+  }
+  return { liste: historiqueCpu, titre: 'CPU — historique' };
+}
+
 function ouvrirSparklineModal(metrique) {
-  const liste = metrique === 'memory' ? historiqueMemoire : historiqueCpu;
-  const titre = metrique === 'memory' ? 'Mémoire — historique' : 'CPU — historique';
+  const { liste, titre } = obtenirHistorique(metrique);
   metriqueModalOuverte = metrique;
   document.getElementById('monitor-sparkline-modal-titre').textContent = titre;
   document.getElementById('monitor-sparkline-modal-graphe').innerHTML =
