@@ -602,16 +602,6 @@ function rendreSystemMonitor(snap) {
   const heure = new Date(snap.takenAt).toLocaleTimeString('fr-FR');
   document.getElementById('monitor-updated').textContent = heure;
 
-  // Rejoue le halo (.actualise, style.css) sur chaque carte visible a
-  // chaque cycle - la classe est deja presente depuis le cycle precedent
-  // (l'animation ne boucle pas), il faut forcer un reflow pour la
-  // redemarrer plutot que de se contenter d'un classList.add ignore.
-  document.querySelectorAll('#page-system-monitor .monitor-card:not([hidden])').forEach((carte) => {
-    carte.classList.remove('actualise');
-    void carte.offsetWidth;
-    carte.classList.add('actualise');
-  });
-
   // Si la modale d'historique complet est ouverte, son graphe suit lui
   // aussi les nouveaux points plutot que de rester fige au moment ou elle
   // a ete ouverte.

@@ -311,8 +311,8 @@ html, body {
 }
 /* Meme gabarit que .terminal-panel (bordure, rayon, en-tete) : chaque
    carte se lit comme une petite console plutot qu'un simple bloc de
-   donnees. Le halo (box-shadow) fait echo au bloom du globe stellaire -
-   discret au repos, une carte n'est pas une simple case de tableau. */
+   donnees. Pas de halo (box-shadow neutre uniquement, pour la
+   profondeur) - retire comme demande. */
 .monitor-card {
   position: relative;
   display: flex;
@@ -320,7 +320,7 @@ html, body {
   background: rgba(245, 246, 247, 0.03);
   border: 1px solid rgba(245, 246, 247, 0.14);
   border-radius: 8px;
-  box-shadow: 0 0 32px rgba(229, 38, 26, 0.05), 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   overflow: hidden;
 }
 /* Filet lumineux en tete de carte - overflow:hidden ci-dessus le decoupe
@@ -334,16 +334,6 @@ html, body {
   height: 2px;
   background: linear-gradient(to right, var(--red), transparent 85%);
   opacity: 0.65;
-}
-/* Bref sursaut de halo a chaque actualisation (toutes les 3s,
-   actualiserSystemMonitor) - rend le rafraichissement perceptible sur
-   les cartes elles-memes, pas seulement sur le point clignotant de
-   l'en-tete. Classe reappliquee a chaque cycle (voir rendreSystemMonitor,
-   app.js), forcant un reflow pour rejouer l'animation a chaque fois. */
-.monitor-card.actualise { animation: monitor-actualisation 0.7s ease-out; }
-@keyframes monitor-actualisation {
-  0% { box-shadow: 0 0 0 1px rgba(229, 38, 26, 0.45), 0 0 32px rgba(229, 38, 26, 0.12), 0 8px 24px rgba(0, 0, 0, 0.35); }
-  100% { box-shadow: 0 0 32px rgba(229, 38, 26, 0.05), 0 8px 24px rgba(0, 0, 0, 0.35); }
 }
 /* display:flex ci-dessus prend le pas sur la regle [hidden]{display:none}
    du navigateur (meme specificite, origine "auteur" prioritaire) - sans
