@@ -20,7 +20,7 @@ function nomCpu(cpu) {
 }
 
 async function getSnapshot() {
-  const [cpu, load, temp, mem, graphics, fsSize, fsStats, netStats, processes] = await Promise.all([
+  const [cpu, load, temp, mem, graphics, fsSize, fsStats, netStats, processes, battery] = await Promise.all([
     si.cpu(),
     si.currentLoad(),
     si.cpuTemperature().catch(() => ({ main: null })),
@@ -31,7 +31,10 @@ async function getSnapshot() {
     // rattraper) quand la lecture des compteurs disque echoue.
     si.fsStats().then((r) => r || { rx_sec: null, wx_sec: null }).catch(() => ({ rx_sec: null, wx_sec: null })),
     si.networkStats().catch(() => []),
-    si.processes()
+    si.processes(),
+    // Absente sur un poste fixe (pas d'echec a signaler) - juste rien a
+    // afficher cote rendu (voir hasBattery, app.js).
+    si.battery().catch(() => ({ hasBattery: false }))
   ]);
 
   return {
@@ -46,7 +49,10 @@ async function getSnapshot() {
     memory: {
       totalGB: round1(mem.total / 1e9),
       usedGB: round1(mem.used / 1e9),
-      usedPercent: round1((mem.used / mem.total) * 100)
+      usedPercent: round1((mem.used / mem.total) * 100),
+      swapTotalGB: round1(mem.swaptotal / 1e9),
+      swapUsedGB: round1(mem.swapused / 1e9),
+      swapUsedPercent: mem.swaptotal ? round1((mem.swapused / mem.swaptotal) * 100) : null
     },
     gpu: (graphics.controllers || [])
       .filter((g) => g.vram)
@@ -82,6 +88,12 @@ async function getSnapshot() {
       .sort((a, b) => b.cpu - a.cpu)
       .slice(0, 8)
       .map((p) => ({ pid: p.pid, name: p.name, cpuPercent: round1(p.cpu), memPercent: round1(p.mem) })),
+    processCount: processes.all,
+    battery: battery.hasBattery ? {
+      percent: round1(battery.percent),
+      isCharging: battery.isCharging,
+      timeRemainingMin: battery.timeRemaining > 0 ? battery.timeRemaining : null
+    } : null,
     takenAt: new Date().toISOString()
   };
 }

@@ -313,6 +313,15 @@ function styleJauge(pourcentage, seuilAlerte = 85) {
   return `class="monitor-row avec-jauge${alerte}" style="--jauge:${p}%"`;
 }
 
+// Meme jauge que styleJauge, mais l'alerte se declenche EN DESSOUS du
+// seuil plutot qu'au-dessus - pour la batterie, ou c'est un niveau bas
+// (pas haut) qui est critique.
+function styleJaugeBatterie(pourcentage, seuilAlerte = 20) {
+  const p = Math.max(0, Math.min(100, pourcentage ?? 0));
+  const alerte = p <= seuilAlerte ? ' jauge-alerte' : '';
+  return `class="monitor-row avec-jauge${alerte}" style="--jauge:${p}%"`;
+}
+
 function rendreSystemMonitor(snap) {
   const cpu = document.getElementById('monitor-cpu');
   cpu.innerHTML = `
@@ -328,6 +337,9 @@ function rendreSystemMonitor(snap) {
   mem.innerHTML = `
     <div class="monitor-row"><span>Utilisée</span><span>${formatOctets(snap.memory.usedGB)} / ${formatOctets(snap.memory.totalGB)}</span></div>
     <div ${styleJauge(snap.memory.usedPercent)}><span>Charge</span><span>${snap.memory.usedPercent ?? '—'} %</span></div>
+    ${snap.memory.swapTotalGB ? `
+    <div class="monitor-row"><span>Swap</span><span>${formatOctets(snap.memory.swapUsedGB)} / ${formatOctets(snap.memory.swapTotalGB)}</span></div>
+    ` : ''}
   `;
 
   const gpu = document.getElementById('monitor-gpu');
@@ -355,11 +367,24 @@ function rendreSystemMonitor(snap) {
     : 'Aucune interface active.';
 
   const processes = document.getElementById('monitor-processes');
-  processes.innerHTML = snap.topProcesses.length
+  const compteProcessus = snap.processCount != null
+    ? `<div class="monitor-row"><span>Affichés</span><span>${snap.topProcesses.length} sur ${snap.processCount} processus actifs</span></div>`
+    : '';
+  processes.innerHTML = compteProcessus + (snap.topProcesses.length
     ? snap.topProcesses.map((p) => `
         <div ${styleJauge(p.cpuPercent, 101)}><span>${p.name} (${p.pid})</span><span>${p.cpuPercent ?? 0} % CPU · ${p.memPercent ?? 0} % mém.</span></div>
       `).join('')
-    : 'Aucun processus.';
+    : 'Aucun processus.');
+
+  const batteryCard = document.getElementById('monitor-battery-card');
+  batteryCard.hidden = !snap.battery;
+  if (snap.battery) {
+    const b = snap.battery;
+    document.getElementById('monitor-battery').innerHTML = `
+      <div ${b.isCharging ? styleJauge(b.percent, 101) : styleJaugeBatterie(b.percent)}><span>${b.isCharging ? 'En charge' : 'Charge'}</span><span>${b.percent ?? '—'} %</span></div>
+      ${b.timeRemainingMin != null ? `<div class="monitor-row"><span>Restant</span><span>${formatDuree(b.timeRemainingMin * 60)}</span></div>` : ''}
+    `;
+  }
 
   const heure = new Date(snap.takenAt).toLocaleTimeString('fr-FR');
   document.getElementById('monitor-updated').textContent = `Actualisé à ${heure}`;
