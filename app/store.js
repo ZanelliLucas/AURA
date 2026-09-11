@@ -179,6 +179,21 @@ function setRuleEnabled(id, enabled) {
   return rule;
 }
 
+// enabled n'est volontairement pas modifiable ici - deja gere par la
+// case a cocher de la ligne (setRuleEnabled ci-dessus), independante de
+// l'edition du contenu de la regle.
+function updateRule(id, { name, mode, trigger, action }) {
+  const rules = getRules();
+  const rule = rules.find((r) => r.id === id);
+  if (!rule) throw new Error('Règle introuvable.');
+  rule.name = name;
+  rule.mode = mode || 'simulation';
+  rule.trigger = trigger;
+  rule.action = action;
+  writeJson('rules.json', rules);
+  return rule;
+}
+
 // --- Journal d'actions (§12.3 actions_log, §5.9) --------------------
 
 function getJournal(limit = 50) {
@@ -214,6 +229,7 @@ module.exports = {
   createRule,
   deleteRule,
   setRuleEnabled,
+  updateRule,
   getJournal,
   logAction
 };

@@ -31,6 +31,17 @@ async function delJson(path) {
   return data;
 }
 
+async function putJson(path, body) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Erreur serveur (${res.status})`);
+  return data;
+}
+
 contextBridge.exposeInMainWorld('aura', {
   version: '0.1.0',
   getStatus: () => getJson('/api/status'),
@@ -52,6 +63,7 @@ contextBridge.exposeInMainWorld('aura', {
   getRules: () => getJson('/api/autonomy/rules'),
   createRule: (rule) => postJson('/api/autonomy/rules', rule),
   toggleRule: (id, enabled) => postJson(`/api/autonomy/rules/${encodeURIComponent(id)}/toggle`, { enabled }),
+  updateRule: (id, rule) => putJson(`/api/autonomy/rules/${encodeURIComponent(id)}`, rule),
   deleteRule: (id) => delJson(`/api/autonomy/rules/${encodeURIComponent(id)}`),
   runRule: (id) => postJson(`/api/autonomy/rules/${encodeURIComponent(id)}/run`),
 

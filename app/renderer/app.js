@@ -713,6 +713,7 @@ function ouvrirPageCategorie(id) {
     journal('PAGE_OUVERTE : AURA PRODUCTIVITY');
   } else if (id === 'autonomy') {
     document.getElementById('page-autonomy').hidden = false;
+    sortirModeEdition();
     loadRules();
     chargerEstop();
     journal('PAGE_OUVERTE : AURA AUTONOMY');
@@ -979,7 +980,8 @@ const TYPE_LABELS = {
   'autonomy.rule_fired': 'Règle AUTONOMY',
   'autonomy.simulation': 'Règle AUTONOMY (simulation)',
   'rule.create': 'Règle créée',
-  'rule.toggle': 'Règle modifiée'
+  'rule.toggle': 'Règle activée/désactivée',
+  'rule.update': 'Règle modifiée'
 };
 
 function formatJournalMessage(entry) {
@@ -989,7 +991,7 @@ function formatJournalMessage(entry) {
   if (entry.typeAction === 'task.create' || entry.typeAction === 'task.complete') return `${label} : ${d.title || ''}`;
   if (entry.typeAction === 'reminder.schedule' || entry.typeAction === 'reminder.fired') return `${label} : ${d.text || ''}`;
   if (entry.typeAction === 'config.api_key') return `${label} : ${d.provider || ''}`;
-  if (entry.typeAction === 'rule.create') return `${label} : ${d.name || ''}`;
+  if (entry.typeAction === 'rule.create' || entry.typeAction === 'rule.update') return `${label} : ${d.name || ''}`;
   if (entry.typeAction === 'rule.toggle') return `${label} : ${d.name || ''} (${d.enabled ? 'activée' : 'désactivée'})`;
   if (entry.typeAction === 'autonomy.rule_fired' || entry.typeAction === 'autonomy.simulation') {
     return `${label} : ${d.name || ''}${d.summary ? ' — ' + d.summary : ''}`;
@@ -1316,6 +1318,46 @@ function resumeAction(action) {
   return '';
 }
 
+// Lit le declencheur/l'action depuis les champs du formulaire - partage
+// entre la soumission (creation/edition) et l'apercu en direct (idee 2,
+// retour utilisateur) plutot que de dupliquer la meme lecture de champs
+// aux deux endroits.
+function lireTriggerFormulaire() {
+  const type = document.getElementById('autonomy-rule-trigger-type').value;
+  if (type === 'interval') {
+    return { type: 'interval', minutes: Number(document.getElementById('autonomy-trigger-minutes').value) };
+  }
+  if (type === 'daily') {
+    return { type: 'daily', time: document.getElementById('autonomy-trigger-time').value };
+  }
+  return {
+    type: 'threshold',
+    metric: document.getElementById('autonomy-trigger-metric').value,
+    operator: document.getElementById('autonomy-trigger-operator').value,
+    value: Number(document.getElementById('autonomy-trigger-value').value)
+  };
+}
+
+function lireActionFormulaire() {
+  const type = document.getElementById('autonomy-rule-action-type').value;
+  if (type === 'notify') {
+    return { type: 'notify', params: { message: document.getElementById('autonomy-action-message').value.trim() } };
+  }
+  if (type === 'task.create') {
+    return { type: 'task.create', params: { title: document.getElementById('autonomy-action-title').value.trim() } };
+  }
+  return { type: 'system.snapshot', params: {} };
+}
+
+// Apercu en direct (idee 2, retour utilisateur) : meme phrase que
+// .rule-meta dans la liste, recalculee a chaque saisie/selection du
+// formulaire (voir l'ecouteur delegue dans wireFormulaireRegle).
+function actualiserApercuRegle() {
+  const preview = document.getElementById('autonomy-form-preview');
+  if (!preview) return;
+  preview.textContent = `${resumeDeclencheur(lireTriggerFormulaire())} → ${resumeAction(lireActionFormulaire())}`;
+}
+
 // Construit la ligne DOM d'une regle : case a cocher, nom + mode (badge
 // Simulation/Live, §16 amelioration design - auparavant du texte noye
 // dans le resume, peu visible), resume declencheur->action + derniere
@@ -1346,6 +1388,8 @@ function construireLigneRegle(rule) {
     </div>
     <div class="rule-actions">
       <button type="button" class="row-test" title="Tester maintenant">▶</button>
+      <button type="button" class="row-edit" title="Modifier">✎</button>
+      <button type="button" class="row-duplicate" title="Dupliquer">⧉</button>
       <button type="button" class="row-delete" title="Supprimer">✕</button>
     </div>
   `;
@@ -1361,14 +1405,53 @@ function construireLigneRegle(rule) {
     }
     refreshJournalIfOpen();
   });
-  row.querySelector('.row-test').addEventListener('click', async (e) => {
-    e.target.disabled = true;
+  // Retour visuel du test manuel (idee 3, retour utilisateur) : le
+  // resultat n'apparaissait auparavant que dans le journal (panneau
+  // masque par defaut) - flash vert/rouge directement sur le bouton
+  // avant de rafraichir la liste (succes) ou de revenir a l'etat normal
+  // (echec), plus immediat.
+  const boutonTester = row.querySelector('.row-test');
+  boutonTester.addEventListener('click', async () => {
+    boutonTester.disabled = true;
     try {
       await window.aura.runRule(rule.id);
       journal(`REGLE_TESTEE : ${rule.name}`);
+      boutonTester.textContent = '✓';
+      boutonTester.classList.add('row-test-ok');
+      await new Promise((r) => setTimeout(r, 900));
       loadRules();
     } catch (err) {
       journal(`REGLE_TEST_ECHEC : ${err.message}`);
+      boutonTester.textContent = '✕';
+      boutonTester.classList.add('row-test-fail');
+      await new Promise((r) => setTimeout(r, 1200));
+      boutonTester.textContent = '▶';
+      boutonTester.classList.remove('row-test-fail');
+      boutonTester.disabled = false;
+    }
+    refreshJournalIfOpen();
+  });
+  row.querySelector('.row-edit').addEventListener('click', () => {
+    entrerModeEdition(rule);
+  });
+  // Duplication (idee 6, retour utilisateur) : cree directement une
+  // copie via createRule (meme validation, meme journalisation cote
+  // backend que rule.create) plutot que de passer par le formulaire -
+  // geste rapide, sans friction, l'original reste inchange.
+  row.querySelector('.row-duplicate').addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    try {
+      await window.aura.createRule({
+        name: `${rule.name} (copie)`,
+        enabled: rule.enabled,
+        mode: rule.mode,
+        trigger: rule.trigger,
+        action: rule.action
+      });
+      journal(`REGLE_DUPLIQUEE : ${rule.name}`);
+      loadRules();
+    } catch (err) {
+      journal(`REGLE_DUPLICATION_ECHEC : ${err.message}`);
       e.target.disabled = false;
     }
     refreshJournalIfOpen();
@@ -1409,15 +1492,38 @@ function actualiserHorodatageAutonomy() {
   if (el) el.textContent = new Date().toLocaleTimeString('fr-FR');
 }
 
+// Filtre par statut (idee 5, retour utilisateur) : purement local, sur
+// la derniere liste recuperee - pas besoin de rappeler l'API a chaque
+// clic sur Toutes/Actives/Inactives (voir wireAutonomyRuleFilter).
+let dernieresRegles = [];
+let filtreRegles = 'toutes';
+
 function renderRules(rules) {
+  dernieresRegles = rules;
   const list = document.getElementById('autonomy-rules-list');
-  if (!rules.length) {
-    list.innerHTML = '<p class="rule-empty">Aucune règle pour le moment.</p>';
+  const filtrees = rules.filter((r) => {
+    if (filtreRegles === 'actives') return r.enabled;
+    if (filtreRegles === 'inactives') return !r.enabled;
+    return true;
+  });
+  if (!filtrees.length) {
+    list.innerHTML = `<p class="rule-empty">${rules.length ? 'Aucune règle ne correspond au filtre.' : 'Aucune règle pour le moment.'}</p>`;
   } else {
     list.innerHTML = '';
-    rules.forEach((rule) => list.appendChild(construireLigneRegle(rule)));
+    filtrees.forEach((rule) => list.appendChild(construireLigneRegle(rule)));
   }
   actualiserHorodatageAutonomy();
+}
+
+function wireAutonomyRuleFilter() {
+  document.getElementById('autonomy-rule-filter').addEventListener('click', (e) => {
+    const btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    document.querySelectorAll('#autonomy-rule-filter .filter-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    filtreRegles = btn.dataset.filtre;
+    renderRules(dernieresRegles);
+  });
 }
 
 async function loadRules() {
@@ -1481,6 +1587,71 @@ function wireAutonomyEstop() {
   });
 }
 
+// Regle en cours de modification (idee 4, retour utilisateur), ou null
+// en mode creation normal - voir entrerModeEdition/sortirModeEdition.
+let regleEnEdition = null;
+
+// Remplit le formulaire depuis une regle existante (mode edition) -
+// dispatch les evenements change des deux selects pour que
+// wireChampsConditionnels revele les bons groupes de champs.
+function remplirFormulaireRegle(rule) {
+  document.getElementById('autonomy-rule-name').value = rule.name;
+
+  const triggerSelect = document.getElementById('autonomy-rule-trigger-type');
+  triggerSelect.value = rule.trigger.type;
+  triggerSelect.dispatchEvent(new Event('change'));
+  if (rule.trigger.type === 'interval') {
+    document.getElementById('autonomy-trigger-minutes').value = rule.trigger.minutes;
+  } else if (rule.trigger.type === 'daily') {
+    document.getElementById('autonomy-trigger-time').value = rule.trigger.time;
+  } else {
+    document.getElementById('autonomy-trigger-metric').value = rule.trigger.metric;
+    document.getElementById('autonomy-trigger-operator').value = rule.trigger.operator;
+    document.getElementById('autonomy-trigger-value').value = rule.trigger.value;
+  }
+
+  const actionSelect = document.getElementById('autonomy-rule-action-type');
+  actionSelect.value = rule.action.type;
+  actionSelect.dispatchEvent(new Event('change'));
+  const params = rule.action.params || {};
+  if (rule.action.type === 'notify') {
+    document.getElementById('autonomy-action-message').value = params.message || '';
+  } else if (rule.action.type === 'task.create') {
+    document.getElementById('autonomy-action-title').value = params.title || '';
+  }
+
+  document.getElementById('autonomy-rule-simulation').checked = rule.mode === 'simulation';
+  actualiserApercuRegle();
+}
+
+// Vide le formulaire et revele a nouveau les bons groupes de champs
+// (form.reset() seul ne suffit pas : les attributs hidden poses par
+// wireChampsConditionnels restent sur leur dernier etat tant que les
+// selects ne redeclenchent pas 'change').
+function reinitialiserFormulaireRegle() {
+  document.getElementById('autonomy-rule-form').reset();
+  document.getElementById('autonomy-rule-trigger-type').dispatchEvent(new Event('change'));
+  document.getElementById('autonomy-rule-action-type').dispatchEvent(new Event('change'));
+  actualiserApercuRegle();
+}
+
+function entrerModeEdition(rule) {
+  regleEnEdition = rule.id;
+  remplirFormulaireRegle(rule);
+  document.getElementById('autonomy-form-titre').textContent = `Modifier « ${rule.name} »`;
+  document.getElementById('autonomy-rule-submit').textContent = 'Enregistrer';
+  document.getElementById('autonomy-rule-cancel').hidden = false;
+  document.getElementById('autonomy-rule-name').focus();
+}
+
+function sortirModeEdition() {
+  regleEnEdition = null;
+  document.getElementById('autonomy-form-titre').textContent = 'Nouvelle règle';
+  document.getElementById('autonomy-rule-submit').textContent = 'Créer';
+  document.getElementById('autonomy-rule-cancel').hidden = true;
+  reinitialiserFormulaireRegle();
+}
+
 function wireFormulaireRegle() {
   document.getElementById('autonomy-rule-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1488,45 +1659,39 @@ function wireFormulaireRegle() {
     const name = nomInput.value.trim();
     if (!name) return;
 
-    const triggerType = document.getElementById('autonomy-rule-trigger-type').value;
-    let trigger;
-    if (triggerType === 'interval') {
-      trigger = { type: 'interval', minutes: Number(document.getElementById('autonomy-trigger-minutes').value) };
-    } else if (triggerType === 'daily') {
-      trigger = { type: 'daily', time: document.getElementById('autonomy-trigger-time').value };
-    } else {
-      trigger = {
-        type: 'threshold',
-        metric: document.getElementById('autonomy-trigger-metric').value,
-        operator: document.getElementById('autonomy-trigger-operator').value,
-        value: Number(document.getElementById('autonomy-trigger-value').value)
-      };
-    }
-
-    const actionType = document.getElementById('autonomy-rule-action-type').value;
-    let action;
-    if (actionType === 'notify') {
-      action = { type: 'notify', params: { message: document.getElementById('autonomy-action-message').value.trim() } };
-    } else if (actionType === 'task.create') {
-      action = { type: 'task.create', params: { title: document.getElementById('autonomy-action-title').value.trim() } };
-    } else {
-      action = { type: 'system.snapshot', params: {} };
-    }
-
+    const trigger = lireTriggerFormulaire();
+    const action = lireActionFormulaire();
     const mode = document.getElementById('autonomy-rule-simulation').checked ? 'simulation' : 'live';
 
     try {
-      await window.aura.createRule({ name, enabled: true, mode, trigger, action });
-      nomInput.value = '';
-      document.getElementById('autonomy-action-message').value = '';
-      document.getElementById('autonomy-action-title').value = '';
-      journal(`REGLE_CREEE : ${name}`);
+      if (regleEnEdition) {
+        await window.aura.updateRule(regleEnEdition, { name, mode, trigger, action });
+        journal(`REGLE_MODIFIEE : ${name}`);
+        sortirModeEdition();
+      } else {
+        await window.aura.createRule({ name, enabled: true, mode, trigger, action });
+        nomInput.value = '';
+        document.getElementById('autonomy-action-message').value = '';
+        document.getElementById('autonomy-action-title').value = '';
+        journal(`REGLE_CREEE : ${name}`);
+        actualiserApercuRegle();
+      }
       loadRules();
     } catch (err) {
-      journal(`REGLE_CREATION_ECHEC : ${err.message}`);
+      journal(`REGLE_${regleEnEdition ? 'MODIFICATION' : 'CREATION'}_ECHEC : ${err.message}`);
     }
     refreshJournalIfOpen();
   });
+
+  document.getElementById('autonomy-rule-cancel').addEventListener('click', sortirModeEdition);
+
+  // Apercu en direct (idee 2, retour utilisateur) : delegation sur le
+  // formulaire entier plutot que de cabler chaque champ individuellement
+  // - couvre aussi les groupes conditionnels (declencheur/action) sans
+  // ecouteur supplementaire.
+  const form = document.getElementById('autonomy-rule-form');
+  form.addEventListener('input', actualiserApercuRegle);
+  form.addEventListener('change', actualiserApercuRegle);
 }
 
 function wireAutonomyPage() {
@@ -1542,6 +1707,8 @@ function wireAutonomyPage() {
     'task.create': 'autonomy-action-task'
   });
   wireFormulaireRegle();
+  wireAutonomyRuleFilter();
+  actualiserApercuRegle();
 }
 
 initGlobe();

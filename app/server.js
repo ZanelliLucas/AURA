@@ -129,6 +129,14 @@ function startServer() {
     }
   });
 
+  server.put('/api/autonomy/rules/:id', (req, res) => {
+    try {
+      res.json(autonomy.ruleUpdate(req.params.id, req.body));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   server.delete('/api/autonomy/rules/:id', (req, res) => {
     res.json(autonomy.ruleDelete(req.params.id));
   });

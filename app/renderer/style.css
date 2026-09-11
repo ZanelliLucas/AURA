@@ -373,12 +373,36 @@ html, body {
 /* Unite affichee a cote du champ "minutes" - sans elle, la valeur seule
    (ex. "30") ne dit pas ce qu'elle mesure. */
 .autonomy-unit { font-size: 11px; color: var(--dim); white-space: nowrap; }
+/* Apercu en direct (idee 2, retour utilisateur) : resume la regle en
+   cours de construction (meme phrase que .rule-meta dans la liste),
+   mis a jour a chaque saisie/selection - voir actualiserApercuRegle(),
+   app.js. Pas de bordure/fond propre, juste un texte attenue en retrait
+   du dernier groupe - c'est un rappel, pas un nouveau bloc. */
+.autonomy-form-preview {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--dim);
+  min-height: 14px;
+}
 .autonomy-form-footer {
   margin-bottom: 0;
   justify-content: space-between;
   padding-top: 12px;
   border-top: 1px solid var(--line-dim);
 }
+.autonomy-form-buttons { display: flex; align-items: center; gap: 10px; }
+/* Bouton "Annuler" (mode edition, idee 4) : texte seul, meme registre
+   discret que .row-test/.row-delete plutot qu'un deuxieme bouton plein
+   qui concurrencerait "Enregistrer". */
+.autonomy-cancel-btn {
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+.autonomy-cancel-btn:hover { color: var(--white); }
 .autonomy-mode-chip {
   display: inline-flex;
   align-items: center;
@@ -1185,7 +1209,7 @@ html, body {
    de .row-test/.row-delete) - cible de clic plus visible sur des icones
    aussi petites. Scope a .rule-actions pour ne pas affecter les memes
    classes reutilisees sur les taches/rappels (Productivity). */
-.rule-actions .row-test, .rule-actions .row-delete {
+.rule-actions .row-test, .rule-actions .row-delete, .rule-actions .row-edit, .rule-actions .row-duplicate {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1194,7 +1218,9 @@ html, body {
   border-radius: 4px;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.rule-actions .row-test:hover { background: rgba(245, 246, 247, 0.08); }
+.rule-actions .row-test:hover, .rule-actions .row-edit:hover, .rule-actions .row-duplicate:hover {
+  background: rgba(245, 246, 247, 0.08);
+}
 .rule-actions .row-delete:hover { background: rgba(229, 38, 26, 0.14); }
 /* Etat "arme" de la suppression a deux temps (idee 1, retour
    utilisateur) : fond rouge plein + icone coche, pour que le deuxieme
@@ -1205,6 +1231,13 @@ html, body {
   color: var(--white);
 }
 .rule-actions .row-delete.confirm-armed:hover { background: var(--red-hover); }
+/* Retour visuel du test manuel (idee 3, retour utilisateur) : le
+   resultat n'apparaissait auparavant que dans le journal (panneau
+   masque par defaut) - la ligne elle-meme flashe vert/rouge quelques
+   instants avant de se rafraichir, plus immediat. Reprend les memes
+   teintes que .journal-entry.execute/.echoue. */
+.row-test-ok { color: #3fb950 !important; }
+.row-test-fail { color: var(--red) !important; }
 .rule-empty { color: var(--dim); font-size: 12px; font-style: italic; margin: 4px 0; }
 
 #panel-projects .inline-form { margin-bottom: 16px; }

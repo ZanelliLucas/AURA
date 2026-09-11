@@ -239,7 +239,7 @@
       </div>
       <div class="productivity-grid">
         <section class="monitor-card">
-          <h2><span class="monitor-card-titre">Nouvelle règle</span></h2>
+          <h2><span class="monitor-card-titre" id="autonomy-form-titre">Nouvelle règle</span></h2>
           <div class="monitor-card-body productivity-card-body">
             <form id="autonomy-rule-form" class="autonomy-form">
               <div class="autonomy-form-group">
@@ -301,15 +301,26 @@
                   </span>
                 </div>
               </div>
+              <div class="autonomy-form-preview" id="autonomy-form-preview"></div>
               <div class="inline-form autonomy-form-footer">
                 <label class="autonomy-mode-chip"><input type="checkbox" id="autonomy-rule-simulation" checked> Simulation</label>
-                <button type="submit">Créer</button>
+                <div class="autonomy-form-buttons">
+                  <button type="button" id="autonomy-rule-cancel" class="autonomy-cancel-btn" hidden>Annuler</button>
+                  <button type="submit" id="autonomy-rule-submit">Créer</button>
+                </div>
               </div>
             </form>
           </div>
         </section>
         <section class="monitor-card">
-          <h2><span class="monitor-card-titre">Règles</span></h2>
+          <h2>
+            <span class="monitor-card-titre">Règles</span>
+            <div class="monitor-tri" id="autonomy-rule-filter">
+              <button type="button" class="filter-btn active" data-filtre="toutes">Toutes</button>
+              <button type="button" class="filter-btn" data-filtre="actives">Actives</button>
+              <button type="button" class="filter-btn" data-filtre="inactives">Inactives</button>
+            </div>
+          </h2>
           <div class="monitor-card-body productivity-card-body">
             <div id="autonomy-rules-list" class="monitor-scroll custom-scroll">Chargement…</div>
           </div>

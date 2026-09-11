@@ -81,6 +81,26 @@ function ruleDelete(id) {
   return store.deleteRule(id);
 }
 
+// rule.update (§16, idee "modifier une regle existante") : meme
+// validation que ruleCreate, mais ne touche pas enabled - deja gere
+// separement par ruleSetEnabled (case a cocher de la ligne).
+function ruleUpdate(id, { name, mode, trigger, action }) {
+  const error = (!name || !name.trim()) ? 'Nom de règle manquant.' : (validateTrigger(trigger) || validateAction(action));
+  if (error) {
+    store.logAction({
+      typeAction: 'rule.update', sensibilite: 'reversible', statut: 'echoue',
+      details: { id, error }
+    });
+    throw new Error(error);
+  }
+  const rule = store.updateRule(id, { name: name.trim(), mode, trigger, action });
+  store.logAction({
+    typeAction: 'rule.update', sensibilite: 'reversible', statut: 'execute',
+    details: { id: rule.id, name: rule.name, trigger: rule.trigger, action: rule.action }
+  });
+  return rule;
+}
+
 function ruleSetEnabled(id, enabled) {
   const rule = store.setRuleEnabled(id, enabled);
   store.logAction({
@@ -226,6 +246,7 @@ module.exports = {
   ruleCreate,
   ruleDelete,
   ruleSetEnabled,
+  ruleUpdate,
   ruleRunNow,
   tick
 };
