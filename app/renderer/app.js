@@ -1331,14 +1331,18 @@ function formatDerniereExecution(lastRunAt) {
 
 function construireLigneRegle(rule) {
   const row = document.createElement('div');
-  row.className = `task-row ${rule.enabled ? '' : 'completed'}`;
-  const meta = `${resumeDeclencheur(rule.trigger)} → ${resumeAction(rule.action)}${rule.mode === 'simulation' ? ' (simulation)' : ''} · ${formatDerniereExecution(rule.lastRunAt)}`;
+  row.className = `rule-row ${rule.enabled ? '' : 'disabled'}`;
+  const meta = `${resumeDeclencheur(rule.trigger)} → ${resumeAction(rule.action)}${rule.mode === 'simulation' ? ' · simulation' : ''} · ${formatDerniereExecution(rule.lastRunAt)}`;
   row.innerHTML = `
     <input type="checkbox" ${rule.enabled ? 'checked' : ''}>
-    <span class="task-title">${echapperHtml(rule.name)}</span>
-    <span class="task-due">${echapperHtml(meta)}</span>
-    <button type="button" class="row-test" title="Tester maintenant">▶</button>
-    <button type="button" class="row-delete" title="Supprimer">✕</button>
+    <div class="rule-info">
+      <span class="rule-name">${echapperHtml(rule.name)}</span>
+      <span class="rule-meta">${echapperHtml(meta)}</span>
+    </div>
+    <div class="rule-actions">
+      <button type="button" class="row-test" title="Tester maintenant">▶</button>
+      <button type="button" class="row-delete" title="Supprimer">✕</button>
+    </div>
   `;
   row.querySelector('input[type="checkbox"]').addEventListener('change', async (e) => {
     const active = e.target.checked;
@@ -1381,7 +1385,7 @@ function actualiserHorodatageAutonomy() {
 function renderRules(rules) {
   const list = document.getElementById('autonomy-rules-list');
   if (!rules.length) {
-    list.textContent = 'Aucune règle.';
+    list.innerHTML = '<p class="rule-empty">Aucune règle pour le moment.</p>';
   } else {
     list.innerHTML = '';
     rules.forEach((rule) => list.appendChild(construireLigneRegle(rule)));

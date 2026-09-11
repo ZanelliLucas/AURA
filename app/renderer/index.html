@@ -241,52 +241,70 @@
         <section class="monitor-card">
           <h2><span class="monitor-card-titre">Nouvelle règle</span></h2>
           <div class="monitor-card-body productivity-card-body">
-            <form id="autonomy-rule-form" class="inline-form">
-              <input id="autonomy-rule-name" type="text" placeholder="Nom de la règle…">
-              <span class="monitor-select-wrap">
-                <select id="autonomy-rule-trigger-type">
-                  <option value="interval">Intervalle</option>
-                  <option value="daily">Quotidien</option>
-                  <option value="threshold">Seuil</option>
-                </select>
-              </span>
-              <span id="autonomy-trigger-interval" class="autonomy-trigger-fields">
-                <input id="autonomy-trigger-minutes" type="number" min="1" step="1" value="30" title="Minutes">
-              </span>
-              <span id="autonomy-trigger-daily" class="autonomy-trigger-fields" hidden>
-                <input id="autonomy-trigger-time" type="time" value="09:00">
-              </span>
-              <span id="autonomy-trigger-threshold" class="autonomy-trigger-fields" hidden>
-                <span class="monitor-select-wrap">
-                  <select id="autonomy-trigger-metric">
-                    <option value="cpu">CPU</option>
-                    <option value="ram">Mémoire</option>
-                    <option value="gpu">GPU</option>
-                  </select>
-                </span>
-                <span class="monitor-select-wrap">
-                  <select id="autonomy-trigger-operator">
-                    <option value="above">Au-dessus de</option>
-                    <option value="below">En-dessous de</option>
-                  </select>
-                </span>
-                <input id="autonomy-trigger-value" type="number" min="0" max="100" step="1" placeholder="%" title="Seuil (%)">
-              </span>
-              <span class="monitor-select-wrap">
-                <select id="autonomy-rule-action-type">
-                  <option value="notify">Notifier</option>
-                  <option value="task.create">Créer une tâche</option>
-                  <option value="system.snapshot">Instantané système</option>
-                </select>
-              </span>
-              <span id="autonomy-action-notify" class="autonomy-action-fields">
-                <input id="autonomy-action-message" type="text" placeholder="Message…">
-              </span>
-              <span id="autonomy-action-task" class="autonomy-action-fields" hidden>
-                <input id="autonomy-action-title" type="text" placeholder="Titre de la tâche…">
-              </span>
-              <label class="autonomy-mode-chip"><input type="checkbox" id="autonomy-rule-simulation" checked> Simulation</label>
-              <button type="submit">Créer</button>
+            <form id="autonomy-rule-form" class="autonomy-form">
+              <div class="autonomy-form-group">
+                <span class="autonomy-form-label">Nom</span>
+                <div class="inline-form">
+                  <input id="autonomy-rule-name" type="text" placeholder="Nom de la règle…">
+                </div>
+              </div>
+              <div class="autonomy-form-group">
+                <span class="autonomy-form-label">Déclencheur</span>
+                <div class="inline-form">
+                  <span class="monitor-select-wrap">
+                    <select id="autonomy-rule-trigger-type">
+                      <option value="interval">Intervalle</option>
+                      <option value="daily">Quotidien</option>
+                      <option value="threshold">Seuil</option>
+                    </select>
+                  </span>
+                  <span id="autonomy-trigger-interval" class="autonomy-trigger-fields">
+                    <input id="autonomy-trigger-minutes" type="number" min="1" step="1" value="30" title="Minutes">
+                    <span class="autonomy-unit">min</span>
+                  </span>
+                  <span id="autonomy-trigger-daily" class="autonomy-trigger-fields" hidden>
+                    <input id="autonomy-trigger-time" type="time" value="09:00">
+                  </span>
+                  <span id="autonomy-trigger-threshold" class="autonomy-trigger-fields" hidden>
+                    <span class="monitor-select-wrap">
+                      <select id="autonomy-trigger-metric">
+                        <option value="cpu">CPU</option>
+                        <option value="ram">Mémoire</option>
+                        <option value="gpu">GPU</option>
+                      </select>
+                    </span>
+                    <span class="monitor-select-wrap">
+                      <select id="autonomy-trigger-operator">
+                        <option value="above">Au-dessus de</option>
+                        <option value="below">En-dessous de</option>
+                      </select>
+                    </span>
+                    <input id="autonomy-trigger-value" type="number" min="0" max="100" step="1" placeholder="%" title="Seuil (%)">
+                  </span>
+                </div>
+              </div>
+              <div class="autonomy-form-group">
+                <span class="autonomy-form-label">Action</span>
+                <div class="inline-form">
+                  <span class="monitor-select-wrap">
+                    <select id="autonomy-rule-action-type">
+                      <option value="notify">Notifier</option>
+                      <option value="task.create">Créer une tâche</option>
+                      <option value="system.snapshot">Instantané système</option>
+                    </select>
+                  </span>
+                  <span id="autonomy-action-notify" class="autonomy-action-fields">
+                    <input id="autonomy-action-message" type="text" placeholder="Message…">
+                  </span>
+                  <span id="autonomy-action-task" class="autonomy-action-fields" hidden>
+                    <input id="autonomy-action-title" type="text" placeholder="Titre de la tâche…">
+                  </span>
+                </div>
+              </div>
+              <div class="inline-form autonomy-form-footer">
+                <label class="autonomy-mode-chip"><input type="checkbox" id="autonomy-rule-simulation" checked> Simulation</label>
+                <button type="submit">Créer</button>
+              </div>
             </form>
           </div>
         </section>
