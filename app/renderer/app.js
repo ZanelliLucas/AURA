@@ -355,6 +355,26 @@ const HISTORIQUE_LONG_MAX = 100;
 let historiqueCpu = [];
 let historiqueMemoire = [];
 
+// Persistance de l'historique entre sessions (§5.7) : sans ceci, sparkline
+// et historique complet repartaient de zero a chaque lancement d'AURA -
+// juste les valeurs brutes (pas d'horodatage par point), coherent avec
+// l'affichage lui-meme qui ne porte aucun axe temporel ni graduation - un
+// redemarrage cree simplement une continuite dans la forme de la courbe,
+// pas une promesse de cadence reguliere entre les points les plus anciens.
+const CLE_HISTORIQUE = 'aura.monitorHistorique';
+
+function chargerHistorique() {
+  try {
+    const brut = JSON.parse(localStorage.getItem(CLE_HISTORIQUE));
+    if (brut && Array.isArray(brut.cpu)) historiqueCpu = brut.cpu.slice(-HISTORIQUE_LONG_MAX);
+    if (brut && Array.isArray(brut.memory)) historiqueMemoire = brut.memory.slice(-HISTORIQUE_LONG_MAX);
+  } catch { /* valeur absente ou corrompue - demarre a vide, comme avant cette fonctionnalite */ }
+}
+
+function sauvegarderHistorique() {
+  try { localStorage.setItem(CLE_HISTORIQUE, JSON.stringify({ cpu: historiqueCpu, memory: historiqueMemoire })); } catch { /* stockage indisponible - reste actif pour la session en cours */ }
+}
+
 function pousserHistorique(liste, valeur) {
   liste.push(valeur ?? 0);
   if (liste.length > HISTORIQUE_LONG_MAX) liste.shift();
@@ -432,6 +452,7 @@ function rendreSystemMonitor(snap) {
   dernierSnapshot = snap;
   pousserHistorique(historiqueCpu, snap.cpu.loadPercent);
   pousserHistorique(historiqueMemoire, snap.memory.usedPercent);
+  sauvegarderHistorique();
 
   const cpu = document.getElementById('monitor-cpu');
   cpu.innerHTML = `
@@ -529,21 +550,43 @@ function rendreSystemMonitor(snap) {
 // le filtre se reappliquent instantanement sur dernierSnapshot, sans
 // attendre un nouveau cycle de rafraichissement (qui peut prendre
 // plusieurs secondes, voir si.processes() dans le connecteur).
+// Regroupe les instances multiples d'un meme executable (ex. plusieurs
+// firefox.exe) en une seule ligne, comme le vrai Gestionnaire des taches
+// Windows - sinon une appli avec beaucoup d'onglets/fenetres noie la
+// liste sous des lignes quasi identiques. cpuPercent/memPercent sont deja
+// des pourcentages du total systeme (voir connectors/systemMonitor.js) :
+// les additionner reste donc un pourcentage valide pour le groupe.
+function grouperProcessus(liste) {
+  const parNom = new Map();
+  liste.forEach((p) => {
+    const groupe = parNom.get(p.name);
+    if (groupe) {
+      groupe.cpuPercent = Math.round((groupe.cpuPercent + (p.cpuPercent ?? 0)) * 10) / 10;
+      groupe.memPercent = Math.round((groupe.memPercent + (p.memPercent ?? 0)) * 10) / 10;
+      groupe.pids.push(p.pid);
+    } else {
+      parNom.set(p.name, { name: p.name, cpuPercent: p.cpuPercent ?? 0, memPercent: p.memPercent ?? 0, pids: [p.pid] });
+    }
+  });
+  return Array.from(parNom.values());
+}
+
 function rendreListeProcessus() {
   const tousProcessus = document.getElementById('monitor-all-processes');
   if (!dernierSnapshot || !dernierSnapshot.allProcesses) { tousProcessus.textContent = 'Chargement…'; return; }
 
+  const processusGroupes = grouperProcessus(dernierSnapshot.allProcesses);
   const filtre = normaliserTexte(filtreProcessus);
   const processusFiltres = filtre
-    ? dernierSnapshot.allProcesses.filter((p) => normaliserTexte(p.name).includes(filtre))
-    : dernierSnapshot.allProcesses;
+    ? processusGroupes.filter((p) => normaliserTexte(p.name).includes(filtre))
+    : processusGroupes;
   const processusTries = processusFiltres.slice().sort((a, b) =>
     triProcessus === 'memory' ? (b.memPercent ?? 0) - (a.memPercent ?? 0) : (b.cpuPercent ?? 0) - (a.cpuPercent ?? 0)
   );
 
   tousProcessus.innerHTML = processusTries.length
     ? processusTries.map((p) => `
-        <div ${styleJauge(p.cpuPercent, 101)}><span>${p.name} (${p.pid})</span><span>${p.cpuPercent ?? 0} % CPU · ${p.memPercent ?? 0} % mém.</span></div>
+        <div ${styleJauge(p.cpuPercent, 101)}><span>${p.name} ${p.pids.length > 1 ? `(×${p.pids.length})` : `(${p.pids[0]})`}</span><span>${p.cpuPercent} % CPU · ${p.memPercent} % mém.</span></div>
       `).join('')
     : (filtre ? 'Aucun processus ne correspond.' : 'Aucun processus.');
 }
@@ -1026,6 +1069,7 @@ function wireProductivity() {
 
 initGlobe();
 startClock();
+chargerHistorique();
 wirePanels();
 wireJournalFilters();
 wireProductivity();
