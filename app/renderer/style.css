@@ -121,12 +121,26 @@ html, body {
 .app-page[hidden] { display: none; }
 
 .app-page-header {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 18px;
   padding: 22px 32px;
   border-bottom: 1px solid var(--line-dim);
   flex: none;
+}
+/* Meme filet degrade que les cartes (.monitor-card::before) - l'en-tete
+   de page suit le meme langage visuel plutot qu'une simple ligne plate. */
+.app-page-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 340px;
+  max-width: 50%;
+  height: 1px;
+  background: linear-gradient(to right, var(--red), transparent);
+  opacity: 0.5;
 }
 .app-page-header h1 {
   margin: 0;
@@ -179,9 +193,9 @@ html, body {
   font-size: 14px;
   padding: 0;
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition: color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.app-page-back:hover { color: var(--white); border-color: var(--red); }
+.app-page-back:hover { color: var(--white); border-color: var(--red); box-shadow: 0 0 12px rgba(229, 38, 26, 0.35); }
 
 .app-page-body {
   flex: 1;
@@ -219,6 +233,16 @@ html, body {
   height: 2px;
   background: linear-gradient(to right, var(--red), transparent 85%);
   opacity: 0.65;
+}
+/* Bref sursaut de halo a chaque actualisation (toutes les 3s,
+   actualiserSystemMonitor) - rend le rafraichissement perceptible sur
+   les cartes elles-memes, pas seulement sur le point clignotant de
+   l'en-tete. Classe reappliquee a chaque cycle (voir rendreSystemMonitor,
+   app.js), forcant un reflow pour rejouer l'animation a chaque fois. */
+.monitor-card.actualise { animation: monitor-actualisation 0.7s ease-out; }
+@keyframes monitor-actualisation {
+  0% { box-shadow: 0 0 0 1px rgba(229, 38, 26, 0.45), 0 0 32px rgba(229, 38, 26, 0.12), 0 8px 24px rgba(0, 0, 0, 0.35); }
+  100% { box-shadow: 0 0 32px rgba(229, 38, 26, 0.05), 0 8px 24px rgba(0, 0, 0, 0.35); }
 }
 /* display:flex ci-dessus prend le pas sur la regle [hidden]{display:none}
    du navigateur (meme specificite, origine "auteur" prioritaire) - sans
