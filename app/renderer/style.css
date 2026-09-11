@@ -652,7 +652,16 @@ html, body {
    .monitor-sparkline-modal-panneau (pertinent pour un graphe qu'il met
    en valeur, superflu ici ou le contenu est une simple liste de texte -
    le degrade se lisait comme une teinte brunatre sur cette liste). */
-.monitor-processus-modal-panneau { width: min(560px, 90vw); background: var(--bg); }
+.monitor-processus-modal-panneau {
+  width: min(560px, 90vw);
+  background: var(--bg);
+  /* Retire le halo rouge herite (garde juste l'ombre portee neutre, pour
+     la profondeur) et le glow du titre - plat plutot qu'eclaire, comme
+     demande. */
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+.monitor-processus-modal-panneau h3 { text-shadow: none; }
+#monitor-processus-modal-fermer:hover { box-shadow: none; }
 .monitor-processus-modal-corps {
   padding: 8px 24px 24px;
   max-height: 60vh;
