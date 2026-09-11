@@ -1042,6 +1042,34 @@ html, body {
   outline: none;
   border-color: var(--red);
 }
+/* Retire la fleche native du <select> - sans ceci, elle se superpose au
+   chevron dessine en CSS (.monitor-select-wrap::after), deja utilise ici
+   (jusqu'a present seul .monitor-seuils-intervalle select le faisait,
+   pas les select generiques de .inline-form). Padding-droit elargi pour
+   laisser la place au chevron. */
+.inline-form select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 22px;
+}
+/* Le menu deroulant reste rendu par l'OS independamment du style du
+   <select> lui-meme (meme remarque que pour .monitor-seuils-intervalle
+   select option) - sans ceci le texte blanc herite se retrouve
+   illisible sur le fond blanc par defaut du menu. */
+.inline-form select option {
+  background: var(--bg-panel);
+  color: var(--white);
+}
+/* Retire les fleches haut/bas natives des <input type=number> - deja
+   fait pour .monitor-seuils (seuils d'alerte), meme traitement ici pour
+   les champs numeriques du formulaire "Nouvelle regle" (minutes, seuil %). */
+.inline-form input[type='number']::-webkit-inner-spin-button,
+.inline-form input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.inline-form input[type='number'] { -moz-appearance: textfield; }
 .inline-form button {
   background: var(--red);
   border: none;
