@@ -382,10 +382,7 @@ html, body {
   transition: color 0.15s ease, background 0.15s ease;
 }
 .monitor-tri .filter-btn:hover { background: rgba(245, 246, 247, 0.07); }
-.monitor-tri .filter-btn.active {
-  background: rgba(229, 38, 26, 0.4);
-  box-shadow: 0 0 14px rgba(229, 38, 26, 0.5), inset 0 0 0 1px rgba(229, 38, 26, 0.55);
-}
+.monitor-tri .filter-btn.active { background: rgba(229, 38, 26, 0.4); }
 /* Titre du Gestionnaire des taches (§5.7) : margin-right:auto absorbe tout
    l'espace libre du h2 avant que justify-content:space-between (herite de
    .monitor-card h2) n'entre en jeu - filtre et tri restent ainsi cote a
@@ -642,6 +639,16 @@ html, body {
    Plus de halo/glow a retirer ici : deja retires a la source sur la
    regle de base, commune aux deux modales. */
 .monitor-processus-modal-panneau { width: min(560px, 90vw); background: var(--bg); }
+/* Bouton de fermeture propre a cette modale (§5.7) : carre a bordures
+   rondes plutot que la pastille circulaire de la modale d'historique,
+   et pas de rouge au survol (juste un leger eclaircissement neutre) -
+   surcharge les regles partagees ci-dessus, specifiques a cet ID. */
+#monitor-processus-modal-fermer { border-radius: 6px; }
+#monitor-processus-modal-fermer:hover {
+  color: var(--white);
+  border-color: rgba(245, 246, 247, 0.32);
+  background: rgba(245, 246, 247, 0.1);
+}
 .monitor-processus-modal-corps {
   padding: 8px 24px 24px;
   max-height: 60vh;
