@@ -1373,7 +1373,29 @@ function construireLigneRegle(rule) {
     }
     refreshJournalIfOpen();
   });
-  row.querySelector('.row-delete').addEventListener('click', async () => {
+  // Suppression a deux temps (idee 1, retour utilisateur) : premier clic
+  // arme le bouton (icone + fond changent, meme geste que le reste de
+  // l'app plutot qu'une boite de dialogue native hors theme), le
+  // deuxieme clic dans les 3s confirme reellement. Seul geste destructif
+  // de la page, jusqu'ici sans aucun garde-fou.
+  const boutonSupprimer = row.querySelector('.row-delete');
+  let minuteurConfirmation = null;
+  const desarmer = () => {
+    clearTimeout(minuteurConfirmation);
+    minuteurConfirmation = null;
+    boutonSupprimer.classList.remove('confirm-armed');
+    boutonSupprimer.textContent = '✕';
+    boutonSupprimer.title = 'Supprimer';
+  };
+  boutonSupprimer.addEventListener('click', async () => {
+    if (!minuteurConfirmation) {
+      boutonSupprimer.classList.add('confirm-armed');
+      boutonSupprimer.textContent = '✓';
+      boutonSupprimer.title = 'Cliquer à nouveau pour confirmer la suppression';
+      minuteurConfirmation = setTimeout(desarmer, 3000);
+      return;
+    }
+    desarmer();
     await window.aura.deleteRule(rule.id);
     journal(`REGLE_SUPPRIMEE : ${rule.name}`);
     loadRules();
