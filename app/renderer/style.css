@@ -112,7 +112,9 @@ html, body {
   position: fixed;
   inset: 0;
   z-index: 8;
-  background: var(--bg);
+  /* Vignette tres attenuee depuis le haut - un fond entierement plat
+     tranche trop avec le globe stellaire qu'elle recouvre. */
+  background: radial-gradient(ellipse 1400px 700px at 50% -10%, rgba(229, 38, 26, 0.06), transparent 70%), var(--bg);
   display: flex;
   flex-direction: column;
 }
@@ -197,6 +199,7 @@ html, body {
    donnees. Le halo (box-shadow) fait echo au bloom du globe stellaire -
    discret au repos, une carte n'est pas une simple case de tableau. */
 .monitor-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: rgba(245, 246, 247, 0.03);
@@ -204,6 +207,18 @@ html, body {
   border-radius: 8px;
   box-shadow: 0 0 32px rgba(229, 38, 26, 0.05), 0 8px 24px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+}
+/* Filet lumineux en tete de carte - overflow:hidden ci-dessus le decoupe
+   proprement aux coins arrondis (un border-image ne le ferait pas). */
+.monitor-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, var(--red), transparent 85%);
+  opacity: 0.65;
 }
 /* display:flex ci-dessus prend le pas sur la regle [hidden]{display:none}
    du navigateur (meme specificite, origine "auteur" prioritaire) - sans
