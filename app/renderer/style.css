@@ -172,7 +172,6 @@ html, body {
   text-transform: uppercase;
   font-size: 10px;
   color: var(--red);
-  text-shadow: 0 0 10px rgba(229, 38, 26, 0.35);
   margin-right: 6px;
 }
 /* Chaque seuil (et l'intervalle) forme son propre "jeton" plutot que du
@@ -357,7 +356,6 @@ html, body {
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: var(--red);
-  text-shadow: 0 0 10px rgba(229, 38, 26, 0.4);
 }
 /* Tri du Gestionnaire des taches (CPU/Memoire) : regroupes en controle
    segmente (fond + bordure communs, boutons sans bordure individuelle)
