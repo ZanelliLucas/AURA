@@ -1130,6 +1130,18 @@ function construireLigneTache(task) {
 const CIBLES_TACHES = ['tasks-list', 'productivity-tasks-list'];
 const CIBLES_RAPPELS = ['reminders-list', 'productivity-reminders-list'];
 
+// Horodatage de la page AURA Productivity (§16), meme principe que
+// #monitor-updated sur System Monitor - mis a jour a chaque rendu des
+// taches/rappels (renderTasks/renderReminders), qu'il soit declenche
+// depuis la page elle-meme, le panneau lateral, ou un rappel qui se
+// declenche en arriere-plan (checkDueReminders). Sans minuterie propre :
+// contrairement a System Monitor, les donnees ne bougent que sur
+// evenement, pas de cycle a afficher.
+function actualiserHorodatageProductivite() {
+  const el = document.getElementById('productivity-updated');
+  if (el) el.textContent = new Date().toLocaleTimeString('fr-FR');
+}
+
 function renderTasks(tasks) {
   const cibles = CIBLES_TACHES.map((id) => document.getElementById(id)).filter(Boolean);
   const active = tasks.filter((t) => t.status !== 'completed');
@@ -1140,6 +1152,7 @@ function renderTasks(tasks) {
     list.innerHTML = '';
     ordered.forEach((task) => list.appendChild(construireLigneTache(task)));
   });
+  actualiserHorodatageProductivite();
 }
 
 async function loadTasks() {
@@ -1176,6 +1189,7 @@ function renderReminders(reminders) {
     list.innerHTML = '';
     active.forEach((reminder) => list.appendChild(construireLigneRappel(reminder)));
   });
+  actualiserHorodatageProductivite();
 }
 
 async function loadReminders() {
