@@ -575,7 +575,9 @@ html, body {
   background: radial-gradient(ellipse 900px 500px at 50% -10%, rgba(229, 38, 26, 0.08), transparent 70%), var(--bg);
   border: 1px solid rgba(245, 246, 247, 0.16);
   border-radius: 8px;
-  box-shadow: 0 0 48px rgba(229, 38, 26, 0.1), 0 16px 40px rgba(0, 0, 0, 0.5);
+  /* Pas de halo rouge autour du panneau (retire, comme demande) - garde
+     juste l'ombre portee neutre pour la profondeur. */
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
 .monitor-sparkline-modal-panneau header {
@@ -591,7 +593,6 @@ html, body {
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: var(--red);
-  text-shadow: 0 0 10px rgba(229, 38, 26, 0.4);
 }
 /* Bouton de fermeture des modales (historique + details processus) :
    pastille circulaire plutot qu'un carre a bordure fine - se detache
@@ -624,7 +625,6 @@ html, body {
   color: var(--white);
   border-color: var(--red);
   background: rgba(229, 38, 26, 0.16);
-  box-shadow: 0 0 10px rgba(229, 38, 26, 0.3);
 }
 .monitor-sparkline-modal-graphe {
   padding: 28px 24px 32px;
@@ -647,21 +647,13 @@ html, body {
 /* Details d'un processus (§5.7) : meme habillage de modale que
    l'historique de sparkline, panneau plus etroit (pas de graphe a
    afficher) et hauteur plafonnee - un groupe multi-instance (ex.
-   firefox.exe x19) peut lister beaucoup d'entrees. */
-/* Fond noir uni plutot que le degrade radial rouge herite de
+   firefox.exe x19) peut lister beaucoup d'entrees. Fond noir uni
+   (var(--bg)) plutot que le degrade radial rouge de
    .monitor-sparkline-modal-panneau (pertinent pour un graphe qu'il met
-   en valeur, superflu ici ou le contenu est une simple liste de texte -
-   le degrade se lisait comme une teinte brunatre sur cette liste). */
-.monitor-processus-modal-panneau {
-  width: min(560px, 90vw);
-  background: var(--bg);
-  /* Retire le halo rouge herite (garde juste l'ombre portee neutre, pour
-     la profondeur) et le glow du titre - plat plutot qu'eclaire, comme
-     demande. */
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-}
-.monitor-processus-modal-panneau h3 { text-shadow: none; }
-#monitor-processus-modal-fermer:hover { box-shadow: none; }
+   en valeur, superflu ici ou le contenu est une simple liste de texte).
+   Plus de halo/glow a retirer ici : deja retires a la source sur la
+   regle de base, commune aux deux modales. */
+.monitor-processus-modal-panneau { width: min(560px, 90vw); background: var(--bg); }
 .monitor-processus-modal-corps {
   padding: 8px 24px 24px;
   max-height: 60vh;
