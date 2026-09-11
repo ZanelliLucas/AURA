@@ -390,7 +390,7 @@ function rendreSystemMonitor(snap) {
   }
 
   const heure = new Date(snap.takenAt).toLocaleTimeString('fr-FR');
-  document.getElementById('monitor-updated').textContent = `Actualisé à ${heure}`;
+  document.getElementById('monitor-updated').textContent = heure;
 
   // Rejoue le halo (.actualise, style.css) sur chaque carte visible a
   // chaque cycle - la classe est deja presente depuis le cycle precedent
