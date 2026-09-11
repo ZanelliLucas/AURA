@@ -90,14 +90,21 @@ async function getSnapshot() {
       .slice(0, 8)
       .map((p) => ({ pid: p.pid, name: p.name, cpuPercent: round1(p.cpu), memPercent: round1(p.mem) })),
     processCount: processes.all,
-    // Liste complete (façon Gestionnaire des taches) - plafonnee a 60 pour
-    // eviter un payload qui grossit sans fin sur un poste tres charge,
-    // largement suffisant pour un panneau defilant.
-    allProcesses: processes.list
-      .slice()
-      .sort((a, b) => b.cpu - a.cpu)
-      .slice(0, 60)
-      .map((p) => ({ pid: p.pid, name: p.name, cpuPercent: round1(p.cpu), memPercent: round1(p.mem) })),
+    // Liste complete (façon Gestionnaire des taches), triable par CPU ou
+    // memoire cote client (app.js). Fusion des top 40 par CPU et top 40
+    // par memoire (deduplique par pid) plutot qu'un seul tri par CPU : un
+    // processus gourmand en memoire mais inactif en CPU (ex. un onglet en
+    // arriere-plan) serait sinon absent du tri par memoire, coupe avant
+    // meme d'arriver au client.
+    allProcesses: (function() {
+      const parPid = new Map();
+      const ajouter = (liste) => liste.forEach((p) => parPid.set(p.pid, p));
+      ajouter(processes.list.slice().sort((a, b) => b.cpu - a.cpu).slice(0, 40));
+      ajouter(processes.list.slice().sort((a, b) => b.mem - a.mem).slice(0, 40));
+      return Array.from(parPid.values())
+        .sort((a, b) => b.cpu - a.cpu)
+        .map((p) => ({ pid: p.pid, name: p.name, cpuPercent: round1(p.cpu), memPercent: round1(p.mem) }));
+    })(),
     battery: battery.hasBattery ? {
       percent: round1(battery.percent),
       isCharging: battery.isCharging,

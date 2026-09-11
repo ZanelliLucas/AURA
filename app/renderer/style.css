@@ -149,17 +149,27 @@ html, body {
   color: var(--white);
   font-weight: 500;
 }
-/* Seuil d'alerte configurable (§5.7) - preference d'affichage locale,
-   voir chargerSeuilAlerte/definirSeuilAlerte, app.js. */
-.monitor-seuil {
+/* Seuils d'alerte configurables, un par metrique (§5.7) - preference
+   d'affichage locale, voir chargerSeuils/definirSeuil, app.js. Barre
+   posee au-dessus de la grille plutot que dans l'en-tete : 4 champs
+   n'y tiendraient pas proprement a cote du titre et de l'horodatage. */
+.monitor-seuils {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-bottom: 22px;
+  font-size: 12px;
+  color: var(--dim);
+}
+.monitor-seuils-label { letter-spacing: 1px; text-transform: uppercase; font-size: 10px; }
+.monitor-seuils label {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  color: var(--dim);
   letter-spacing: 0.3px;
 }
-.monitor-seuil input {
+.monitor-seuils input {
   width: 48px;
   background: rgba(245, 246, 247, 0.06);
   border: 1px solid rgba(245, 246, 247, 0.16);
@@ -170,7 +180,7 @@ html, body {
   padding: 3px 6px;
   text-align: right;
 }
-.monitor-seuil input:focus { outline: none; border-color: var(--red); }
+.monitor-seuils input:focus { outline: none; border-color: var(--red); }
 
 .app-page-updated {
   margin-left: auto;
@@ -274,6 +284,10 @@ html, body {
    de laisser une case vide a cote de Stockage (voir app.js). */
 .monitor-card-2col { grid-column: span 2; }
 .monitor-card h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0;
   padding: 11px 18px;
   border-bottom: 1px solid var(--line-dim);
@@ -283,6 +297,11 @@ html, body {
   color: var(--red);
   text-shadow: 0 0 10px rgba(229, 38, 26, 0.4);
 }
+/* Tri du Gestionnaire des taches (CPU/Memoire) - boutons plus discrets
+   que .filter-btn habituel (deja utilise pour les filtres Activite),
+   pour rester lisibles dans un en-tete de carte deja petit (10px). */
+.monitor-tri { display: flex; gap: 4px; text-transform: none; letter-spacing: normal; }
+.monitor-tri .filter-btn { font-size: 9px; padding: 3px 7px; text-shadow: none; }
 /* flex-direction:column + justify-content:space-between repartit les
    lignes sur toute la hauteur de la carte plutot que de les laisser
    collees en haut avec un vide en dessous - les cartes d'une meme
@@ -356,6 +375,19 @@ html, body {
    styleJauge(pourcentage, seuilAlerte), app.js. */
 .monitor-row.jauge-alerte { box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.25); }
 .monitor-row.jauge-alerte span:last-child { font-weight: 600; text-shadow: 0 0 8px rgba(255, 255, 255, 0.6); }
+
+/* Sparkline (§5.7) : petit historique de charge CPU/Memoire sous la
+   jauge courante. couleur suit currentColor (voir sparkline(), app.js)
+   plutot qu'une couleur fixe dans le SVG, pour rester coherent au thème
+   depuis une seule declaration CSS. */
+.monitor-sparkline {
+  display: block;
+  width: 100%;
+  height: 26px;
+  margin: 10px 0 2px;
+  color: var(--red);
+  opacity: 0.75;
+}
 
 /* Panneaux retractables (F-21 / §16.1) */
 .edge-tab {

@@ -75,14 +75,16 @@
     <header class="app-page-header">
       <button id="page-back" type="button" class="app-page-back" aria-label="Retour">←</button>
       <h1>System Monitor</h1>
-      <label class="monitor-seuil" title="Charge a partir de laquelle une jauge se signale en alerte">
-        <span>Seuil d'alerte</span>
-        <input id="monitor-seuil-input" type="number" min="50" max="99" step="1">
-        <span>%</span>
-      </label>
       <span id="monitor-updated" class="app-page-updated"></span>
     </header>
     <div class="app-page-body custom-scroll">
+      <div class="monitor-seuils" title="Charge a partir de laquelle une jauge se signale en alerte">
+        <span class="monitor-seuils-label">Seuils d'alerte</span>
+        <label><span>CPU</span><input id="monitor-seuil-cpu" type="number" min="50" max="99" step="1"><span>%</span></label>
+        <label><span>Mémoire</span><input id="monitor-seuil-memory" type="number" min="50" max="99" step="1"><span>%</span></label>
+        <label><span>GPU</span><input id="monitor-seuil-gpu" type="number" min="50" max="99" step="1"><span>%</span></label>
+        <label><span>Disque</span><input id="monitor-seuil-disk" type="number" min="50" max="99" step="1"><span>%</span></label>
+      </div>
       <div class="monitor-grid">
         <section class="monitor-card">
           <h2>CPU</h2>
@@ -113,7 +115,13 @@
           <div id="monitor-processes" class="monitor-card-body muted">Chargement…</div>
         </section>
         <section class="monitor-card monitor-card-wide">
-          <h2>Gestionnaire des tâches</h2>
+          <h2>
+            Gestionnaire des tâches
+            <span class="monitor-tri">
+              <button type="button" id="monitor-tri-cpu" class="filter-btn active" data-tri="cpu">CPU</button>
+              <button type="button" id="monitor-tri-memory" class="filter-btn" data-tri="memory">Mémoire</button>
+            </span>
+          </h2>
           <div id="monitor-all-processes" class="monitor-card-body monitor-scroll custom-scroll muted">Chargement…</div>
         </section>
       </div>

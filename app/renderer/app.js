@@ -301,24 +301,30 @@ function moEnGo(mo) {
   return mo == null ? null : Math.round(mo / 100) / 10;
 }
 
-// Seuil d'alerte configurable (§5.7, "Alertes configurables") : au-dela de
-// cette charge, CPU/Memoire/GPU/Disques se signalent visuellement (voir
-// styleJauge). Purement une preference d'affichage local (pas une action
-// sur le systeme) - stockee dans localStorage, pas cote serveur.
-const CLE_SEUIL_ALERTE = 'aura.monitorSeuilAlerte';
-const SEUIL_ALERTE_DEFAUT = 85;
-let seuilAlerteConfigure = SEUIL_ALERTE_DEFAUT;
+// Seuils d'alerte configurables, un par metrique (§5.7, "Alertes
+// configurables") : au-dela de sa propre charge, chaque metrique
+// (CPU/Memoire/GPU/Disques) se signale visuellement (voir styleJauge).
+// Purement une preference d'affichage local (pas une action sur le
+// systeme) - un seul objet JSON dans localStorage, pas cote serveur.
+const CLE_SEUILS = 'aura.monitorSeuils';
+const SEUIL_DEFAUT = 85;
+const METRIQUES_SEUIL = ['cpu', 'memory', 'gpu', 'disk'];
+let seuilsConfigures = { cpu: SEUIL_DEFAUT, memory: SEUIL_DEFAUT, gpu: SEUIL_DEFAUT, disk: SEUIL_DEFAUT };
 
-function chargerSeuilAlerte() {
-  const brut = Number(localStorage.getItem(CLE_SEUIL_ALERTE));
-  seuilAlerteConfigure = Number.isFinite(brut) && brut >= 50 && brut <= 99 ? brut : SEUIL_ALERTE_DEFAUT;
-  return seuilAlerteConfigure;
+function chargerSeuils() {
+  let brut = null;
+  try { brut = JSON.parse(localStorage.getItem(CLE_SEUILS)); } catch { /* valeur absente ou corrompue - retombe sur les defauts */ }
+  METRIQUES_SEUIL.forEach((cle) => {
+    const v = Number(brut && brut[cle]);
+    seuilsConfigures[cle] = Number.isFinite(v) && v >= 50 && v <= 99 ? v : SEUIL_DEFAUT;
+  });
+  return seuilsConfigures;
 }
 
-function definirSeuilAlerte(valeur) {
-  const v = Math.max(50, Math.min(99, Math.round(valeur) || SEUIL_ALERTE_DEFAUT));
-  seuilAlerteConfigure = v;
-  try { localStorage.setItem(CLE_SEUIL_ALERTE, String(v)); } catch { /* stockage indisponible (navigation privee, quota) - le reglage reste actif pour la session */ }
+function definirSeuil(metrique, valeur) {
+  const v = Math.max(50, Math.min(99, Math.round(valeur) || SEUIL_DEFAUT));
+  seuilsConfigures[metrique] = v;
+  try { localStorage.setItem(CLE_SEUILS, JSON.stringify(seuilsConfigures)); } catch { /* stockage indisponible (navigation privee, quota) - le reglage reste actif pour la session */ }
   return v;
 }
 
@@ -326,12 +332,40 @@ function definirSeuilAlerte(valeur) {
 // une classe et une variable CSS inline plutot qu'un chiffre isole, pour
 // que les charges se comparent d'un coup d'oeil. Au-dela de seuilAlerte,
 // la jauge et la valeur se distinguent visuellement (§5.7, "Alertes
-// configurables") - passer 101 desactive l'alerte (ex. charge par
-// processus, ou un pic isole n'indique pas un probleme systeme).
-function styleJauge(pourcentage, seuilAlerte = seuilAlerteConfigure) {
+// configurables") - passer 101 (ou omettre) desactive l'alerte (ex. charge
+// par processus, ou un pic isole n'indique pas un probleme systeme).
+function styleJauge(pourcentage, seuilAlerte) {
   const p = Math.max(0, Math.min(100, pourcentage ?? 0));
-  const alerte = p >= seuilAlerte ? ' jauge-alerte' : '';
+  const alerte = seuilAlerte != null && p >= seuilAlerte ? ' jauge-alerte' : '';
   return `class="monitor-row avec-jauge${alerte}" style="--jauge:${p}%"`;
+}
+
+// Historique court (façon sparkline) de la charge CPU/Memoire, pousse a
+// chaque cycle de rafraichissement (3s) - assez pour ~1 minute de recul
+// visuel sans garder un historique complet en memoire.
+const HISTORIQUE_MAX = 20;
+let historiqueCpu = [];
+let historiqueMemoire = [];
+
+function pousserHistorique(liste, valeur) {
+  liste.push(valeur ?? 0);
+  if (liste.length > HISTORIQUE_MAX) liste.shift();
+}
+
+// stroke="currentColor" plutot qu'une couleur fixe : la teinte suit
+// .monitor-sparkline en CSS, coherent avec le reste du thème.
+function sparkline(liste) {
+  if (liste.length < 2) return '';
+  const largeur = 100;
+  const hauteur = 26;
+  const pas = largeur / (HISTORIQUE_MAX - 1);
+  const decalage = HISTORIQUE_MAX - liste.length;
+  const points = liste.map((v, i) => {
+    const x = (decalage + i) * pas;
+    const y = hauteur - (Math.max(0, Math.min(100, v)) / 100) * hauteur;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<svg class="monitor-sparkline" viewBox="0 0 ${largeur} ${hauteur}" preserveAspectRatio="none"><polyline points="${points}" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>`;
 }
 
 // Meme jauge que styleJauge, mais l'alerte se declenche EN DESSOUS du
@@ -344,19 +378,24 @@ function styleJaugeBatterie(pourcentage, seuilAlerte = 20) {
 }
 
 function rendreSystemMonitor(snap) {
+  pousserHistorique(historiqueCpu, snap.cpu.loadPercent);
+  pousserHistorique(historiqueMemoire, snap.memory.usedPercent);
+
   const cpu = document.getElementById('monitor-cpu');
   cpu.innerHTML = `
     <div class="monitor-row"><span>Modèle</span><span>${snap.cpu.model || '—'}</span></div>
     <div class="monitor-row"><span>Cœurs</span><span>${snap.cpu.cores ?? '—'}</span></div>
     <div class="monitor-row"><span>Fréquence</span><span>${snap.cpu.speedGhz ?? '—'} GHz</span></div>
-    <div ${styleJauge(snap.cpu.loadPercent)}><span>Charge</span><span>${snap.cpu.loadPercent ?? '—'} %</span></div>
+    <div ${styleJauge(snap.cpu.loadPercent, seuilsConfigures.cpu)}><span>Charge</span><span>${snap.cpu.loadPercent ?? '—'} %</span></div>
+    ${sparkline(historiqueCpu)}
     <div class="monitor-row"><span>Actif depuis</span><span>${formatDuree(snap.uptimeSec)}</span></div>
   `;
 
   const mem = document.getElementById('monitor-memory');
   mem.innerHTML = `
     <div class="monitor-row"><span>Utilisée</span><span>${formatOctets(snap.memory.usedGB)} / ${formatOctets(snap.memory.totalGB)}</span></div>
-    <div ${styleJauge(snap.memory.usedPercent)}><span>Charge</span><span>${snap.memory.usedPercent ?? '—'} %</span></div>
+    <div ${styleJauge(snap.memory.usedPercent, seuilsConfigures.memory)}><span>Charge</span><span>${snap.memory.usedPercent ?? '—'} %</span></div>
+    ${sparkline(historiqueMemoire)}
     ${snap.memory.swapTotalGB ? `
     <div class="monitor-row"><span>Swap</span><span>${formatOctets(snap.memory.swapUsedGB)} / ${formatOctets(snap.memory.swapTotalGB)}</span></div>
     ` : ''}
@@ -366,7 +405,7 @@ function rendreSystemMonitor(snap) {
   gpu.innerHTML = snap.gpu.length
     ? snap.gpu.map((g, i) => `
         <div class="monitor-row${i > 0 ? ' gpu-separateur' : ''}"><span>${g.model}</span><span>${g.temperatureC != null ? g.temperatureC + ' °C' : '—'}</span></div>
-        <div ${styleJauge(g.loadPercent)}><span>Charge</span><span>${g.loadPercent ?? '—'} %</span></div>
+        <div ${styleJauge(g.loadPercent, seuilsConfigures.gpu)}><span>Charge</span><span>${g.loadPercent ?? '—'} %</span></div>
         <div class="monitor-row"><span>Mémoire</span><span>${formatOctets(moEnGo(g.memoryUsedMB))} / ${formatOctets(moEnGo(g.vramMB))}</span></div>
       `).join('')
     : 'Aucun GPU dédié détecté.';
@@ -374,7 +413,7 @@ function rendreSystemMonitor(snap) {
   const disks = document.getElementById('monitor-disks');
   disks.innerHTML = (snap.disks.length
     ? snap.disks.map((d) => `
-        <div ${styleJauge(d.usedPercent)}><span>${d.mount}</span><span>${formatOctets(d.usedGB)} / ${formatOctets(d.sizeGB)} (${d.usedPercent ?? '—'} %)</span></div>
+        <div ${styleJauge(d.usedPercent, seuilsConfigures.disk)}><span>${d.mount}</span><span>${formatOctets(d.usedGB)} / ${formatOctets(d.sizeGB)} (${d.usedPercent ?? '—'} %)</span></div>
       `).join('')
     : 'Aucun disque détecté.')
     + `<div class="monitor-row"><span>Débit</span><span>↓ ${snap.diskIO.readKBs ?? 0} Ko/s · ↑ ${snap.diskIO.writeKBs ?? 0} Ko/s</span></div>`;
@@ -398,9 +437,13 @@ function rendreSystemMonitor(snap) {
 
   // Liste complete (facon Gestionnaire des taches) - toutes les
   // applications/processus en cours, pas seulement le top 8 par CPU.
+  // Triable par CPU ou par memoire (triProcessus, boutons #monitor-tri-*).
   const tousProcessus = document.getElementById('monitor-all-processes');
-  tousProcessus.innerHTML = snap.allProcesses && snap.allProcesses.length
-    ? snap.allProcesses.map((p) => `
+  const processusTries = snap.allProcesses ? snap.allProcesses.slice().sort((a, b) =>
+    triProcessus === 'memory' ? (b.memPercent ?? 0) - (a.memPercent ?? 0) : (b.cpuPercent ?? 0) - (a.cpuPercent ?? 0)
+  ) : [];
+  tousProcessus.innerHTML = processusTries.length
+    ? processusTries.map((p) => `
         <div ${styleJauge(p.cpuPercent, 101)}><span>${p.name} (${p.pid})</span><span>${p.cpuPercent ?? 0} % CPU · ${p.memPercent ?? 0} % mém.</span></div>
       `).join('')
     : 'Aucun processus.';
@@ -463,19 +506,40 @@ function fermerPage() {
 
 function wirePages() {
   document.getElementById('page-back').addEventListener('click', fermerPage);
-  wireSeuilAlerte();
+  wireSeuils();
+  wireTriProcessus();
 }
 
-// Seuil d'alerte configurable (§5.7) : charge la valeur enregistree au
+// Seuils d'alerte configurables (§5.7) : charge les valeurs enregistrees au
 // demarrage, et sauvegarde + reactualise immediatement l'affichage a
 // chaque changement (sans attendre le prochain cycle de 3s).
-function wireSeuilAlerte() {
-  const input = document.getElementById('monitor-seuil-input');
-  input.value = chargerSeuilAlerte();
-  input.addEventListener('change', () => {
-    input.value = definirSeuilAlerte(input.valueAsNumber);
-    if (!document.getElementById('page-system-monitor').hidden) actualiserSystemMonitor();
+function wireSeuils() {
+  chargerSeuils();
+  METRIQUES_SEUIL.forEach((metrique) => {
+    const input = document.getElementById(`monitor-seuil-${metrique}`);
+    input.value = seuilsConfigures[metrique];
+    input.addEventListener('change', () => {
+      input.value = definirSeuil(metrique, input.valueAsNumber);
+      if (!document.getElementById('page-system-monitor').hidden) actualiserSystemMonitor();
+    });
   });
+}
+
+// Tri du Gestionnaire des taches (§5.7) : CPU par defaut, bascule sur
+// memoire au clic - reactualise immediatement plutot que d'attendre le
+// prochain cycle, comme pour les seuils.
+let triProcessus = 'cpu';
+
+function wireTriProcessus() {
+  document.getElementById('monitor-tri-cpu').addEventListener('click', () => definirTriProcessus('cpu'));
+  document.getElementById('monitor-tri-memory').addEventListener('click', () => definirTriProcessus('memory'));
+}
+
+function definirTriProcessus(tri) {
+  triProcessus = tri;
+  document.getElementById('monitor-tri-cpu').classList.toggle('active', tri === 'cpu');
+  document.getElementById('monitor-tri-memory').classList.toggle('active', tri === 'memory');
+  if (!document.getElementById('page-system-monitor').hidden) actualiserSystemMonitor();
 }
 
 function echapperHtml(texte) {
