@@ -205,8 +205,8 @@ html, body {
   display: flex;
   flex-direction: row-reverse;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 10px;
+  font-size: 19px;
   letter-spacing: 0.5px;
   color: var(--dim);
 }
@@ -215,8 +215,8 @@ html, body {
    implicite dans le seul changement d'horodatage. */
 .app-page-updated::before {
   content: '';
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--red);
   box-shadow: 0 0 6px 1px var(--red);
@@ -315,33 +315,94 @@ html, body {
   color: var(--red);
   text-shadow: 0 0 10px rgba(229, 38, 26, 0.4);
 }
-/* Tri du Gestionnaire des taches (CPU/Memoire) - boutons plus discrets
-   que .filter-btn habituel (deja utilise pour les filtres Activite),
-   pour rester lisibles dans un en-tete de carte deja petit (10px). */
-.monitor-tri { display: flex; gap: 4px; text-transform: none; letter-spacing: normal; flex: none; }
-.monitor-tri .filter-btn { font-size: 9px; padding: 3px 7px; text-shadow: none; }
+/* Tri du Gestionnaire des taches (CPU/Memoire) : regroupes en controle
+   segmente (fond + bordure communs, boutons sans bordure individuelle)
+   plutot que deux .filter-btn isoles - se lit comme un seul reglage a
+   deux positions, l'etat actif ressort par un fond teinte plutot qu'un
+   simple changement de couleur de bordure. */
+.monitor-tri {
+  display: flex;
+  gap: 2px;
+  text-transform: none;
+  letter-spacing: normal;
+  flex: none;
+  padding: 2px;
+  background: rgba(245, 246, 247, 0.04);
+  border: 1px solid rgba(245, 246, 247, 0.12);
+  border-radius: 7px;
+}
+.monitor-tri .filter-btn {
+  font-size: 9px;
+  padding: 4px 10px;
+  text-shadow: none;
+  border: none;
+  border-radius: 5px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.monitor-tri .filter-btn:hover { background: rgba(245, 246, 247, 0.07); }
+.monitor-tri .filter-btn.active {
+  background: rgba(229, 38, 26, 0.18);
+  box-shadow: 0 0 10px rgba(229, 38, 26, 0.22);
+}
 /* Titre du Gestionnaire des taches (§5.7) : margin-right:auto absorbe tout
    l'espace libre du h2 avant que justify-content:space-between (herite de
    .monitor-card h2) n'entre en jeu - filtre et tri restent ainsi cote a
    cote a droite plutot que separes par un grand vide. */
 .monitor-card-titre { margin-right: auto; }
-/* Filtre par nom (§5.7) : largeur fixe (pas de flex-grow, deja inutile
-   une fois le titre pousse a gauche par la regle ci-dessus). text-
-   transform/letter-spacing remis a plat (sinon herites de .monitor-card
-   h2, qui mettrait la saisie et le placeholder en MAJUSCULES espacees). */
-.monitor-filtre {
+/* Filtre par nom (§5.7) : icone loupe dessinee en CSS (cercle + trait
+   pivote) sur le conteneur plutot que sur l'input - un ::before/::after
+   sur un input est peu fiable d'un moteur de rendu a l'autre (element
+   remplace). border-color/background de l'icone suivent le focus du
+   champ (:focus-within), meme logique que les autres champs de la page. */
+.monitor-filtre-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
   flex: none;
-  width: 150px;
+  width: 168px;
+}
+.monitor-filtre-wrap::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -6px;
+  border: 1.5px solid var(--dim);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: border-color 0.15s ease;
+}
+.monitor-filtre-wrap::after {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  width: 5px;
+  height: 1.5px;
+  margin-top: 1px;
+  background: var(--dim);
+  transform: rotate(45deg);
+  transform-origin: left center;
+  pointer-events: none;
+  transition: background 0.15s ease;
+}
+.monitor-filtre-wrap:focus-within::before { border-color: var(--red); }
+.monitor-filtre-wrap:focus-within::after { background: var(--red); }
+.monitor-filtre {
+  width: 100%;
   background: rgba(245, 246, 247, 0.06);
   border: 1px solid rgba(245, 246, 247, 0.16);
-  border-radius: 5px;
+  border-radius: 6px;
   color: var(--white);
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
+  font-size: 11px;
   text-transform: none;
   letter-spacing: normal;
   text-shadow: none;
-  padding: 4px 8px;
+  padding: 5px 9px 5px 22px;
+  transition: border-color 0.15s ease;
 }
 .monitor-filtre::placeholder { color: var(--dim); }
 .monitor-filtre:focus { outline: none; border-color: var(--red); }
