@@ -168,6 +168,54 @@
     </div>
   </section>
 
+  <!-- Deuxieme page de categorie (Systeme de Modules, §16) : AURA
+       PRODUCTIVITY. Memes taches/rappels que le panneau lateral Projets
+       (store.js via window.aura), juste une vue complete au lieu d'une
+       liste plafonnee a 160px - renderTasks/renderReminders (app.js)
+       alimentent les deux emplacements a partir des memes donnees. -->
+  <section id="page-productivity" class="app-page" hidden>
+    <header class="app-page-header">
+      <button id="productivity-back" type="button" class="app-page-back" aria-label="Retour">←</button>
+      <h1>Productivity</h1>
+    </header>
+    <div class="app-page-body custom-scroll">
+      <div class="productivity-grid">
+        <section class="monitor-card">
+          <h2><span class="monitor-card-titre">Tâches</span></h2>
+          <div class="monitor-card-body productivity-card-body">
+            <form id="productivity-task-form" class="inline-form">
+              <input id="productivity-task-title" type="text" placeholder="Nouvelle tâche…">
+              <input id="productivity-task-due" type="date" title="Échéance">
+              <select id="productivity-task-priority" title="Priorité">
+                <option value="basse">Basse</option>
+                <option value="moyenne" selected>Moyenne</option>
+                <option value="haute">Haute</option>
+              </select>
+              <button type="submit">+</button>
+            </form>
+            <div id="productivity-tasks-list" class="monitor-scroll custom-scroll">Chargement…</div>
+          </div>
+        </section>
+        <section class="monitor-card">
+          <h2><span class="monitor-card-titre">Rappels</span></h2>
+          <div class="monitor-card-body productivity-card-body">
+            <form id="productivity-reminder-form" class="inline-form">
+              <input id="productivity-reminder-text" type="text" placeholder="Rappel…">
+              <input id="productivity-reminder-at" type="datetime-local">
+              <select id="productivity-reminder-recurring" title="Récurrence">
+                <option value="">Une fois</option>
+                <option value="daily">Chaque jour</option>
+                <option value="weekly">Chaque semaine</option>
+              </select>
+              <button type="submit">+</button>
+            </form>
+            <div id="productivity-reminders-list" class="monitor-scroll custom-scroll">Chargement…</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+
   <div id="conversation-panel" class="terminal-panel">
     <!-- Acces rapide aux Somas du globe stellaire (§13.3) : le texte tape
          est compare aux categories reelles d'AURA (data.js) - une

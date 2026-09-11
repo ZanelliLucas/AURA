@@ -695,12 +695,23 @@ async function actualiserSystemMonitor() {
 }
 
 function ouvrirPageCategorie(id) {
-  if (id !== 'systemMonitor') return;
-  document.getElementById('page-system-monitor').hidden = false;
-  actualiserSystemMonitor();
-  if (intervalMonitor) clearInterval(intervalMonitor);
-  intervalMonitor = setInterval(actualiserSystemMonitor, intervalleConfigure);
-  journal('PAGE_OUVERTE : AURA SYSTEM MONITOR');
+  if (id === 'systemMonitor') {
+    document.getElementById('page-system-monitor').hidden = false;
+    actualiserSystemMonitor();
+    if (intervalMonitor) clearInterval(intervalMonitor);
+    intervalMonitor = setInterval(actualiserSystemMonitor, intervalleConfigure);
+    journal('PAGE_OUVERTE : AURA SYSTEM MONITOR');
+  } else if (id === 'productivity') {
+    document.getElementById('page-productivity').hidden = false;
+    // Pas de minuterie propre : taches/rappels ne changent que par action
+    // utilisateur sur cette meme page (pas de polling requis), et un
+    // rappel qui se declenche en arriere-plan (checkDueReminders, deja
+    // actif en continu toutes les 30s) rafraichit deja les deux
+    // emplacements via loadReminders().
+    loadTasks();
+    loadReminders();
+    journal('PAGE_OUVERTE : AURA PRODUCTIVITY');
+  }
 }
 
 function fermerPage() {
@@ -724,6 +735,7 @@ function wirePages() {
   wireFiltreProcessus();
   wireSparklineModal();
   wireDetailsProcessus();
+  wireProductivityPage();
 }
 
 // Seuils d'alerte configurables (§5.7) : charge les valeurs enregistrees au
@@ -1073,40 +1085,57 @@ function journal(action) {
 // verifies que pendant qu'une session AURA est ouverte (F-22, §5.9) -
 // aucune surveillance hors session.
 
+// Construit la ligne DOM d'une tache (checkbox/pastille priorite/titre/
+// echeance/suppression), independamment de son conteneur - appelee une
+// fois par emplacement d'affichage (panneau lateral Projets + page AURA
+// Productivity, §16) puisqu'un meme noeud DOM ne peut pas vivre dans
+// deux parents a la fois.
+function construireLigneTache(task) {
+  const row = document.createElement('div');
+  row.className = `task-row ${task.status === 'completed' ? 'completed' : ''}`;
+  row.innerHTML = `
+    <input type="checkbox" ${task.status === 'completed' ? 'checked disabled' : ''}>
+    <span class="task-priority-dot ${task.priority}"></span>
+    <span class="task-title">${task.title}</span>
+    ${task.dueDate ? `<span class="task-due">${task.dueDate}</span>` : ''}
+    <button type="button" class="row-delete" title="Supprimer">✕</button>
+  `;
+  if (task.status !== 'completed') {
+    row.querySelector('input[type="checkbox"]').addEventListener('change', async () => {
+      try {
+        await window.aura.completeTask(task.id);
+        journal(`TACHE_TERMINEE : ${task.title}`);
+        loadTasks();
+      } catch (err) {
+        journal(`TACHE_ECHEC : ${err.message}`);
+      }
+      refreshJournalIfOpen();
+    });
+  }
+  row.querySelector('.row-delete').addEventListener('click', async () => {
+    await window.aura.deleteTask(task.id);
+    loadTasks();
+  });
+  return row;
+}
+
+// Emplacements d'affichage des taches/rappels (§7, §16) : le panneau
+// lateral Projets existe depuis le debut, la page AURA Productivity vient
+// s'y ajouter - un element absent (page pas encore ouverte cote DOM, non
+// le cas ici puisque la section existe toujours, juste masquee) serait
+// simplement ignore.
+const CIBLES_TACHES = ['tasks-list', 'productivity-tasks-list'];
+const CIBLES_RAPPELS = ['reminders-list', 'productivity-reminders-list'];
+
 function renderTasks(tasks) {
-  const list = document.getElementById('tasks-list');
+  const cibles = CIBLES_TACHES.map((id) => document.getElementById(id)).filter(Boolean);
   const active = tasks.filter((t) => t.status !== 'completed');
   const completed = tasks.filter((t) => t.status === 'completed');
   const ordered = [...active, ...completed];
-  if (!ordered.length) { list.textContent = 'Aucune tâche.'; return; }
-  list.innerHTML = '';
-  ordered.forEach((task) => {
-    const row = document.createElement('div');
-    row.className = `task-row ${task.status === 'completed' ? 'completed' : ''}`;
-    row.innerHTML = `
-      <input type="checkbox" ${task.status === 'completed' ? 'checked disabled' : ''}>
-      <span class="task-priority-dot ${task.priority}"></span>
-      <span class="task-title">${task.title}</span>
-      ${task.dueDate ? `<span class="task-due">${task.dueDate}</span>` : ''}
-      <button type="button" class="row-delete" title="Supprimer">✕</button>
-    `;
-    if (task.status !== 'completed') {
-      row.querySelector('input[type="checkbox"]').addEventListener('change', async () => {
-        try {
-          await window.aura.completeTask(task.id);
-          journal(`TACHE_TERMINEE : ${task.title}`);
-          loadTasks();
-        } catch (err) {
-          journal(`TACHE_ECHEC : ${err.message}`);
-        }
-        refreshJournalIfOpen();
-      });
-    }
-    row.querySelector('.row-delete').addEventListener('click', async () => {
-      await window.aura.deleteTask(task.id);
-      loadTasks();
-    });
-    list.appendChild(row);
+  cibles.forEach((list) => {
+    if (!ordered.length) { list.textContent = 'Aucune tâche.'; return; }
+    list.innerHTML = '';
+    ordered.forEach((task) => list.appendChild(construireLigneTache(task)));
   });
 }
 
@@ -1114,40 +1143,42 @@ async function loadTasks() {
   try {
     renderTasks(await window.aura.getTasks());
   } catch {
-    document.getElementById('tasks-list').textContent = 'Tâches indisponibles.';
+    CIBLES_TACHES.forEach((id) => { const el = document.getElementById(id); if (el) el.textContent = 'Tâches indisponibles.'; });
   }
 }
 
+function construireLigneRappel(reminder) {
+  const row = document.createElement('div');
+  row.className = 'reminder-row';
+  const when = new Date(reminder.at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+  const recur = reminder.recurring === 'daily' ? ' ↻ jour' : reminder.recurring === 'weekly' ? ' ↻ semaine' : '';
+  row.innerHTML = `
+    <span class="task-title">${reminder.text}</span>
+    <span class="task-due">${when}${recur}</span>
+    <button type="button" class="row-delete" title="Supprimer">✕</button>
+  `;
+  row.querySelector('.row-delete').addEventListener('click', async () => {
+    await window.aura.deleteReminder(reminder.id);
+    loadReminders();
+  });
+  return row;
+}
+
 function renderReminders(reminders) {
-  const list = document.getElementById('reminders-list');
-  const active = reminders.filter((r) => r.active);
-  if (!active.length) { list.textContent = 'Aucun rappel.'; return; }
-  list.innerHTML = '';
-  active
-    .sort((a, b) => new Date(a.at) - new Date(b.at))
-    .forEach((reminder) => {
-      const row = document.createElement('div');
-      row.className = 'reminder-row';
-      const when = new Date(reminder.at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-      const recur = reminder.recurring === 'daily' ? ' ↻ jour' : reminder.recurring === 'weekly' ? ' ↻ semaine' : '';
-      row.innerHTML = `
-        <span class="task-title">${reminder.text}</span>
-        <span class="task-due">${when}${recur}</span>
-        <button type="button" class="row-delete" title="Supprimer">✕</button>
-      `;
-      row.querySelector('.row-delete').addEventListener('click', async () => {
-        await window.aura.deleteReminder(reminder.id);
-        loadReminders();
-      });
-      list.appendChild(row);
-    });
+  const cibles = CIBLES_RAPPELS.map((id) => document.getElementById(id)).filter(Boolean);
+  const active = reminders.filter((r) => r.active).sort((a, b) => new Date(a.at) - new Date(b.at));
+  cibles.forEach((list) => {
+    if (!active.length) { list.textContent = 'Aucun rappel.'; return; }
+    list.innerHTML = '';
+    active.forEach((reminder) => list.appendChild(construireLigneRappel(reminder)));
+  });
 }
 
 async function loadReminders() {
   try {
     renderReminders(await window.aura.getReminders());
   } catch {
-    document.getElementById('reminders-list').textContent = 'Rappels indisponibles.';
+    CIBLES_RAPPELS.forEach((id) => { const el = document.getElementById(id); if (el) el.textContent = 'Rappels indisponibles.'; });
   }
 }
 
@@ -1165,17 +1196,25 @@ async function checkDueReminders() {
   }
 }
 
-function wireProductivity() {
-  document.getElementById('task-form').addEventListener('submit', async (e) => {
+// Cree une tache depuis un formulaire identifie par son prefixe d'id -
+// panneau lateral Projets (prefixe vide, ids historiques task-form/
+// task-title/...) ou page AURA Productivity (prefixe 'productivity-').
+// Factorise plutot que duplique : la seule difference entre les deux
+// emplacements est le prefixe des ids, toute la logique de creation
+// reste commune.
+function wireFormulaireTache(prefixe) {
+  document.getElementById(`${prefixe}task-form`).addEventListener('submit', async (e) => {
     e.preventDefault();
-    const title = document.getElementById('task-title').value.trim();
+    const titreInput = document.getElementById(`${prefixe}task-title`);
+    const dueInput = document.getElementById(`${prefixe}task-due`);
+    const title = titreInput.value.trim();
     if (!title) return;
-    const dueDate = document.getElementById('task-due').value || null;
-    const priority = document.getElementById('task-priority').value;
+    const dueDate = dueInput.value || null;
+    const priority = document.getElementById(`${prefixe}task-priority`).value;
     try {
       await window.aura.createTask({ title, dueDate, priority });
-      document.getElementById('task-title').value = '';
-      document.getElementById('task-due').value = '';
+      titreInput.value = '';
+      dueInput.value = '';
       journal(`TACHE_CREEE : ${title}`);
       loadTasks();
     } catch (err) {
@@ -1183,17 +1222,21 @@ function wireProductivity() {
     }
     refreshJournalIfOpen();
   });
+}
 
-  document.getElementById('reminder-form').addEventListener('submit', async (e) => {
+function wireFormulaireRappel(prefixe) {
+  document.getElementById(`${prefixe}reminder-form`).addEventListener('submit', async (e) => {
     e.preventDefault();
-    const text = document.getElementById('reminder-text').value.trim();
-    const at = document.getElementById('reminder-at').value;
-    const recurring = document.getElementById('reminder-recurring').value || null;
+    const texteInput = document.getElementById(`${prefixe}reminder-text`);
+    const atInput = document.getElementById(`${prefixe}reminder-at`);
+    const text = texteInput.value.trim();
+    const at = atInput.value;
+    const recurring = document.getElementById(`${prefixe}reminder-recurring`).value || null;
     if (!text || !at) return;
     try {
       await window.aura.createReminder({ text, at: new Date(at).toISOString(), recurring });
-      document.getElementById('reminder-text').value = '';
-      document.getElementById('reminder-at').value = '';
+      texteInput.value = '';
+      atInput.value = '';
       journal(`RAPPEL_PROGRAMME : ${text}`);
       loadReminders();
     } catch (err) {
@@ -1201,6 +1244,19 @@ function wireProductivity() {
     }
     refreshJournalIfOpen();
   });
+}
+
+function wireProductivity() {
+  wireFormulaireTache('');
+  wireFormulaireRappel('');
+}
+
+// Page AURA Productivity (§16) : memes formulaires que le panneau
+// lateral, juste un autre jeu d'ids (voir wireFormulaireTache/Rappel).
+function wireProductivityPage() {
+  document.getElementById('productivity-back').addEventListener('click', fermerPage);
+  wireFormulaireTache('productivity-');
+  wireFormulaireRappel('productivity-');
 }
 
 initGlobe();

@@ -308,6 +308,19 @@ html, body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 22px;
 }
+/* Page AURA Productivity (§16, §7) - deux cartes cote a cote plutot que
+   la grille a 3 colonnes de System Monitor (mal adaptee a seulement 2
+   sections). Cartes/en-tetes reutilisent .monitor-card tel quel. */
+.productivity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+/* Formulaire au-dessus de la liste plutot que le space-between de
+   .monitor-card-body (pense pour des lignes de metrique reparties sur
+   toute la hauteur, pas pour un formulaire suivi d'une liste). */
+.productivity-card-body { justify-content: flex-start; gap: 14px; }
+.productivity-card-body .inline-form { margin-bottom: 0; }
 /* Meme gabarit que .terminal-panel (bordure, rayon, en-tete) : chaque
    carte se lit comme une petite console plutot qu'un simple bloc de
    donnees. Pas de halo (box-shadow neutre uniquement, pour la
