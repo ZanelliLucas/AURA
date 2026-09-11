@@ -329,7 +329,6 @@ function rendreSystemMonitor(snap) {
     <div class="monitor-row"><span>Cœurs</span><span>${snap.cpu.cores ?? '—'}</span></div>
     <div class="monitor-row"><span>Fréquence</span><span>${snap.cpu.speedGhz ?? '—'} GHz</span></div>
     <div ${styleJauge(snap.cpu.loadPercent)}><span>Charge</span><span>${snap.cpu.loadPercent ?? '—'} %</span></div>
-    <div class="monitor-row"><span>Température</span><span>${snap.cpu.temperatureC ?? '—'} °C</span></div>
     <div class="monitor-row"><span>Actif depuis</span><span>${formatDuree(snap.uptimeSec)}</span></div>
   `;
 
@@ -376,6 +375,15 @@ function rendreSystemMonitor(snap) {
       `).join('')
     : 'Aucun processus.');
 
+  // Liste complete (facon Gestionnaire des taches) - toutes les
+  // applications/processus en cours, pas seulement le top 8 par CPU.
+  const tousProcessus = document.getElementById('monitor-all-processes');
+  tousProcessus.innerHTML = snap.allProcesses && snap.allProcesses.length
+    ? snap.allProcesses.map((p) => `
+        <div ${styleJauge(p.cpuPercent, 101)}><span>${p.name} (${p.pid})</span><span>${p.cpuPercent ?? 0} % CPU · ${p.memPercent ?? 0} % mém.</span></div>
+      `).join('')
+    : 'Aucun processus.';
+
   const batteryCard = document.getElementById('monitor-battery-card');
   batteryCard.hidden = !snap.battery;
   // Sans batterie, Reseau s'etend sur 2 colonnes pour combler la case
@@ -406,7 +414,7 @@ function rendreSystemMonitor(snap) {
 // Sur echec, les cartes qui n'affichaient encore que "Chargement…"
 // restaient ainsi indefiniment - toutes doivent basculer sur un etat
 // d'erreur explicite, pas seulement le CPU.
-const CARTES_MONITEUR = ['monitor-cpu', 'monitor-memory', 'monitor-gpu', 'monitor-disks', 'monitor-network', 'monitor-processes'];
+const CARTES_MONITEUR = ['monitor-cpu', 'monitor-memory', 'monitor-gpu', 'monitor-disks', 'monitor-network', 'monitor-processes', 'monitor-all-processes'];
 
 async function actualiserSystemMonitor() {
   try {

@@ -149,14 +149,10 @@ html, body {
   color: var(--white);
   font-weight: 500;
 }
-/* Titre ecrit comme la commande du Terminal qui a ouvert cette page (voir
-   #conversation-highlight, app.js) - meme convention de couleur : l'invite
-   en blanc, le verbe de commande en rouge. */
-.app-page-header h1 .invite { color: var(--white); }
-.app-page-header h1 .verbe { color: var(--red); }
 .app-page-updated {
   margin-left: auto;
   display: flex;
+  flex-direction: row-reverse;
   align-items: center;
   gap: 8px;
   font-size: 14px;
@@ -278,6 +274,16 @@ html, body {
   font-size: 13px;
   line-height: 1.8;
 }
+/* Liste longue (Gestionnaire des taches, jusqu'a 60 processus) : hauteur
+   plafonnee et defilement propre plutot que d'etirer la page a l'infini -
+   justify-content revient a flex-start, l'espacement egal n'a pas de sens
+   pour une liste qui deborde deja de la hauteur disponible. */
+.monitor-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  justify-content: flex-start;
+}
+
 .monitor-row {
   display: flex;
   justify-content: space-between;

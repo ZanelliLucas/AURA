@@ -20,10 +20,9 @@ function nomCpu(cpu) {
 }
 
 async function getSnapshot() {
-  const [cpu, load, temp, mem, graphics, fsSize, fsStats, netStats, processes, battery] = await Promise.all([
+  const [cpu, load, mem, graphics, fsSize, fsStats, netStats, processes, battery] = await Promise.all([
     si.cpu(),
     si.currentLoad(),
-    si.cpuTemperature().catch(() => ({ main: null })),
     si.mem(),
     si.graphics().catch(() => ({ controllers: [] })),
     si.fsSize(),
@@ -42,8 +41,10 @@ async function getSnapshot() {
       model: nomCpu(cpu),
       cores: cpu.cores,
       speedGhz: cpu.speed,
-      loadPercent: round1(load.currentLoad),
-      temperatureC: temp.main
+      loadPercent: round1(load.currentLoad)
+      // Pas de temperature : si.cpuTemperature() ne renvoie que des null
+      // sur ce type de machine (pas de zone thermique ACPI exposee sans
+      // logiciel constructeur/tiers) - pas une valeur a essayer d'afficher.
     },
     uptimeSec: si.time().uptime,
     memory: {
@@ -89,6 +90,14 @@ async function getSnapshot() {
       .slice(0, 8)
       .map((p) => ({ pid: p.pid, name: p.name, cpuPercent: round1(p.cpu), memPercent: round1(p.mem) })),
     processCount: processes.all,
+    // Liste complete (façon Gestionnaire des taches) - plafonnee a 60 pour
+    // eviter un payload qui grossit sans fin sur un poste tres charge,
+    // largement suffisant pour un panneau defilant.
+    allProcesses: processes.list
+      .slice()
+      .sort((a, b) => b.cpu - a.cpu)
+      .slice(0, 60)
+      .map((p) => ({ pid: p.pid, name: p.name, cpuPercent: round1(p.cpu), memPercent: round1(p.mem) })),
     battery: battery.hasBattery ? {
       percent: round1(battery.percent),
       isCharging: battery.isCharging,
