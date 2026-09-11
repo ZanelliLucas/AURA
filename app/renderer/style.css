@@ -359,11 +359,16 @@ html, body {
   padding-top: 14px;
   border-top: 1px solid var(--line-dim);
 }
+/* Gris (pas rouge) : le titre de la carte (.monitor-card h2) est deja
+   rouge juste au-dessus - un deuxieme label rouge a quelques pixels en
+   dessous fait doublon et dilue le rouge comme accent. Meme convention
+   que les autres petits libelles secondaires de l'app (.filter-label,
+   .side-panel h3, .monitor-processus-chemin span). */
 .autonomy-form-label {
   font-size: 10px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: var(--red);
+  color: var(--dim);
 }
 /* Unite affichee a cote du champ "minutes" - sans elle, la valeur seule
    (ex. "30") ne dit pas ce qu'elle mesure. */
