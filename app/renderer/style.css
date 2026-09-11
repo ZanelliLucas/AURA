@@ -149,6 +149,29 @@ html, body {
   color: var(--white);
   font-weight: 500;
 }
+/* Seuil d'alerte configurable (§5.7) - preference d'affichage locale,
+   voir chargerSeuilAlerte/definirSeuilAlerte, app.js. */
+.monitor-seuil {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dim);
+  letter-spacing: 0.3px;
+}
+.monitor-seuil input {
+  width: 48px;
+  background: rgba(245, 246, 247, 0.06);
+  border: 1px solid rgba(245, 246, 247, 0.16);
+  border-radius: 5px;
+  color: var(--white);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  padding: 3px 6px;
+  text-align: right;
+}
+.monitor-seuil input:focus { outline: none; border-color: var(--red); }
+
 .app-page-updated {
   margin-left: auto;
   display: flex;

@@ -301,13 +301,34 @@ function moEnGo(mo) {
   return mo == null ? null : Math.round(mo / 100) / 10;
 }
 
+// Seuil d'alerte configurable (§5.7, "Alertes configurables") : au-dela de
+// cette charge, CPU/Memoire/GPU/Disques se signalent visuellement (voir
+// styleJauge). Purement une preference d'affichage local (pas une action
+// sur le systeme) - stockee dans localStorage, pas cote serveur.
+const CLE_SEUIL_ALERTE = 'aura.monitorSeuilAlerte';
+const SEUIL_ALERTE_DEFAUT = 85;
+let seuilAlerteConfigure = SEUIL_ALERTE_DEFAUT;
+
+function chargerSeuilAlerte() {
+  const brut = Number(localStorage.getItem(CLE_SEUIL_ALERTE));
+  seuilAlerteConfigure = Number.isFinite(brut) && brut >= 50 && brut <= 99 ? brut : SEUIL_ALERTE_DEFAUT;
+  return seuilAlerteConfigure;
+}
+
+function definirSeuilAlerte(valeur) {
+  const v = Math.max(50, Math.min(99, Math.round(valeur) || SEUIL_ALERTE_DEFAUT));
+  seuilAlerteConfigure = v;
+  try { localStorage.setItem(CLE_SEUIL_ALERTE, String(v)); } catch { /* stockage indisponible (navigation privee, quota) - le reglage reste actif pour la session */ }
+  return v;
+}
+
 // Jauge de charge en fond de ligne (voir .monitor-row.avec-jauge, style.css) :
 // une classe et une variable CSS inline plutot qu'un chiffre isole, pour
 // que les charges se comparent d'un coup d'oeil. Au-dela de seuilAlerte,
 // la jauge et la valeur se distinguent visuellement (§5.7, "Alertes
 // configurables") - passer 101 desactive l'alerte (ex. charge par
 // processus, ou un pic isole n'indique pas un probleme systeme).
-function styleJauge(pourcentage, seuilAlerte = 85) {
+function styleJauge(pourcentage, seuilAlerte = seuilAlerteConfigure) {
   const p = Math.max(0, Math.min(100, pourcentage ?? 0));
   const alerte = p >= seuilAlerte ? ' jauge-alerte' : '';
   return `class="monitor-row avec-jauge${alerte}" style="--jauge:${p}%"`;
@@ -442,6 +463,19 @@ function fermerPage() {
 
 function wirePages() {
   document.getElementById('page-back').addEventListener('click', fermerPage);
+  wireSeuilAlerte();
+}
+
+// Seuil d'alerte configurable (§5.7) : charge la valeur enregistree au
+// demarrage, et sauvegarde + reactualise immediatement l'affichage a
+// chaque changement (sans attendre le prochain cycle de 3s).
+function wireSeuilAlerte() {
+  const input = document.getElementById('monitor-seuil-input');
+  input.value = chargerSeuilAlerte();
+  input.addEventListener('change', () => {
+    input.value = definirSeuilAlerte(input.valueAsNumber);
+    if (!document.getElementById('page-system-monitor').hidden) actualiserSystemMonitor();
+  });
 }
 
 function echapperHtml(texte) {

@@ -75,6 +75,11 @@
     <header class="app-page-header">
       <button id="page-back" type="button" class="app-page-back" aria-label="Retour">←</button>
       <h1>System Monitor</h1>
+      <label class="monitor-seuil" title="Charge a partir de laquelle une jauge se signale en alerte">
+        <span>Seuil d'alerte</span>
+        <input id="monitor-seuil-input" type="number" min="50" max="99" step="1">
+        <span>%</span>
+      </label>
       <span id="monitor-updated" class="app-page-updated"></span>
     </header>
     <div class="app-page-body custom-scroll">
