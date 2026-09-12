@@ -133,6 +133,16 @@ contextBridge.exposeInMainWorld('aura', {
     confirm: (options) => ipcRenderer.invoke('terminal:confirm', options),
     complete: (line) => ipcRenderer.invoke('terminal:complete', line),
     reveal: (target) => ipcRenderer.send('terminal:reveal', target),
-    vitals: () => ipcRenderer.invoke('terminal:vitals')
+    vitals: () => ipcRenderer.invoke('terminal:vitals'),
+    /**
+     * Annonces sans commande (surveillance sante/boite noire en arriere-plan) :
+     * `{ blocks }`, affiches dans le flux du Terminal ouvert.
+     * @returns {() => void} desabonnement
+     */
+    onNotice(callback) {
+      const listener = (_event, notice) => callback(notice);
+      ipcRenderer.on('terminal:notice', listener);
+      return () => ipcRenderer.removeListener('terminal:notice', listener);
+    }
   }
 });

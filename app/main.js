@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, dialog, ipcMain, shell, clipboard } = require('electron');
+const { app, BrowserWindow, session, dialog, ipcMain, shell, clipboard, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -6,6 +6,7 @@ const { autoUpdater } = require('electron-updater');
 const { startServer } = require('./server');
 const autonomy = require('./autonomy');
 const { createTerminal, fileStorage } = require('./terminal-core');
+const { createMonitors } = require('./terminal-monitors');
 
 // .env local de dev uniquement (cle API pour tester sans passer par
 // l'ecran de configuration) - jamais inclus dans le build packagee, voir
@@ -163,6 +164,53 @@ function setupSecurityBridge() {
 // disque/systeme), le rendu reste dans le renderer sandboxe.
 let terminal = null;
 
+// Reglages propres au Terminal integre (blackbox/healthWatch actives ou
+// non) - fichier dedie, pas store.js (dont les getters/setters sont deja
+// tous specifiques a AURA) : meme principe que terminal-session.json.
+const terminalSettingsFile = () => path.join(app.getPath('userData'), 'terminal-settings.json');
+function readTerminalSettings() {
+  try {
+    return JSON.parse(fs.readFileSync(terminalSettingsFile(), 'utf8'));
+  } catch {
+    return {};
+  }
+}
+function writeTerminalSettings(settings) {
+  fs.writeFileSync(terminalSettingsFile(), JSON.stringify(settings, null, 2));
+}
+
+/** Notifications OS visible d'ici (blackbox/sante) - garde en vie, sinon leur clic serait perdu. */
+const terminalNotices = new Set();
+
+// Suivi de sante + boite noire (§5, "ajoute la surveillance sante du PC
+// en arriere-plan") : porte de app/terminal-monitors.js (copie fidele de
+// TERMINAL/app/monitors.js). Note native ET blocs pousses vers l'interface
+// (terminal:notice) - le meme evenement s'affiche donc dans le flux du
+// Terminal ouvert (comme dans l'application TERMINAL d'origine) et comme
+// toast Windows (utile si la fenetre est ailleurs).
+function notifyTerminal({ title, body, blocks }) {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('terminal:notice', { blocks });
+  if (!Notification.isSupported()) return;
+  const notice = new Notification({ title, body, icon: path.join(__dirname, 'assets', 'icon.ico') });
+  terminalNotices.add(notice);
+  notice.on('close', () => terminalNotices.delete(notice));
+  notice.show();
+}
+
+let terminalMonitors = null;
+function getTerminalMonitors() {
+  if (!terminalMonitors) {
+    terminalMonitors = createMonitors({
+      userData: app.getPath('userData'),
+      packaged: app.isPackaged,
+      readSettings: readTerminalSettings,
+      writeSettings: writeTerminalSettings,
+      notify: notifyTerminal
+    });
+  }
+  return terminalMonitors;
+}
+
 function getTerminal() {
   if (terminal) return terminal;
   terminal = createTerminal({
@@ -180,12 +228,18 @@ function getTerminal() {
       }
       const error = await shell.openPath(target);
       if (error) throw new Error(error);
-    }
-    // console/startup/blackbox/healthWatch/selftest volontairement omis
-    // (v1) : sans eux, `run` bascule sur sa sortie texte non-interactive
-    // (voir terminal-core/commands/shell.js) et `demarrage`/`essai`/
-    // `sante suivi`/`boitenoire` renvoient une erreur claire plutot que de
-    // planter - fonctionnalites a part entiere, pas des trous caches.
+    },
+    // Boite noire + suivi de sante (idee "surveillance sante du PC en
+    // arriere-plan") : hotes des commandes `boitenoire`/`sante suivi`
+    // (terminal-core/commands/blackbox.js et health.js) - actives
+    // seulement en version installee, voir terminal-monitors.js#start.
+    blackbox: getTerminalMonitors().blackbox,
+    healthWatch: getTerminalMonitors().healthWatch
+    // console/startup/selftest volontairement omis (v1) : sans eux, `run`
+    // bascule sur sa sortie texte non-interactive (voir terminal-core/
+    // commands/shell.js) et `demarrage`/`essai` renvoient une erreur
+    // claire plutot que de planter - fonctionnalites a part entiere, pas
+    // des trous caches.
   });
   return terminal;
 }
@@ -301,6 +355,12 @@ app.whenReady().then(async () => {
   createWindow();
   checkForUpdates();
   startAutonomyTicker();
+  // Surveillance sante/boite noire (§5) : ne demarre qu'en version
+  // installee (voir terminal-monitors.js#start) - l'instance de
+  // developpement partage le meme dossier utilisateur et ecrirait dans
+  // les memes fichiers de suivi.
+  getTerminalMonitors().start();
+
 });
 
 // Auto-update (electron-updater). Inactif tant qu'aucune source de
@@ -326,5 +386,9 @@ app.on('window-all-closed', () => {
   // d'origine, sinon un `npm run dev` lance depuis le Terminal resterait
   // orphelin, port occupe.
   if (terminal) terminal.servers.stopAll();
+  // F-22 : aucune tache de fond ne doit survivre a la session - la
+  // surveillance sante/boite noire s'arrete avec la fenetre, contrairement
+  // a l'application TERMINAL autonome (qui continue cachee).
+  if (terminalMonitors) terminalMonitors.stop();
   app.quit();
 });

@@ -2948,7 +2948,15 @@ function creerTerminalSession({ output, statut, promptCibles, cheminCible, onMis
     if (lien) window.aura.terminal.reveal(lien.dataset.target);
   });
 
-  return { soumettre, etat, output, actualiserPrompt };
+  // Annonce sans commande (idee "surveillance sante du PC en
+  // arriere-plan") : la sante/boite noire pousse ses blocs directement
+  // dans le flux, sans ligne "> commande" qui precede (rien n'a ete tape),
+  // exactement comme dans l'application TERMINAL d'origine.
+  function ajouterNotice(blocs) {
+    ajouterBlocs(output, blocs);
+  }
+
+  return { soumettre, etat, output, actualiserPrompt, ajouterNotice };
 }
 
 /**
@@ -3138,6 +3146,20 @@ function initTerminalPopup() {
     // Pas de `statut`/`prompt` dedies ici : le popup est deliberement
     // minimal (progression/dossier courant restent l'affaire de la page
     // AURA TERMINAL, pensee pour un usage plus soutenu).
+  });
+
+  // Annonces de la surveillance sante/boite noire (idee "surveillance
+  // sante du PC en arriere-plan") - un seul abonnement ici (initTerminalPopup
+  // ne s'execute qu'une fois) plutot qu'un par surface : pousse vers
+  // celle(s) deja initialisee(s), la page AURA TERMINAL pouvant ne
+  // jamais avoir ete ouverte cette session.
+  window.aura.terminal.onNotice((notice) => {
+    const blocs = Array.isArray(notice.blocks) ? notice.blocks : [];
+    if (terminalPageSession) terminalPageSession.ajouterNotice(blocs);
+    if (terminalPopupSession) {
+      terminalPopupSession.ajouterNotice(blocs);
+      document.getElementById('conversation-output').hidden = false;
+    }
   });
 }
 
