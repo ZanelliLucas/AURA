@@ -1837,7 +1837,11 @@ function renderDepsResults({ resume, paquets }) {
     zone.innerHTML = '<p class="rule-empty">Aucune vulnérabilité connue détectée.</p>';
     return;
   }
-  const puces = ['critical', 'high', 'moderate', 'low'].filter((s) => resume[s]).map((s) =>
+  // 'info' inclus : sans lui, un audit ne comportant que des
+  // vulnerabilites de gravite info (resume.total > 0 malgre tout)
+  // affichait un bandeau de resume completement vide, alors que la
+  // liste des paquets en dessous les montrait bien.
+  const puces = ['critical', 'high', 'moderate', 'low', 'info'].filter((s) => resume[s]).map((s) =>
     `<span class="security-badge security-sev-${s}">${resume[s]} ${SEVERITE_LABELS[s]}</span>`
   ).join('');
   const liste = paquets.map((p) => `
