@@ -1808,6 +1808,13 @@ function wireAutonomyPage() {
 
 const SEVERITE_LABELS = { critical: 'critique', high: 'élevée', moderate: 'modérée', low: 'faible', info: 'info' };
 
+// Dossier de la derniere analyse de secrets (idee 3, retour utilisateur) :
+// les resultats n'ont que des chemins relatifs (security.js#scanSecrets) -
+// il faut se souvenir de la racine pour pouvoir recomposer un chemin
+// absolu au clic sur "localiser", meme si le champ dossier a change
+// entre-temps (nouvelle saisie sans relancer l'analyse).
+let dernierDossierSecrets = null;
+
 function actualiserHorodatageSecurity() {
   const el = document.getElementById('security-updated');
   if (el) el.textContent = new Date().toLocaleTimeString('fr-FR');
@@ -1823,7 +1830,7 @@ function renderSecretsResults({ fichiersAnalyses, resultats, tronque }) {
   zone.innerHTML = avertissement + resultats.map((r) => `
     <div class="security-finding">
       <div class="security-finding-header">
-        <span class="security-finding-file">${echapperHtml(r.fichier)}:${r.ligne}</span>
+        <button type="button" class="security-finding-file" data-fichier="${echapperHtml(r.fichier)}" title="Localiser dans l’explorateur">${echapperHtml(r.fichier)}:${r.ligne}</button>
         <span class="security-badge security-sev-critical">${echapperHtml(r.motif)}</span>
       </div>
       <div class="security-finding-snippet">${echapperHtml(r.extrait)}</div>
@@ -1856,6 +1863,44 @@ function renderDepsResults({ resume, paquets }) {
   zone.innerHTML = `<div class="security-summary">${puces}</div>${liste}`;
 }
 
+// Factorisees hors des ecouteurs de clic (idee 2, retour utilisateur) :
+// "Tout analyser" appelle les deux exactement comme les boutons
+// individuels, sans dupliquer la logique de recuperation/rendu/journal.
+async function lancerScanSecrets() {
+  const chemin = document.getElementById('security-path').value.trim();
+  const zone = document.getElementById('security-secrets-results');
+  if (!chemin) { zone.innerHTML = '<p class="rule-empty">Choisissez d’abord un dossier.</p>'; return; }
+  zone.innerHTML = '<p class="rule-empty">Analyse en cours…</p>';
+  try {
+    const resultat = await window.aura.scanSecrets(chemin);
+    dernierDossierSecrets = chemin;
+    renderSecretsResults(resultat);
+    journal(`SECURITY_SCAN_SECRETS : ${resultat.resultats.length} trouvaille(s) sur ${resultat.fichiersAnalyses} fichier(s)`);
+    actualiserHorodatageSecurity();
+  } catch (err) {
+    zone.innerHTML = `<p class="rule-empty">${echapperHtml(err.message)}</p>`;
+    journal(`SECURITY_SCAN_SECRETS_ECHEC : ${err.message}`);
+  }
+  refreshJournalIfOpen();
+}
+
+async function lancerAuditDeps() {
+  const chemin = document.getElementById('security-path').value.trim();
+  const zone = document.getElementById('security-deps-results');
+  if (!chemin) { zone.innerHTML = '<p class="rule-empty">Choisissez d’abord un dossier.</p>'; return; }
+  zone.innerHTML = '<p class="rule-empty">Audit en cours…</p>';
+  try {
+    const resultat = await window.aura.auditDependencies(chemin);
+    renderDepsResults(resultat);
+    journal(`SECURITY_AUDIT_DEPS : ${resultat.paquets.length} paquet(s) concerné(s)`);
+    actualiserHorodatageSecurity();
+  } catch (err) {
+    zone.innerHTML = `<p class="rule-empty">${echapperHtml(err.message)}</p>`;
+    journal(`SECURITY_AUDIT_DEPS_ECHEC : ${err.message}`);
+  }
+  refreshJournalIfOpen();
+}
+
 function wireSecurityPage() {
   document.getElementById('security-back').addEventListener('click', fermerPage);
 
@@ -1869,41 +1914,42 @@ function wireSecurityPage() {
   });
 
   document.getElementById('security-scan-secrets').addEventListener('click', async (e) => {
-    const chemin = document.getElementById('security-path').value.trim();
-    const zone = document.getElementById('security-secrets-results');
-    if (!chemin) { zone.innerHTML = '<p class="rule-empty">Choisissez d’abord un dossier.</p>'; return; }
     e.target.disabled = true;
-    zone.innerHTML = '<p class="rule-empty">Analyse en cours…</p>';
-    try {
-      const resultat = await window.aura.scanSecrets(chemin);
-      renderSecretsResults(resultat);
-      journal(`SECURITY_SCAN_SECRETS : ${resultat.resultats.length} trouvaille(s) sur ${resultat.fichiersAnalyses} fichier(s)`);
-      actualiserHorodatageSecurity();
-    } catch (err) {
-      zone.innerHTML = `<p class="rule-empty">${echapperHtml(err.message)}</p>`;
-      journal(`SECURITY_SCAN_SECRETS_ECHEC : ${err.message}`);
-    }
+    await lancerScanSecrets();
     e.target.disabled = false;
-    refreshJournalIfOpen();
   });
 
   document.getElementById('security-audit-deps').addEventListener('click', async (e) => {
-    const chemin = document.getElementById('security-path').value.trim();
-    const zone = document.getElementById('security-deps-results');
-    if (!chemin) { zone.innerHTML = '<p class="rule-empty">Choisissez d’abord un dossier.</p>'; return; }
     e.target.disabled = true;
-    zone.innerHTML = '<p class="rule-empty">Audit en cours…</p>';
-    try {
-      const resultat = await window.aura.auditDependencies(chemin);
-      renderDepsResults(resultat);
-      journal(`SECURITY_AUDIT_DEPS : ${resultat.paquets.length} paquet(s) concerné(s)`);
-      actualiserHorodatageSecurity();
-    } catch (err) {
-      zone.innerHTML = `<p class="rule-empty">${echapperHtml(err.message)}</p>`;
-      journal(`SECURITY_AUDIT_DEPS_ECHEC : ${err.message}`);
-    }
+    await lancerAuditDeps();
     e.target.disabled = false;
-    refreshJournalIfOpen();
+  });
+
+  // "Tout analyser" (idee 2) : les deux boutons individuels sont aussi
+  // desactives pendant l'execution combinee - sans ca, un clic dessus
+  // pendant que "Tout analyser" tourne deja relancerait la meme analyse
+  // en double sur la meme zone de resultat.
+  document.getElementById('security-scan-all').addEventListener('click', async (e) => {
+    const boutonSecrets = document.getElementById('security-scan-secrets');
+    const boutonDeps = document.getElementById('security-audit-deps');
+    e.target.disabled = true;
+    boutonSecrets.disabled = true;
+    boutonDeps.disabled = true;
+    await Promise.allSettled([lancerScanSecrets(), lancerAuditDeps()]);
+    e.target.disabled = false;
+    boutonSecrets.disabled = false;
+    boutonDeps.disabled = false;
+  });
+
+  // Localiser un fichier trouve (idee 3) : delegation sur le conteneur
+  // plutot qu'un ecouteur par ligne - renderSecretsResults() remplace
+  // entierement le contenu a chaque analyse, un ecouteur pose directement
+  // sur une ligne serait perdu au rendu suivant.
+  document.getElementById('security-secrets-results').addEventListener('click', async (e) => {
+    const bouton = e.target.closest('.security-finding-file');
+    if (!bouton || !dernierDossierSecrets) return;
+    const resultat = await window.aura.revealFile(dernierDossierSecrets, bouton.dataset.fichier);
+    if (!resultat.ok) journal(`SECURITY_LOCALISER_ECHEC : ${resultat.error}`);
   });
 }
 

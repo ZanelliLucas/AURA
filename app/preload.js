@@ -75,5 +75,6 @@ contextBridge.exposeInMainWorld('aura', {
   // depuis un renderer sandboxe/contextIsolation.
   chooseFolder: () => ipcRenderer.invoke('security:choose-folder'),
   scanSecrets: (path) => postJson('/api/security/scan-secrets', { path }),
-  auditDependencies: (path) => postJson('/api/security/audit-deps', { path })
+  auditDependencies: (path) => postJson('/api/security/audit-deps', { path }),
+  revealFile: (dossier, fichier) => ipcRenderer.invoke('security:reveal-file', dossier, fichier)
 });

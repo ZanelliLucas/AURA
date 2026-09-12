@@ -1,5 +1,6 @@
-const { app, BrowserWindow, session, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, session, dialog, ipcMain, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 const { startServer } = require('./server');
 const autonomy = require('./autonomy');
@@ -94,6 +95,21 @@ function setupSecurityBridge() {
   ipcMain.handle('security:choose-folder', async () => {
     const resultat = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
     return resultat.canceled ? null : resultat.filePaths[0];
+  });
+
+  // Localiser un fichier trouve par le scan de secrets (idee 3, retour
+  // utilisateur) - path.join ici (pas cote renderer, sandboxe, sans acces
+  // a Node) pour recomposer le chemin absolu depuis le dossier scanne et
+  // le chemin relatif du fichier. Verifie que le fichier existe avant
+  // d'ouvrir l'explorateur - un chemin perime (fichier supprime/deplace
+  // depuis le scan) ne doit pas echouer silencieusement dans le systeme
+  // d'exploitation sans que l'utilisateur comprenne pourquoi.
+  ipcMain.handle('security:reveal-file', (event, dossier, fichier) => {
+    if (!dossier || !fichier) return { ok: false, error: 'Chemin manquant.' };
+    const chemin = path.join(dossier, fichier);
+    if (!fs.existsSync(chemin)) return { ok: false, error: 'Fichier introuvable (deplace ou supprime depuis l’analyse).' };
+    shell.showItemInFolder(chemin);
+    return { ok: true };
   });
 }
 

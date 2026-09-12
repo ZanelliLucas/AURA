@@ -1345,6 +1345,22 @@ html, body {
 .security-finding:last-child { border-bottom: none; }
 .security-finding-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .security-finding-file { color: var(--white); word-break: break-all; }
+/* Fichier trouve par le scan de secrets (idee 3, retour utilisateur) :
+   bouton plutot que simple texte - localise le fichier dans
+   l'explorateur au clic (voir security:reveal-file, main.js). Reset des
+   styles natifs de <button> pour continuer a ressembler a
+   .security-finding-file (span) partout ailleurs (paquets vulnerables,
+   qui restent non cliquables). */
+button.security-finding-file {
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+button.security-finding-file:hover { color: var(--red); text-decoration: underline; }
 .security-finding-snippet { color: var(--dim); margin-top: 3px; word-break: break-all; }
 /* Badge de gravite - meme gabarit que .rule-mode (AURA AUTONOMY), rouge
    pour un secret trouve (toujours grave) ou une gravite npm critique/
