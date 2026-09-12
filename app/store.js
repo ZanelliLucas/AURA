@@ -204,6 +204,31 @@ function getRecentSecurityFolders() {
   return readJson('security-recents.json', []);
 }
 
+// --- Resultats ignores AURA SECURITY (§5, idee 1) --------------------
+// Faux positifs marques par l'utilisateur - scoped par dossier (un
+// resultat "normal" dans un projet peut etre un vrai secret dans un
+// autre). Cle composite fichier::ligne::motif plutot que le contenu du
+// match lui-meme : on ne stocke jamais le secret, meme masque.
+
+function getIgnoredFindings(dossier) {
+  const tout = readJson('security-ignores.json', {});
+  return tout[dossier] || [];
+}
+
+function ignoreFinding(dossier, cle) {
+  const tout = readJson('security-ignores.json', {});
+  tout[dossier] = [...new Set([...(tout[dossier] || []), cle])];
+  writeJson('security-ignores.json', tout);
+  return tout[dossier];
+}
+
+function clearIgnoredFindings(dossier) {
+  const tout = readJson('security-ignores.json', {});
+  delete tout[dossier];
+  writeJson('security-ignores.json', tout);
+  return [];
+}
+
 function addRecentSecurityFolder(dossier) {
   const recents = [dossier, ...getRecentSecurityFolders().filter((d) => d !== dossier)].slice(0, MAX_DOSSIERS_RECENTS);
   writeJson('security-recents.json', recents);
@@ -248,6 +273,9 @@ module.exports = {
   updateRule,
   getRecentSecurityFolders,
   addRecentSecurityFolder,
+  getIgnoredFindings,
+  ignoreFinding,
+  clearIgnoredFindings,
   getJournal,
   logAction
 };

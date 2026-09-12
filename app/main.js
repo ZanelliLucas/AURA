@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, session, dialog, ipcMain, shell, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
@@ -128,6 +128,14 @@ function setupSecurityBridge() {
     } catch (err) {
       return { ok: false, error: err.message };
     }
+  });
+
+  // Copier un chemin (idee 3) : module clipboard d'Electron plutot que
+  // navigator.clipboard cote renderer - setupPermissions() refuse sans
+  // exception toute demande de permission, ce qui aurait bloque l'API web.
+  ipcMain.handle('security:copy-to-clipboard', (event, texte) => {
+    clipboard.writeText(texte || '');
+    return { ok: true };
   });
 }
 

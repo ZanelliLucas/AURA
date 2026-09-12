@@ -35,11 +35,45 @@ const MOTIFS = [
   { nom: 'Affectation générique de secret', regex: /\b(api[_-]?key|secret[_-]?key|access[_-]?token|password|passwd)['"]?\s*[:=]\s*['"][^'"\s]{8,}['"]/gi }
 ];
 
-function estDossierExclu(nom) {
-  return DOSSIERS_EXCLUS.has(nom) || nom.startsWith('.');
+function estDossierExclu(nom, gitignore) {
+  return DOSSIERS_EXCLUS.has(nom) || nom.startsWith('.') || gitignore.motifsExacts.has(nom);
 }
 
-async function listerFichiers(racine) {
+function estFichierExclu(nom, gitignore) {
+  if (gitignore.motifsExacts.has(nom)) return true;
+  const ext = path.extname(nom).toLowerCase();
+  return gitignore.motifsExtension.has(ext);
+}
+
+// Lit le .gitignore du dossier analyse (idee 4, retour utilisateur) pour
+// exclure aussi ses propres dossiers/extensions de build - en plus des
+// exclusions par defaut ci-dessus, pas a leur place (node_modules/.git
+// restent exclus meme sans .gitignore). Ne gere qu'un sous-ensemble
+// simple de la syntaxe gitignore (noms/extensions litteraux) : pas de
+// negation (!motif), pas de motifs a chemin compose (a/b), pas de
+// glob complexe - suffisant pour la grande majorite des projets reels
+// (node_modules, dist, *.log, .env...), pas un parseur gitignore complet.
+function lireGitignore(racine) {
+  const motifsExacts = new Set();
+  const motifsExtension = new Set();
+  try {
+    const contenu = fs.readFileSync(path.join(racine, '.gitignore'), 'utf8');
+    contenu.split('\n').forEach((ligneBrute) => {
+      const ligne = ligneBrute.trim();
+      if (!ligne || ligne.startsWith('#') || ligne.startsWith('!')) return;
+      const nettoyee = ligne.replace(/^\/+/, '').replace(/\/+$/, '');
+      if (!nettoyee || nettoyee.includes('/')) return;
+      if (nettoyee.startsWith('*.') && !nettoyee.slice(2).includes('*')) {
+        motifsExtension.add(nettoyee.slice(1));
+      } else if (!nettoyee.includes('*')) {
+        motifsExacts.add(nettoyee);
+      }
+    });
+  } catch { /* pas de .gitignore, ou illisible - exclusions par defaut seulement */ }
+  return { motifsExacts, motifsExtension };
+}
+
+async function listerFichiers(racine, gitignore) {
   const fichiers = [];
   async function parcourir(dossier) {
     if (fichiers.length >= MAX_FICHIERS) return;
@@ -54,8 +88,8 @@ async function listerFichiers(racine) {
       if (entree.isSymbolicLink()) continue; // evite les boucles et les sorties du dossier choisi
       const chemin = path.join(dossier, entree.name);
       if (entree.isDirectory()) {
-        if (!estDossierExclu(entree.name)) await parcourir(chemin);
-      } else if (entree.isFile() && EXTENSIONS_TEXTE.has(path.extname(entree.name).toLowerCase())) {
+        if (!estDossierExclu(entree.name, gitignore)) await parcourir(chemin);
+      } else if (entree.isFile() && !estFichierExclu(entree.name, gitignore) && EXTENSIONS_TEXTE.has(path.extname(entree.name).toLowerCase())) {
         fichiers.push(chemin);
       }
     }
@@ -92,7 +126,13 @@ async function scanSecrets(dossierCible) {
   }
   store.addRecentSecurityFolder(dossierCible);
 
-  const fichiers = await listerFichiers(dossierCible);
+  const gitignore = lireGitignore(dossierCible);
+  const fichiers = await listerFichiers(dossierCible, gitignore);
+  // Faux positifs deja marques par l'utilisateur pour ce dossier (idee 1)
+  // - filtres avant meme d'atteindre MAX_RESULTATS, pour qu'ils ne
+  // prennent pas la place de vraies nouvelles trouvailles dans le plafond.
+  const ignores = new Set(store.getIgnoredFindings(dossierCible));
+  let ignoresAppliques = 0;
   const resultats = [];
   for (const fichier of fichiers) {
     if (resultats.length >= MAX_RESULTATS) break;
@@ -104,21 +144,26 @@ async function scanSecrets(dossierCible) {
     } catch {
       continue; // fichier illisible/binaire malgre son extension - ignore
     }
+    // split/join : uniformise en '/' meme sur Windows (path.relative y
+    // rend des '\\'), coherent avec le chemin du dossier lui-meme affiche
+    // avec des '/' dans le champ de saisie.
+    const fichierRelatif = path.relative(dossierCible, fichier).split(path.sep).join('/');
     const lignes = contenu.split('\n');
     for (let i = 0; i < lignes.length && resultats.length < MAX_RESULTATS; i++) {
       for (const motif of MOTIFS) {
         motif.regex.lastIndex = 0;
         const match = motif.regex.exec(lignes[i]);
         if (match) {
-          resultats.push({
-            // split/join : uniformise en '/' meme sur Windows (path.relative
-            // y rend des '\\'), coherent avec le chemin du dossier lui-meme
-            // affiche avec des '/' dans le champ de saisie.
-            fichier: path.relative(dossierCible, fichier).split(path.sep).join('/'),
-            ligne: i + 1,
-            motif: motif.nom,
-            extrait: redigerExtrait(lignes[i], match.index, match[0].length)
-          });
+          if (ignores.has(`${fichierRelatif}::${i + 1}::${motif.nom}`)) {
+            ignoresAppliques++;
+          } else {
+            resultats.push({
+              fichier: fichierRelatif,
+              ligne: i + 1,
+              motif: motif.nom,
+              extrait: redigerExtrait(lignes[i], match.index, match[0].length)
+            });
+          }
           break; // un seul motif signale par ligne suffit a alerter
         }
       }
@@ -129,7 +174,7 @@ async function scanSecrets(dossierCible) {
     typeAction: 'security.scan_secrets', sensibilite: 'lecture', statut: 'execute',
     details: { dossier: dossierCible, fichiersAnalyses: fichiers.length, trouvailles: resultats.length }
   });
-  return { fichiersAnalyses: fichiers.length, resultats, tronque: fichiers.length >= MAX_FICHIERS };
+  return { fichiersAnalyses: fichiers.length, resultats, tronque: fichiers.length >= MAX_FICHIERS, ignoresAppliques };
 }
 
 // npm audit --json sort avec un code de sortie non-zero des qu'il trouve
@@ -228,9 +273,21 @@ function corrigerDependance(dossierCible, correctif) {
   });
 }
 
+// Historique (idee 5) : reutilise le journal d'actions existant plutot
+// qu'un stockage dedie - filtre juste les entrees security.* sur une
+// fenetre plus large que les 20 dernieres entrees globales
+// (store.getJournal, utilisees par le panneau Activite), pour ne pas
+// se faire evincer par des actions d'autres pages entre deux analyses.
+function getHistory() {
+  return store.getJournal(200).filter((e) => e.typeAction.startsWith('security.'));
+}
+
 module.exports = {
   scanSecrets,
   auditerDependances,
   corrigerDependance,
-  getRecentFolders: () => store.getRecentSecurityFolders()
+  getRecentFolders: () => store.getRecentSecurityFolders(),
+  ignoreFinding: (dossier, fichier, ligne, motif) => store.ignoreFinding(dossier, `${fichier}::${ligne}::${motif}`),
+  clearIgnoredFindings: (dossier) => store.clearIgnoredFindings(dossier),
+  getHistory
 };

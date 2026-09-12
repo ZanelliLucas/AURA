@@ -339,7 +339,10 @@
       </div>
       <div class="productivity-grid">
         <section class="monitor-card">
-          <h2><span class="monitor-card-titre">Secrets</span></h2>
+          <h2>
+            <span class="monitor-card-titre">Secrets</span>
+            <div class="monitor-tri" id="security-secrets-filters"></div>
+          </h2>
           <div class="monitor-card-body productivity-card-body">
             <div class="inline-form">
               <button id="security-scan-secrets" type="button">Analyser les secrets</button>
@@ -348,12 +351,21 @@
           </div>
         </section>
         <section class="monitor-card">
-          <h2><span class="monitor-card-titre">Dépendances</span></h2>
+          <h2>
+            <span class="monitor-card-titre">Dépendances</span>
+            <div class="monitor-tri" id="security-deps-filters"></div>
+          </h2>
           <div class="monitor-card-body productivity-card-body">
             <div class="inline-form">
               <button id="security-audit-deps" type="button">Auditer les dépendances</button>
             </div>
             <div id="security-deps-results" class="monitor-scroll custom-scroll">Sélectionnez un dossier, puis lancez l'audit.</div>
+          </div>
+        </section>
+        <section class="monitor-card monitor-card-wide">
+          <h2><span class="monitor-card-titre">Historique récent</span></h2>
+          <div class="monitor-card-body productivity-card-body">
+            <div id="security-history" class="monitor-scroll custom-scroll">Aucune analyse effectuée.</div>
           </div>
         </section>
       </div>

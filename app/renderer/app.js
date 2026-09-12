@@ -721,6 +721,7 @@ function ouvrirPageCategorie(id) {
     document.getElementById('page-security').hidden = false;
     actualiserHorodatageSecurity();
     chargerDossiersRecents();
+    chargerHistoriqueSecurity();
     journal('PAGE_OUVERTE : AURA SECURITY');
   }
 }
@@ -1849,26 +1850,65 @@ async function chargerDossiersRecents() {
   } catch { /* API locale indisponible - la liste reste vide, sans consequence */ }
 }
 
-function renderSecretsResults({ fichiersAnalyses, resultats, tronque }) {
+// Filtres (idee 2, retour utilisateur) : etat courant + derniers
+// resultats bruts, pour re-rendre localement au clic sur un filtre sans
+// relancer une analyse. Un seul type/gravite ne vaut pas la peine d'un
+// filtre - les boutons ne sont generes que si au moins deux valeurs
+// distinctes sont presentes (voir renderSecretsResults/renderDepsResults).
+let filtreSecretsMotif = 'toutes';
+let filtreDepsGravite = 'toutes';
+
+function renderSecretsResults({ fichiersAnalyses, resultats, tronque, ignoresAppliques }) {
   const zone = document.getElementById('security-secrets-results');
+  const zoneFiltres = document.getElementById('security-secrets-filters');
+
+  const motifs = [...new Set(resultats.map((r) => r.motif))];
+  if (!filtreSecretsMotif || (filtreSecretsMotif !== 'toutes' && !motifs.includes(filtreSecretsMotif))) filtreSecretsMotif = 'toutes';
+  zoneFiltres.innerHTML = motifs.length < 2 ? '' : ['toutes', ...motifs].map((m) =>
+    `<button type="button" class="filter-btn${m === filtreSecretsMotif ? ' active' : ''}" data-motif="${echapperHtml(m)}">${m === 'toutes' ? 'Toutes' : echapperHtml(m)}</button>`
+  ).join('');
+
   if (!resultats.length) {
     zone.innerHTML = `<p class="rule-empty">Aucun secret détecté sur ${fichiersAnalyses} fichier(s) analysé(s).</p>`;
     return;
   }
-  const avertissement = tronque ? '<p class="rule-empty">Dossier volumineux : analyse partielle (limite de fichiers atteinte).</p>' : '';
-  zone.innerHTML = avertissement + resultats.map((r) => `
+  const filtres = filtreSecretsMotif === 'toutes' ? resultats : resultats.filter((r) => r.motif === filtreSecretsMotif);
+
+  const avertissements = [];
+  if (tronque) avertissements.push('<p class="rule-empty">Dossier volumineux : analyse partielle (limite de fichiers atteinte).</p>');
+  if (ignoresAppliques) {
+    avertissements.push(`<p class="rule-empty">${ignoresAppliques} résultat(s) marqué(s) faux positif masqué(s) — <button type="button" id="security-reset-ignores" class="security-link-btn">réinitialiser</button></p>`);
+  }
+  if (!filtres.length) {
+    zone.innerHTML = avertissements.join('') + '<p class="rule-empty">Aucun résultat pour ce filtre.</p>';
+    return;
+  }
+
+  zone.innerHTML = avertissements.join('') + filtres.map((r) => `
     <div class="security-finding">
       <div class="security-finding-header">
         <button type="button" class="security-finding-file" data-fichier="${echapperHtml(r.fichier)}" title="Localiser dans l’explorateur">${echapperHtml(r.fichier)}:${r.ligne}</button>
         <span class="security-badge security-sev-critical">${echapperHtml(r.motif)}</span>
       </div>
       <div class="security-finding-snippet">${echapperHtml(r.extrait)}</div>
+      <div class="security-finding-actions">
+        <button type="button" class="security-link-btn security-copy-btn" data-fichier="${echapperHtml(r.fichier)}">Copier le chemin</button>
+        <button type="button" class="security-link-btn security-ignore-btn" data-fichier="${echapperHtml(r.fichier)}" data-ligne="${r.ligne}" data-motif="${echapperHtml(r.motif)}">Ignorer (faux positif)</button>
+      </div>
     </div>
   `).join('');
 }
 
 function renderDepsResults({ resume, paquets }) {
   const zone = document.getElementById('security-deps-results');
+  const zoneFiltres = document.getElementById('security-deps-filters');
+
+  const gravites = [...new Set(paquets.map((p) => p.gravite))];
+  if (!filtreDepsGravite || (filtreDepsGravite !== 'toutes' && !gravites.includes(filtreDepsGravite))) filtreDepsGravite = 'toutes';
+  zoneFiltres.innerHTML = gravites.length < 2 ? '' : ['toutes', ...gravites].map((g) =>
+    `<button type="button" class="filter-btn${g === filtreDepsGravite ? ' active' : ''}" data-gravite="${g}">${g === 'toutes' ? 'Toutes' : (SEVERITE_LABELS[g] || g)}</button>`
+  ).join('');
+
   if (!resume.total) {
     zone.innerHTML = '<p class="rule-empty">Aucune vulnérabilité connue détectée.</p>';
     return;
@@ -1880,11 +1920,18 @@ function renderDepsResults({ resume, paquets }) {
   const puces = ['critical', 'high', 'moderate', 'low', 'info'].filter((s) => resume[s]).map((s) =>
     `<span class="security-badge security-sev-${s}">${resume[s]} ${SEVERITE_LABELS[s]}</span>`
   ).join('');
+
+  const filtres = filtreDepsGravite === 'toutes' ? paquets : paquets.filter((p) => p.gravite === filtreDepsGravite);
+  if (!filtres.length) {
+    zone.innerHTML = `<div class="security-summary">${puces}</div><p class="rule-empty">Aucun résultat pour ce filtre.</p>`;
+    return;
+  }
+
   // Bouton "Corriger" (idee 5) uniquement quand le correctif est une
   // specification precise ("paquet@version", produite par npm audit lui-
   // meme) - le cas generique ("npm audit fix", fixAvailable:true sans
   // nom/version precis) n'a pas de cible unique a proposer en un clic.
-  const liste = paquets.map((p) => `
+  const liste = filtres.map((p) => `
     <div class="security-finding">
       <div class="security-finding-header">
         <span class="security-finding-file">${echapperHtml(p.nom)}</span>
@@ -1895,6 +1942,24 @@ function renderDepsResults({ resume, paquets }) {
     </div>
   `).join('');
   zone.innerHTML = `<div class="security-summary">${puces}</div>${liste}`;
+}
+
+// Historique recent (idee 5) - reutilise le journal existant
+// (security.js#getHistory), pas de stockage dedie.
+async function chargerHistoriqueSecurity() {
+  const zone = document.getElementById('security-history');
+  try {
+    const entries = await window.aura.getSecurityHistory();
+    if (!entries.length) { zone.innerHTML = 'Aucune analyse effectuée.'; return; }
+    zone.innerHTML = entries.slice(0, 15).map((e) => `
+      <div class="security-history-entry${e.statut === 'echoue' ? ' security-history-entry-echec' : ''}">
+        <span class="security-history-time">${formatDerniereExecution(e.date)}</span>
+        <span class="security-history-message">${echapperHtml(formatJournalMessage(e))}</span>
+      </div>
+    `).join('');
+  } catch {
+    zone.innerHTML = 'Historique indisponible.';
+  }
 }
 
 // Factorisees hors des ecouteurs de clic (idee 2, retour utilisateur) :
@@ -1913,6 +1978,7 @@ async function lancerScanSecrets() {
     journal(`SECURITY_SCAN_SECRETS : ${resultat.resultats.length} trouvaille(s) sur ${resultat.fichiersAnalyses} fichier(s)`);
     actualiserHorodatageSecurity();
     chargerDossiersRecents();
+    chargerHistoriqueSecurity();
   } catch (err) {
     zone.innerHTML = `<p class="rule-empty">${echapperHtml(err.message)}</p>`;
     journal(`SECURITY_SCAN_SECRETS_ECHEC : ${err.message}`);
@@ -1932,6 +1998,7 @@ async function lancerAuditDeps() {
     journal(`SECURITY_AUDIT_DEPS : ${resultat.paquets.length} paquet(s) concerné(s)`);
     actualiserHorodatageSecurity();
     chargerDossiersRecents();
+    chargerHistoriqueSecurity();
   } catch (err) {
     zone.innerHTML = `<p class="rule-empty">${echapperHtml(err.message)}</p>`;
     journal(`SECURITY_AUDIT_DEPS_ECHEC : ${err.message}`);
@@ -2011,15 +2078,72 @@ function wireSecurityPage() {
     boutonDeps.disabled = false;
   });
 
-  // Localiser un fichier trouve (idee 3) : delegation sur le conteneur
-  // plutot qu'un ecouteur par ligne - renderSecretsResults() remplace
-  // entierement le contenu a chaque analyse, un ecouteur pose directement
-  // sur une ligne serait perdu au rendu suivant.
+  // Localiser/copier/ignorer un resultat (idees 1 et 3) : delegation sur
+  // le conteneur plutot qu'un ecouteur par ligne - renderSecretsResults()
+  // remplace entierement le contenu a chaque analyse/filtre, un ecouteur
+  // pose directement sur une ligne serait perdu au rendu suivant.
   document.getElementById('security-secrets-results').addEventListener('click', async (e) => {
-    const bouton = e.target.closest('.security-finding-file');
-    if (!bouton || !dernierDossierSecrets) return;
-    const resultat = await window.aura.revealFile(dernierDossierSecrets, bouton.dataset.fichier);
-    if (!resultat.ok) journal(`SECURITY_LOCALISER_ECHEC : ${resultat.error}`);
+    const boutonLocaliser = e.target.closest('.security-finding-file');
+    if (boutonLocaliser) {
+      if (!dernierDossierSecrets) return;
+      const resultat = await window.aura.revealFile(dernierDossierSecrets, boutonLocaliser.dataset.fichier);
+      if (!resultat.ok) journal(`SECURITY_LOCALISER_ECHEC : ${resultat.error}`);
+      return;
+    }
+    const boutonCopier = e.target.closest('.security-copy-btn');
+    if (boutonCopier) {
+      if (!dernierDossierSecrets) return;
+      await window.aura.copyToClipboard(`${dernierDossierSecrets}/${boutonCopier.dataset.fichier}`);
+      journal('SECURITY_CHEMIN_COPIE');
+      return;
+    }
+    const boutonIgnorer = e.target.closest('.security-ignore-btn');
+    if (boutonIgnorer) {
+      if (!dernierDossierSecrets) return;
+      try {
+        await window.aura.ignoreFinding(dernierDossierSecrets, boutonIgnorer.dataset.fichier, boutonIgnorer.dataset.ligne, boutonIgnorer.dataset.motif);
+        journal(`SECURITY_IGNORE_AJOUTE : ${boutonIgnorer.dataset.fichier}:${boutonIgnorer.dataset.ligne}`);
+        // Retire juste cette ligne plutot que de relancer un scan complet
+        // - le backend ne la resurfacera plus au prochain scan de toute
+        // facon (voir security.js#scanSecrets, filtre des ignores).
+        boutonIgnorer.closest('.security-finding').remove();
+        if (dernierResultatSecrets) {
+          dernierResultatSecrets.resultats = dernierResultatSecrets.resultats.filter((r) =>
+            !(r.fichier === boutonIgnorer.dataset.fichier && String(r.ligne) === boutonIgnorer.dataset.ligne && r.motif === boutonIgnorer.dataset.motif)
+          );
+        }
+      } catch (err) {
+        journal(`SECURITY_IGNORE_ECHEC : ${err.message}`);
+      }
+      return;
+    }
+    const boutonReset = e.target.closest('#security-reset-ignores');
+    if (boutonReset) {
+      if (!dernierDossierSecrets) return;
+      try {
+        await window.aura.clearIgnoredFindings(dernierDossierSecrets);
+        journal('SECURITY_IGNORES_REINITIALISES');
+        await lancerScanSecrets();
+      } catch (err) {
+        journal(`SECURITY_IGNORES_REINITIALISATION_ECHEC : ${err.message}`);
+      }
+    }
+  });
+
+  // Filtres (idee 2) : re-rendent localement depuis les derniers
+  // resultats bruts, sans relancer d'analyse.
+  document.getElementById('security-secrets-filters').addEventListener('click', (e) => {
+    const bouton = e.target.closest('.filter-btn');
+    if (!bouton || !dernierResultatSecrets) return;
+    filtreSecretsMotif = bouton.dataset.motif;
+    renderSecretsResults(dernierResultatSecrets);
+  });
+
+  document.getElementById('security-deps-filters').addEventListener('click', (e) => {
+    const bouton = e.target.closest('.filter-btn');
+    if (!bouton || !dernierResultatDeps) return;
+    filtreDepsGravite = bouton.dataset.gravite;
+    renderDepsResults(dernierResultatDeps);
   });
 
   // Dossiers recents (idee 1) : remplit juste le champ, comme "Parcourir…"

@@ -1425,3 +1425,43 @@ button.security-finding-file:hover { color: var(--red); text-decoration: underli
 .security-fix-btn:hover { color: var(--white); border-color: var(--red); }
 .security-fix-btn.confirm-armed { background: var(--red); border-color: var(--red); color: var(--white); }
 .security-fix-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* Copier/Ignorer un resultat (idees 1 et 3) - texte seul, meme registre
+   discret que #autonomy-rule-cancel : ce sont des actions secondaires
+   sur une ligne deja chargee (fichier, badge, extrait), pas besoin d'un
+   bouton plein qui concurrencerait "Corriger"/"Localiser". */
+/* Filtres dynamiques (idee 2) : vides avant la premiere analyse (un seul
+   type de secret/gravite ne vaut pas la peine d'un filtre) - masque le
+   pilulier .monitor-tri entier plutot que de laisser une bordure/fond
+   vides flotter dans l'en-tete de carte. Scope par id (pas .monitor-tri
+   generique) : les autres usages de cette classe (AURA AUTONOMY,
+   Gestionnaire des taches) ont toujours du contenu statique. */
+#security-secrets-filters:empty, #security-deps-filters:empty { display: none; }
+.security-finding-actions { display: flex; gap: 14px; margin-top: 6px; }
+.security-link-btn {
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.security-link-btn:hover { color: var(--white); }
+
+/* Historique recent (idee 5) - liste compacte, une ligne par entree du
+   journal (reutilise store.js#getJournal via security.js#getHistory) :
+   horodatage relatif a gauche (meme fonction que les autres pages,
+   formatDerniereExecution), message a droite. */
+.security-history-entry {
+  display: flex;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(245, 246, 247, 0.08);
+  font-size: 12px;
+}
+.security-history-entry:last-child { border-bottom: none; }
+.security-history-time { flex-shrink: 0; width: 90px; color: var(--dim); }
+.security-history-message { color: var(--white); }
+.security-history-entry.security-history-entry-echec .security-history-message { color: var(--red); }

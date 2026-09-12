@@ -181,6 +181,21 @@ function startServer() {
     }
   });
 
+  // Faux positifs (idee 1) - purement du confort d'UI, pas d'action a
+  // journaliser (comme le choix de dossier natif).
+  server.post('/api/security/ignore-finding', (req, res) => {
+    const { path: dossier, fichier, ligne, motif } = req.body;
+    res.json(security.ignoreFinding(dossier, fichier, ligne, motif));
+  });
+
+  server.post('/api/security/clear-ignores', (req, res) => {
+    res.json(security.clearIgnoredFindings(req.body.path));
+  });
+
+  server.get('/api/security/history', (req, res) => {
+    res.json(security.getHistory());
+  });
+
   return new Promise((resolve, reject) => {
     const instance = server.listen(PORT, HOST, () => {
       console.log(`[server] API AURA locale sur http://${HOST}:${PORT}`);

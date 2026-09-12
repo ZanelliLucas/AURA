@@ -79,5 +79,12 @@ contextBridge.exposeInMainWorld('aura', {
   revealFile: (dossier, fichier) => ipcRenderer.invoke('security:reveal-file', dossier, fichier),
   getRecentSecurityFolders: () => getJson('/api/security/recent-folders'),
   fixDependency: (path, correctif) => postJson('/api/security/fix-dependency', { path, correctif }),
-  exportSecurityReport: (contenu) => ipcRenderer.invoke('security:export-report', contenu)
+  exportSecurityReport: (contenu) => ipcRenderer.invoke('security:export-report', contenu),
+  ignoreFinding: (path, fichier, ligne, motif) => postJson('/api/security/ignore-finding', { path, fichier, ligne, motif }),
+  clearIgnoredFindings: (path) => postJson('/api/security/clear-ignores', { path }),
+  getSecurityHistory: () => getJson('/api/security/history'),
+  // clipboard direct (module Electron, pas l'API web navigator.clipboard) :
+  // le gestionnaire de permissions (main.js#setupPermissions) refuse tout
+  // sans exception, ce qui aurait bloque un appel navigator.clipboard.
+  copyToClipboard: (texte) => ipcRenderer.invoke('security:copy-to-clipboard', texte)
 });
