@@ -1078,15 +1078,86 @@ async function loadJournal() {
   }
 }
 
-// Rafraichit la zone de rendu si le panneau Activité est deja ouvert -
-// reste purement passif (n'ouvre jamais le panneau lui-meme) sinon.
+// Logs du systeme (panneau lateral gauche, §16.1) : memes entrees que le
+// panneau Activite (window.aura.getJournal(), meme journal d'actions
+// store.js#logAction), mais regroupees par minute et affichees en frise
+// chronologique plutot qu'en liste filtrable - un flux "console systeme"
+// a l'ouverture du panneau, pas un outil de recherche.
+function formatHeureMinute(dateIso) {
+  return new Date(dateIso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Les entrees arrivent deja triees du plus recent au plus ancien
+// (store.js#getJournal) - un groupe se cree des que la minute change,
+// jamais re-ouvert ensuite.
+function grouperLogsParMinute(entries) {
+  const groupes = [];
+  for (const entry of entries) {
+    const heure = formatHeureMinute(entry.date);
+    const dernier = groupes[groupes.length - 1];
+    if (dernier && dernier.heure === heure) {
+      dernier.entries.push(entry);
+    } else {
+      groupes.push({ heure, entries: [entry] });
+    }
+  }
+  return groupes;
+}
+
+function actualiserPiedSystemLogs() {
+  const horloge = document.getElementById('system-logs-clock');
+  const version = document.getElementById('system-logs-version');
+  if (horloge) {
+    horloge.textContent = new Date().toLocaleString('fr-FR', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+  }
+  if (version) version.textContent = `AURA v${window.aura.version}`;
+}
+
+function renderSystemLogs(entries) {
+  const zone = document.getElementById('system-logs-list');
+  if (!entries.length) {
+    zone.textContent = 'Aucune entrée pour l’instant.';
+  } else {
+    zone.innerHTML = grouperLogsParMinute(entries).map((groupe) => `
+      <div class="system-log-group">
+        <div class="system-log-marker">
+          <span class="system-log-dot"></span>
+          <span class="system-log-time">${groupe.heure}</span>
+        </div>
+        <div class="system-log-lines">
+          ${groupe.entries.map((e) => `<div class="system-log-line${e.statut === 'echoue' ? ' system-log-line-echec' : ''}">&gt; ${echapperHtml(formatJournalMessage(e))}</div>`).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+  actualiserPiedSystemLogs();
+}
+
+async function loadSystemLogs() {
+  try {
+    renderSystemLogs(await window.aura.getJournal());
+  } catch {
+    document.getElementById('system-logs-list').textContent = 'Journal indisponible.';
+  }
+}
+
+// Rafraichit les zones de rendu des panneaux deja ouverts - reste
+// purement passif (n'ouvre jamais un panneau lui-meme) sinon. Suffit a
+// tenir les logs du systeme a jour sans minuterie propre : tout endroit
+// de l'app qui declenche deja une action (creation de tache, regle
+// testee, etc.) appelle cette meme fonction.
 function refreshJournalIfOpen() {
   if (document.getElementById('panel-context').classList.contains('open')) loadJournal();
+  if (document.getElementById('panel-projects').classList.contains('open')) loadSystemLogs();
 }
 
 function wirePanels() {
   document.getElementById('toggle-projects').addEventListener('click', () => {
-    document.getElementById('panel-projects').classList.toggle('open');
+    const panel = document.getElementById('panel-projects');
+    const opening = panel.classList.toggle('open');
+    if (opening) loadSystemLogs();
   });
   document.getElementById('toggle-context').addEventListener('click', () => {
     const panel = document.getElementById('panel-context');
@@ -1146,13 +1217,12 @@ function construireLigneTache(task) {
   return row;
 }
 
-// Emplacements d'affichage des taches/rappels (§7, §16) : le panneau
-// lateral Projets existe depuis le debut, la page AURA Productivity vient
-// s'y ajouter - un element absent (page pas encore ouverte cote DOM, non
-// le cas ici puisque la section existe toujours, juste masquee) serait
-// simplement ignore.
-const CIBLES_TACHES = ['tasks-list', 'productivity-tasks-list'];
-const CIBLES_RAPPELS = ['reminders-list', 'productivity-reminders-list'];
+// Emplacements d'affichage des taches/rappels (§7, §16) : uniquement la
+// page AURA Productivity depuis que le panneau lateral gauche affiche les
+// logs du systeme a la place (§16.1) - un element absent serait de toute
+// facon simplement ignore (filter(Boolean) ci-dessous).
+const CIBLES_TACHES = ['productivity-tasks-list'];
+const CIBLES_RAPPELS = ['productivity-reminders-list'];
 
 // Horodatage de la page AURA Productivity (§16), meme principe que
 // #monitor-updated sur System Monitor - mis a jour a chaque rendu des
@@ -1288,13 +1358,11 @@ function wireFormulaireRappel(prefixe) {
   });
 }
 
-function wireProductivity() {
-  wireFormulaireTache('');
-  wireFormulaireRappel('');
-}
-
-// Page AURA Productivity (§16) : memes formulaires que le panneau
-// lateral, juste un autre jeu d'ids (voir wireFormulaireTache/Rappel).
+// Page AURA Productivity (§16) - seul emplacement des formulaires
+// taches/rappels depuis que le panneau lateral gauche affiche les logs
+// du systeme a la place (§16.1). wireFormulaireTache/Rappel restent
+// parametrees par prefixe (historique : le panneau lateral en avait
+// autrefois sa propre instance, prefixe vide).
 function wireProductivityPage() {
   document.getElementById('productivity-back').addEventListener('click', fermerPage);
   wireFormulaireTache('productivity-');
@@ -1840,7 +1908,6 @@ startClock();
 chargerHistorique();
 wirePanels();
 wireJournalFilters();
-wireProductivity();
 wireConversation();
 wirePages();
 loadTasks();

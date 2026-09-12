@@ -854,6 +854,85 @@ html, body {
 }
 .side-panel h3:first-of-type { margin-top: 0; }
 
+/* Logs du systeme (panneau lateral gauche, §16.1) : meme point rouge
+   pulsant que .app-page-updated::before - rappelle que ce sont de vraies
+   entrees du journal, pas un texte fige. */
+#system-logs-heading { display: flex; align-items: center; gap: 8px; }
+#system-logs-heading::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 6px 1px var(--red);
+  animation: monitor-pouls 2s ease-in-out infinite;
+}
+.system-logs-list {
+  max-height: calc(100vh - 210px);
+  overflow-y: auto;
+  /* overflow-x explicite : sans lui, la specification CSS retombe sur
+     overflow-x:auto des que overflow-y n'est pas 'visible' - le contenu
+     flex (largeur calculee avant l'apparition de la scrollbar verticale)
+     depasse alors la largeur utile d'exactement la largeur de cette
+     scrollbar, faisant apparaitre une scrollbar horizontale parasite non
+     stylee (meme cause que le bug deja corrige sur les lignes de regle,
+     AURA AUTONOMY). Aucun besoin de defiler horizontalement de toute
+     facon : le texte des lignes wrap deja (word-break sur .system-log-line). */
+  overflow-x: hidden;
+  padding-bottom: 4px;
+}
+/* Frise chronologique : chaque groupe (entrees partageant la meme
+   minute) porte sa propre bordure-droite sur la colonne horaire - les
+   groupes s'enchainant sans marge verticale entre eux, ces segments se
+   recollent visuellement en une ligne continue, sans avoir a positionner
+   un trait en absolu sur toute la hauteur de la liste. */
+.system-log-group { display: flex; gap: 10px; padding: 8px 0; }
+.system-log-marker {
+  flex-shrink: 0;
+  width: 40px;
+  position: relative;
+  padding-right: 10px;
+  border-right: 1px solid rgba(229, 38, 26, 0.35);
+  text-align: right;
+}
+.system-log-time { font-size: 11px; color: var(--dim); }
+.system-log-dot {
+  position: absolute;
+  right: -3px;
+  top: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+}
+.system-log-lines { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.system-log-line {
+  font-size: 12px;
+  color: var(--red);
+  line-height: 1.5;
+  word-break: break-word;
+}
+/* Echec (statut "echoue" du journal) : fond plein plutot qu'une simple
+   nuance de rouge - meme logique de mise en avant que la ligne
+   surlignee de la maquette de reference. */
+.system-log-line.system-log-line-echec {
+  background: rgba(229, 38, 26, 0.35);
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin: 0 -6px;
+}
+.system-logs-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-dim);
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  color: var(--dim);
+}
+
 .side-panel-left { left: 0; transform: translateX(-100%); }
 .side-panel-left.open { transform: translateX(0); }
 
@@ -1282,6 +1361,3 @@ html, body {
 }
 .security-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .security-summary .security-badge { padding: 3px 8px; font-size: 10px; }
-
-#panel-projects .inline-form { margin-bottom: 16px; }
-#panel-projects .inline-form input, #panel-projects .inline-form select { font-size: 11px; padding: 5px 6px; }
