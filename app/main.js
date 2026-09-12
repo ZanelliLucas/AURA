@@ -137,6 +137,18 @@ function setupSecurityBridge() {
     clipboard.writeText(texte || '');
     return { ok: true };
   });
+
+  // Lien vers l'avis de securite d'une vulnerabilite (idee "avis") :
+  // shell.openExternal plutot qu'un <a target="_blank"> ou window.open
+  // cote renderer (sandboxe, sans navigateur systeme accessible) -
+  // n'accepte que https:// (les avis npm/GitHub le sont toujours) pour
+  // ecarter un protocole custom (file:, javascript:...) qui detournerait
+  // l'ouverture vers autre chose qu'une page web.
+  ipcMain.handle('security:open-external', (event, url) => {
+    if (typeof url !== 'string' || !url.startsWith('https://')) return { ok: false, error: 'URL invalide.' };
+    shell.openExternal(url);
+    return { ok: true };
+  });
 }
 
 app.whenReady().then(async () => {

@@ -45,6 +45,19 @@ function estFichierExclu(nom, gitignore) {
   return gitignore.motifsExtension.has(ext);
 }
 
+// Un fichier disparu des resultats parce qu'il tombe desormais sous une
+// exclusion (idee "exclure"/.gitignore) n'a pas ete "resolu" au sens ou
+// l'entend l'idee "comparaison" - il n'a simplement plus ete lu du tout.
+// Reevalue chaque segment du chemin relatif (dossiers puis fichier) avec
+// les memes fonctions que le parcours reel, sur les regles actuelles.
+function estCheminExclu(fichierRelatif, gitignore) {
+  const segments = fichierRelatif.split('/');
+  for (let i = 0; i < segments.length - 1; i++) {
+    if (estDossierExclu(segments[i], gitignore)) return true;
+  }
+  return estFichierExclu(segments[segments.length - 1], gitignore);
+}
+
 // Lit le .gitignore du dossier analyse (idee 4, retour utilisateur) pour
 // exclure aussi ses propres dossiers/extensions de build - en plus des
 // exclusions par defaut ci-dessus, pas a leur place (node_modules/.git
@@ -53,24 +66,43 @@ function estFichierExclu(nom, gitignore) {
 // negation (!motif), pas de motifs a chemin compose (a/b), pas de
 // glob complexe - suffisant pour la grande majorite des projets reels
 // (node_modules, dist, *.log, .env...), pas un parseur gitignore complet.
+// Factorise hors de lireGitignore pour etre reutilisee par les
+// exclusions personnalisees (idee "exclure", retour utilisateur) - meme
+// syntaxe simple, fusionnee dans les memes Set.
+function appliquerMotifs(lignes, motifsExacts, motifsExtension) {
+  lignes.forEach((ligneBrute) => {
+    const ligne = (ligneBrute || '').trim();
+    if (!ligne || ligne.startsWith('#') || ligne.startsWith('!')) return;
+    const nettoyee = ligne.replace(/^\/+/, '').replace(/\/+$/, '');
+    if (!nettoyee || nettoyee.includes('/')) return;
+    if (nettoyee.startsWith('*.') && !nettoyee.slice(2).includes('*')) {
+      motifsExtension.add(nettoyee.slice(1));
+    } else if (!nettoyee.includes('*')) {
+      motifsExacts.add(nettoyee);
+    }
+  });
+}
+
 function lireGitignore(racine) {
   const motifsExacts = new Set();
   const motifsExtension = new Set();
   try {
     const contenu = fs.readFileSync(path.join(racine, '.gitignore'), 'utf8');
-    contenu.split('\n').forEach((ligneBrute) => {
-      const ligne = ligneBrute.trim();
-      if (!ligne || ligne.startsWith('#') || ligne.startsWith('!')) return;
-      const nettoyee = ligne.replace(/^\/+/, '').replace(/\/+$/, '');
-      if (!nettoyee || nettoyee.includes('/')) return;
-      if (nettoyee.startsWith('*.') && !nettoyee.slice(2).includes('*')) {
-        motifsExtension.add(nettoyee.slice(1));
-      } else if (!nettoyee.includes('*')) {
-        motifsExacts.add(nettoyee);
-      }
-    });
+    appliquerMotifs(contenu.split('\n'), motifsExacts, motifsExtension);
   } catch { /* pas de .gitignore, ou illisible - exclusions par defaut seulement */ }
   return { motifsExacts, motifsExtension };
+}
+
+// Longueur volontairement courte (nom de dossier/fichier ou *.ext, pas un
+// chemin) - les chemins composes (a/b) sont deja rejetes silencieusement
+// par appliquerMotifs, mais un message explicite ici evite qu'un motif
+// tape par erreur disparaisse sans explication.
+function validerMotifExclusion(motif) {
+  if (!motif || !motif.trim()) return 'Motif manquant.';
+  const nettoye = motif.trim();
+  if (nettoye.length > 100) return 'Motif trop long.';
+  if (nettoye.includes('/') || nettoye.includes('\\')) return 'Les chemins composés ne sont pas supportés (nom de dossier/fichier ou *.ext uniquement).';
+  return null;
 }
 
 async function listerFichiers(racine, gitignore) {
@@ -127,6 +159,10 @@ async function scanSecrets(dossierCible) {
   store.addRecentSecurityFolder(dossierCible);
 
   const gitignore = lireGitignore(dossierCible);
+  // Exclusions personnalisees (idee "exclure", retour utilisateur) :
+  // fusionnees dans les memes Set que le .gitignore - listerFichiers n'a
+  // pas besoin de savoir d'ou vient chaque motif.
+  appliquerMotifs(store.getCustomExclusions(dossierCible), gitignore.motifsExacts, gitignore.motifsExtension);
   const fichiers = await listerFichiers(dossierCible, gitignore);
   // Faux positifs deja marques par l'utilisateur pour ce dossier (idee 1)
   // - filtres avant meme d'atteindre MAX_RESULTATS, pour qu'ils ne
@@ -170,11 +206,40 @@ async function scanSecrets(dossierCible) {
     }
   }
 
+  // Comparaison avec le scan precedent (idee "comparaison", retour
+  // utilisateur) : cle composite identique a celle des ignores, jamais le
+  // contenu du secret lui-meme. absent (premier scan de ce dossier) ->
+  // pas de comparaison possible, tout serait artificiellement "nouveau".
+  const clesActuelles = resultats.map((r) => `${r.fichier}::${r.ligne}::${r.motif}`);
+  const clesPrecedentes = store.getLastScanResult('secrets', dossierCible);
+  let nouveaux = 0;
+  let resolus = 0;
+  if (clesPrecedentes) {
+    const precedentesSet = new Set(clesPrecedentes);
+    const actuellesSet = new Set(clesActuelles);
+    resultats.forEach((r, i) => { r.nouveau = !precedentesSet.has(clesActuelles[i]); });
+    nouveaux = resultats.filter((r) => r.nouveau).length;
+    // Ni un faux positif ignore (idee 1, decision explicite - deja compte
+    // a part via ignoresAppliques) ni un chemin desormais exclu (idee
+    // "exclure"/.gitignore, plus jamais lu) ne comptent comme "resolu" -
+    // sans ca, ignorer/exclure un vrai secret afficherait a tort "resolu".
+    resolus = clesPrecedentes.filter((c) => {
+      if (actuellesSet.has(c)) return false;
+      if (ignores.has(c)) return false;
+      const [fichierAncien] = c.split('::');
+      return !estCheminExclu(fichierAncien, gitignore);
+    }).length;
+  }
+  store.setLastScanResult('secrets', dossierCible, clesActuelles);
+
   store.logAction({
     typeAction: 'security.scan_secrets', sensibilite: 'lecture', statut: 'execute',
     details: { dossier: dossierCible, fichiersAnalyses: fichiers.length, trouvailles: resultats.length }
   });
-  return { fichiersAnalyses: fichiers.length, resultats, tronque: fichiers.length >= MAX_FICHIERS, ignoresAppliques };
+  return {
+    fichiersAnalyses: fichiers.length, resultats, tronque: fichiers.length >= MAX_FICHIERS, ignoresAppliques,
+    premierScan: !clesPrecedentes, nouveaux, resolus
+  };
 }
 
 // npm audit --json sort avec un code de sortie non-zero des qu'il trouve
@@ -210,18 +275,43 @@ function auditerDependances(dossierCible) {
         return reject(new Error(error));
       }
       const vulnerabilites = (rapport.metadata && rapport.metadata.vulnerabilities) || {};
-      const paquets = Object.values(rapport.vulnerabilities || {}).map((v) => ({
-        nom: v.name,
-        gravite: v.severity,
-        correctif: v.fixAvailable && v.fixAvailable.name
-          ? `${v.fixAvailable.name}@${v.fixAvailable.version}`
-          : (v.fixAvailable === true ? 'npm audit fix' : null)
-      }));
+      const paquets = Object.values(rapport.vulnerabilities || {}).map((v) => {
+        // v.via melange des chaines (dependance transitive, sans detail
+        // propre) et des objets (l'avis lui-meme, avec url/title) - on ne
+        // cherche un lien que parmi ces derniers (idee "avis de securite").
+        const avis = Array.isArray(v.via) ? v.via.find((x) => x && typeof x === 'object' && x.url) : null;
+        return {
+          nom: v.name,
+          gravite: v.severity,
+          correctif: v.fixAvailable && v.fixAvailable.name
+            ? `${v.fixAvailable.name}@${v.fixAvailable.version}`
+            : (v.fixAvailable === true ? 'npm audit fix' : null),
+          avisUrl: avis ? avis.url : null,
+          avisTitre: avis ? avis.title : null
+        };
+      });
+
+      // Comparaison avec l'audit precedent (idee "comparaison") - meme
+      // principe que scanSecrets, cle nom::gravite (une remontee de
+      // gravite sur le meme paquet compte comme une nouvelle alerte).
+      const clesActuelles = paquets.map((p) => `${p.nom}::${p.gravite}`);
+      const clesPrecedentes = store.getLastScanResult('deps', dossierCible);
+      let nouveaux = 0;
+      let resolus = 0;
+      if (clesPrecedentes) {
+        const precedentesSet = new Set(clesPrecedentes);
+        const actuellesSet = new Set(clesActuelles);
+        paquets.forEach((p, i) => { p.nouveau = !precedentesSet.has(clesActuelles[i]); });
+        nouveaux = paquets.filter((p) => p.nouveau).length;
+        resolus = clesPrecedentes.filter((c) => !actuellesSet.has(c)).length;
+      }
+      store.setLastScanResult('deps', dossierCible, clesActuelles);
+
       store.logAction({
         typeAction: 'security.audit_deps', sensibilite: 'lecture', statut: 'execute',
         details: { dossier: dossierCible, total: vulnerabilites.total || 0, gravites: vulnerabilites }
       });
-      resolve({ resume: vulnerabilites, paquets });
+      resolve({ resume: vulnerabilites, paquets, premierScan: !clesPrecedentes, nouveaux, resolus });
     });
   });
 }
@@ -282,6 +372,15 @@ function getHistory() {
   return store.getJournal(200).filter((e) => e.typeAction.startsWith('security.'));
 }
 
+// Exclusions personnalisees (idee "exclure") - purement du confort d'UI
+// (comme les dossiers recents/faux positifs) : validees ici pour donner
+// un message clair, jamais journalisees (n'analysent/modifient rien).
+function ajouterExclusion(dossier, motif) {
+  const error = validerMotifExclusion(motif);
+  if (error) throw new Error(error);
+  return store.addCustomExclusion(dossier, motif.trim());
+}
+
 module.exports = {
   scanSecrets,
   auditerDependances,
@@ -289,5 +388,8 @@ module.exports = {
   getRecentFolders: () => store.getRecentSecurityFolders(),
   ignoreFinding: (dossier, fichier, ligne, motif) => store.ignoreFinding(dossier, `${fichier}::${ligne}::${motif}`),
   clearIgnoredFindings: (dossier) => store.clearIgnoredFindings(dossier),
-  getHistory
+  getHistory,
+  getExclusions: (dossier) => store.getCustomExclusions(dossier),
+  addExclusion: ajouterExclusion,
+  removeExclusion: (dossier, motif) => store.removeCustomExclusion(dossier, motif)
 };

@@ -9,6 +9,7 @@ const { Notification } = require('electron');
 const store = require('./store');
 const productivity = require('./productivity');
 const sysinfo = require('./connectors/systemMonitor');
+const security = require('./security');
 
 const THRESHOLD_COOLDOWN_MS = 10 * 60 * 1000;
 const DAILY_WINDOW_MS = 60 * 1000;
@@ -31,7 +32,7 @@ function getEstop() {
 }
 
 const TRIGGER_TYPES = ['interval', 'daily', 'threshold'];
-const ACTION_TYPES = ['notify', 'task.create', 'system.snapshot'];
+const ACTION_TYPES = ['notify', 'task.create', 'system.snapshot', 'security.scan'];
 
 function validateTrigger(trigger) {
   if (!trigger || !TRIGGER_TYPES.includes(trigger.type)) return 'Type de déclencheur invalide.';
@@ -52,6 +53,7 @@ function validateAction(action) {
   const params = action.params || {};
   if (action.type === 'notify' && !(params.message && params.message.trim())) return 'Message de notification manquant.';
   if (action.type === 'task.create' && !(params.title && params.title.trim())) return 'Titre de tâche manquant.';
+  if (action.type === 'security.scan' && !(params.path && params.path.trim())) return 'Dossier à analyser manquant.';
   return null;
 }
 
@@ -160,6 +162,14 @@ async function executeAction(rule, snapshot) {
   if (type === 'system.snapshot') {
     const snap = snapshot || await sysinfo.getSnapshot();
     return `Instantané système : CPU ${snap.cpu.loadPercent}% · RAM ${snap.memory.usedPercent}%`;
+  }
+  if (type === 'security.scan') {
+    // scanSecrets est en lecture seule (security.js, §14.2) : peut
+    // s'executer directement, comme system.snapshot, sans que ca outrepasse
+    // la restriction "actions deja sures" des regles AUTONOMY (§14.1).
+    const resultat = await security.scanSecrets(params.path);
+    const detail = resultat.nouveaux ? ` dont ${resultat.nouveaux} nouveau(x)` : '';
+    return `Scan de sécurité sur "${params.path}" : ${resultat.resultats.length} résultat(s)${detail}`;
   }
   throw new Error(`Action inconnue : ${type}`);
 }

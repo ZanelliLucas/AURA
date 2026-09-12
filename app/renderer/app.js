@@ -722,6 +722,7 @@ function ouvrirPageCategorie(id) {
     actualiserHorodatageSecurity();
     chargerDossiersRecents();
     chargerHistoriqueSecurity();
+    chargerExclusions(document.getElementById('security-path').value.trim());
     journal('PAGE_OUVERTE : AURA SECURITY');
   }
 }
@@ -1396,6 +1397,7 @@ function resumeAction(action) {
   if (action.type === 'notify') return `notifier « ${params.message || ''} »`;
   if (action.type === 'task.create') return `créer tâche « ${params.title || ''} »`;
   if (action.type === 'system.snapshot') return 'instantané système';
+  if (action.type === 'security.scan') return `scan de sécurité « ${params.path || ''} »`;
   return '';
 }
 
@@ -1427,6 +1429,9 @@ function lireActionFormulaire() {
   if (type === 'task.create') {
     return { type: 'task.create', params: { title: document.getElementById('autonomy-action-title').value.trim() } };
   }
+  if (type === 'security.scan') {
+    return { type: 'security.scan', params: { path: document.getElementById('autonomy-action-security-path').value.trim() } };
+  }
   return { type: 'system.snapshot', params: {} };
 }
 
@@ -1443,6 +1448,7 @@ function actualiserApercuRegle() {
   const params = action.params || {};
   if (action.type === 'notify' && !params.message) params.message = '…';
   if (action.type === 'task.create' && !params.title) params.title = '…';
+  if (action.type === 'security.scan' && !params.path) params.path = '…';
   preview.textContent = `${resumeDeclencheur(lireTriggerFormulaire())} → ${resumeAction(action)}`;
 }
 
@@ -1711,6 +1717,8 @@ function remplirFormulaireRegle(rule) {
     document.getElementById('autonomy-action-message').value = params.message || '';
   } else if (rule.action.type === 'task.create') {
     document.getElementById('autonomy-action-title').value = params.title || '';
+  } else if (rule.action.type === 'security.scan') {
+    document.getElementById('autonomy-action-security-path').value = params.path || '';
   }
 
   document.getElementById('autonomy-rule-simulation').checked = rule.mode === 'simulation';
@@ -1797,7 +1805,17 @@ function wireAutonomyPage() {
   });
   wireChampsConditionnels(document.getElementById('autonomy-rule-action-type'), {
     notify: 'autonomy-action-notify',
-    'task.create': 'autonomy-action-task'
+    'task.create': 'autonomy-action-task',
+    'security.scan': 'autonomy-action-security'
+  });
+  document.getElementById('autonomy-action-security-browse').addEventListener('click', async () => {
+    try {
+      const dossier = await window.aura.chooseFolder();
+      if (dossier) {
+        document.getElementById('autonomy-action-security-path').value = dossier;
+        actualiserApercuRegle();
+      }
+    } catch { /* dialogue annule/echoue - champ inchange */ }
   });
   wireFormulaireRegle();
   wireAutonomyRuleFilter();
@@ -1858,7 +1876,21 @@ async function chargerDossiersRecents() {
 let filtreSecretsMotif = 'toutes';
 let filtreDepsGravite = 'toutes';
 
-function renderSecretsResults({ fichiersAnalyses, resultats, tronque, ignoresAppliques }) {
+// Recherche textuelle (idee "recherche", retour utilisateur) : un seul
+// champ pour les deux cartes, combine (ET logique) avec le filtre de
+// categorie deja en place - re-rend localement depuis les derniers
+// resultats bruts, comme les filtres.
+let termeRecherche = '';
+
+// Resume nouveaux/resolus (idee "comparaison", retour utilisateur) :
+// absent au tout premier scan d'un dossier (rien a comparer) - dans ce
+// cas premierScan vaut true et aucune ligne n'est marquee "Nouveau".
+function ligneComparaison(premierScan, nouveaux, resolus) {
+  if (premierScan) return '';
+  return `<p class="security-diff-summary">${nouveaux} nouveau(x) · ${resolus} résolu(s) depuis le dernier scan</p>`;
+}
+
+function renderSecretsResults({ fichiersAnalyses, resultats, tronque, ignoresAppliques, premierScan, nouveaux, resolus }) {
   const zone = document.getElementById('security-secrets-results');
   const zoneFiltres = document.getElementById('security-secrets-filters');
 
@@ -1872,15 +1904,19 @@ function renderSecretsResults({ fichiersAnalyses, resultats, tronque, ignoresApp
     zone.innerHTML = `<p class="rule-empty">Aucun secret détecté sur ${fichiersAnalyses} fichier(s) analysé(s).</p>`;
     return;
   }
-  const filtres = filtreSecretsMotif === 'toutes' ? resultats : resultats.filter((r) => r.motif === filtreSecretsMotif);
+  const parFiltre = filtreSecretsMotif === 'toutes' ? resultats : resultats.filter((r) => r.motif === filtreSecretsMotif);
+  const terme = termeRecherche.toLowerCase();
+  const filtres = !terme ? parFiltre : parFiltre.filter((r) =>
+    r.fichier.toLowerCase().includes(terme) || r.motif.toLowerCase().includes(terme) || r.extrait.toLowerCase().includes(terme)
+  );
 
-  const avertissements = [];
+  const avertissements = [ligneComparaison(premierScan, nouveaux, resolus)];
   if (tronque) avertissements.push('<p class="rule-empty">Dossier volumineux : analyse partielle (limite de fichiers atteinte).</p>');
   if (ignoresAppliques) {
     avertissements.push(`<p class="rule-empty">${ignoresAppliques} résultat(s) marqué(s) faux positif masqué(s) — <button type="button" id="security-reset-ignores" class="security-link-btn">réinitialiser</button></p>`);
   }
   if (!filtres.length) {
-    zone.innerHTML = avertissements.join('') + '<p class="rule-empty">Aucun résultat pour ce filtre.</p>';
+    zone.innerHTML = avertissements.join('') + '<p class="rule-empty">Aucun résultat pour ces critères.</p>';
     return;
   }
 
@@ -1888,7 +1924,10 @@ function renderSecretsResults({ fichiersAnalyses, resultats, tronque, ignoresApp
     <div class="security-finding">
       <div class="security-finding-header">
         <button type="button" class="security-finding-file" data-fichier="${echapperHtml(r.fichier)}" title="Localiser dans l’explorateur">${echapperHtml(r.fichier)}:${r.ligne}</button>
-        <span class="security-badge security-sev-critical">${echapperHtml(r.motif)}</span>
+        <span class="security-finding-badges">
+          ${r.nouveau ? '<span class="security-badge security-badge-nouveau">Nouveau</span>' : ''}
+          <span class="security-badge security-sev-critical">${echapperHtml(r.motif)}</span>
+        </span>
       </div>
       <div class="security-finding-snippet">${echapperHtml(r.extrait)}</div>
       <div class="security-finding-actions">
@@ -1899,7 +1938,7 @@ function renderSecretsResults({ fichiersAnalyses, resultats, tronque, ignoresApp
   `).join('');
 }
 
-function renderDepsResults({ resume, paquets }) {
+function renderDepsResults({ resume, paquets, premierScan, nouveaux, resolus }) {
   const zone = document.getElementById('security-deps-results');
   const zoneFiltres = document.getElementById('security-deps-filters');
 
@@ -1921,9 +1960,13 @@ function renderDepsResults({ resume, paquets }) {
     `<span class="security-badge security-sev-${s}">${resume[s]} ${SEVERITE_LABELS[s]}</span>`
   ).join('');
 
-  const filtres = filtreDepsGravite === 'toutes' ? paquets : paquets.filter((p) => p.gravite === filtreDepsGravite);
+  const parFiltre = filtreDepsGravite === 'toutes' ? paquets : paquets.filter((p) => p.gravite === filtreDepsGravite);
+  const terme = termeRecherche.toLowerCase();
+  const filtres = !terme ? parFiltre : parFiltre.filter((p) => p.nom.toLowerCase().includes(terme));
+
+  const diff = ligneComparaison(premierScan, nouveaux, resolus);
   if (!filtres.length) {
-    zone.innerHTML = `<div class="security-summary">${puces}</div><p class="rule-empty">Aucun résultat pour ce filtre.</p>`;
+    zone.innerHTML = `${diff}<div class="security-summary">${puces}</div><p class="rule-empty">Aucun résultat pour ces critères.</p>`;
     return;
   }
 
@@ -1935,13 +1978,19 @@ function renderDepsResults({ resume, paquets }) {
     <div class="security-finding">
       <div class="security-finding-header">
         <span class="security-finding-file">${echapperHtml(p.nom)}</span>
-        <span class="security-badge security-sev-${p.gravite}">${SEVERITE_LABELS[p.gravite] || echapperHtml(p.gravite)}</span>
+        <span class="security-finding-badges">
+          ${p.nouveau ? '<span class="security-badge security-badge-nouveau">Nouveau</span>' : ''}
+          <span class="security-badge security-sev-${p.gravite}">${SEVERITE_LABELS[p.gravite] || echapperHtml(p.gravite)}</span>
+        </span>
       </div>
       <div class="security-finding-snippet">${p.correctif ? `Correctif : ${echapperHtml(p.correctif)}` : 'Pas de correctif automatique disponible.'}</div>
-      ${p.correctif && p.correctif.includes('@') ? `<button type="button" class="security-fix-btn" data-correctif="${echapperHtml(p.correctif)}" data-nom="${echapperHtml(p.nom)}" title="Installe ${echapperHtml(p.correctif)} dans le dossier analysé">Corriger</button>` : ''}
+      <div class="security-finding-actions">
+        ${p.avisUrl ? `<button type="button" class="security-link-btn security-advisory-btn" data-url="${echapperHtml(p.avisUrl)}">Voir l’avis${p.avisTitre ? ` (${echapperHtml(p.avisTitre)})` : ''}</button>` : ''}
+        ${p.correctif && p.correctif.includes('@') ? `<button type="button" class="security-fix-btn" data-correctif="${echapperHtml(p.correctif)}" data-nom="${echapperHtml(p.nom)}" title="Installe ${echapperHtml(p.correctif)} dans le dossier analysé">Corriger</button>` : ''}
+      </div>
     </div>
   `).join('');
-  zone.innerHTML = `<div class="security-summary">${puces}</div>${liste}`;
+  zone.innerHTML = `${diff}<div class="security-summary">${puces}</div>${liste}`;
 }
 
 // Historique recent (idee 5) - reutilise le journal existant
@@ -2038,16 +2087,77 @@ function construireRapportSecurite() {
   return lignes.join('\n');
 }
 
+// Exclusions personnalisees (idee "exclure", retour utilisateur) : scope
+// par dossier, comme les faux positifs - lues/ecrites contre le champ
+// #security-path courant (pas dernierDossierSecrets), une exclusion se
+// configure avant de lancer une analyse, pas seulement apres.
+async function chargerExclusions(dossier) {
+  const zone = document.getElementById('security-exclusions-list');
+  if (!dossier) { zone.innerHTML = ''; return; }
+  try {
+    const motifs = await window.aura.getExclusions(dossier);
+    zone.innerHTML = motifs.map((m) => `
+      <span class="security-exclusion-chip">${echapperHtml(m)}<button type="button" class="security-exclusion-remove" data-motif="${echapperHtml(m)}" aria-label="Retirer l’exclusion ${echapperHtml(m)}">×</button></span>
+    `).join('');
+  } catch {
+    zone.innerHTML = '';
+  }
+}
+
 function wireSecurityPage() {
   document.getElementById('security-back').addEventListener('click', fermerPage);
 
   document.getElementById('security-browse').addEventListener('click', async () => {
     try {
       const dossier = await window.aura.chooseFolder();
-      if (dossier) document.getElementById('security-path').value = dossier;
+      if (dossier) {
+        document.getElementById('security-path').value = dossier;
+        chargerExclusions(dossier);
+      }
     } catch (err) {
       journal(`SECURITY_PARCOURIR_ECHEC : ${err.message}`);
     }
+  });
+
+  // 'change' (pas 'input') : ne recharge qu'une fois la saisie terminee
+  // (perte de focus/Entree), comme pour ne pas requeter a chaque frappe.
+  document.getElementById('security-path').addEventListener('change', (e) => {
+    chargerExclusions(e.target.value.trim());
+  });
+
+  document.getElementById('security-exclusion-add').addEventListener('click', async () => {
+    const chemin = document.getElementById('security-path').value.trim();
+    const champMotif = document.getElementById('security-exclusion-input');
+    const motif = champMotif.value.trim();
+    if (!chemin || !motif) return;
+    try {
+      await window.aura.addExclusion(chemin, motif);
+      champMotif.value = '';
+      journal(`SECURITY_EXCLUSION_AJOUTEE : ${motif}`);
+      await chargerExclusions(chemin);
+    } catch (err) {
+      journal(`SECURITY_EXCLUSION_ECHEC : ${err.message}`);
+    }
+    refreshJournalIfOpen();
+  });
+
+  document.getElementById('security-exclusions-list').addEventListener('click', async (e) => {
+    const bouton = e.target.closest('.security-exclusion-remove');
+    if (!bouton) return;
+    const chemin = document.getElementById('security-path').value.trim();
+    if (!chemin) return;
+    await window.aura.removeExclusion(chemin, bouton.dataset.motif);
+    journal(`SECURITY_EXCLUSION_RETIREE : ${bouton.dataset.motif}`);
+    await chargerExclusions(chemin);
+    refreshJournalIfOpen();
+  });
+
+  // Recherche textuelle (idee "recherche") : re-rend localement les deux
+  // cartes depuis leurs derniers resultats bruts, comme les filtres.
+  document.getElementById('security-search').addEventListener('input', (e) => {
+    termeRecherche = e.target.value.trim();
+    if (dernierResultatSecrets) renderSecretsResults(dernierResultatSecrets);
+    if (dernierResultatDeps) renderDepsResults(dernierResultatDeps);
   });
 
   document.getElementById('security-scan-secrets').addEventListener('click', async (e) => {
@@ -2153,6 +2263,7 @@ function wireSecurityPage() {
     const puce = e.target.closest('.security-recent-chip');
     if (!puce) return;
     document.getElementById('security-path').value = puce.title;
+    chargerExclusions(puce.title);
   });
 
   // Exporter le rapport (idee 4) : dialogue de sauvegarde natif (voir
@@ -2168,6 +2279,16 @@ function wireSecurityPage() {
       journal(`SECURITY_EXPORT_ECHEC : ${err.message}`);
     }
     e.target.disabled = false;
+  });
+
+  // Lien vers l'avis de securite (idee "avis") - shell.openExternal cote
+  // main (voir security:open-external), un renderer sandboxe ne peut pas
+  // ouvrir de navigateur systeme lui-meme.
+  document.getElementById('security-deps-results').addEventListener('click', async (e) => {
+    const lien = e.target.closest('.security-advisory-btn');
+    if (!lien) return;
+    const resultat = await window.aura.openExternal(lien.dataset.url);
+    if (!resultat.ok) journal(`SECURITY_AVIS_ECHEC : ${resultat.error}`);
   });
 
   // Correctif en un clic (idee 5) : confirmation a deux temps, meme

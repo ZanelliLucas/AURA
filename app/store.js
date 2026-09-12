@@ -235,6 +235,49 @@ function addRecentSecurityFolder(dossier) {
   return recents;
 }
 
+// --- Dernier resultat de scan AURA SECURITY (idee "comparaison", §5) ---
+// Permet a security.js de calculer un diff (nouveaux/resolus) au scan
+// suivant, sans stocker les resultats complets - juste les cles
+// composites (comme les ignores). Scinde par outil (secrets/deps) et par
+// dossier : deux scans differents ne doivent pas se comparer entre eux.
+
+function getLastScanResult(type, dossier) {
+  const tout = readJson('security-last-scan.json', {});
+  return (tout[type] && tout[type][dossier]) || null;
+}
+
+function setLastScanResult(type, dossier, cles) {
+  const tout = readJson('security-last-scan.json', {});
+  tout[type] = tout[type] || {};
+  tout[type][dossier] = cles;
+  writeJson('security-last-scan.json', tout);
+}
+
+// --- Exclusions personnalisees AURA SECURITY (idee "exclure", §5) -----
+// Complement manuel au .gitignore du dossier analyse (security.js#
+// lireGitignore) - meme syntaxe simple (nom exact ou *.ext), utile quand
+// le projet n'a pas de .gitignore ou qu'on veut exclure autre chose sans
+// le modifier. Scope par dossier, comme les faux positifs ignores.
+
+function getCustomExclusions(dossier) {
+  const tout = readJson('security-exclusions.json', {});
+  return tout[dossier] || [];
+}
+
+function addCustomExclusion(dossier, motif) {
+  const tout = readJson('security-exclusions.json', {});
+  tout[dossier] = [...new Set([...(tout[dossier] || []), motif])];
+  writeJson('security-exclusions.json', tout);
+  return tout[dossier];
+}
+
+function removeCustomExclusion(dossier, motif) {
+  const tout = readJson('security-exclusions.json', {});
+  tout[dossier] = (tout[dossier] || []).filter((m) => m !== motif);
+  writeJson('security-exclusions.json', tout);
+  return tout[dossier];
+}
+
 // --- Journal d'actions (§12.3 actions_log, §5.9) --------------------
 
 function getJournal(limit = 50) {
@@ -276,6 +319,11 @@ module.exports = {
   getIgnoredFindings,
   ignoreFinding,
   clearIgnoredFindings,
+  getLastScanResult,
+  setLastScanResult,
+  getCustomExclusions,
+  addCustomExclusion,
+  removeCustomExclusion,
   getJournal,
   logAction
 };

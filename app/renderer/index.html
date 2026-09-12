@@ -277,6 +277,7 @@
                       <option value="notify">Notifier</option>
                       <option value="task.create">Créer une tâche</option>
                       <option value="system.snapshot">Instantané système</option>
+                      <option value="security.scan">Scan de sécurité</option>
                     </select>
                   </span>
                   <span id="autonomy-action-notify" class="autonomy-action-fields">
@@ -284,6 +285,10 @@
                   </span>
                   <span id="autonomy-action-task" class="autonomy-action-fields" hidden>
                     <input id="autonomy-action-title" type="text" placeholder="Titre de la tâche…">
+                  </span>
+                  <span id="autonomy-action-security" class="autonomy-action-fields" hidden>
+                    <input id="autonomy-action-security-path" type="text" placeholder="Dossier à analyser…">
+                    <button type="button" id="autonomy-action-security-browse">Parcourir…</button>
                   </span>
                 </div>
               </div>
@@ -336,6 +341,9 @@
           <button id="security-export" type="button">Exporter le rapport</button>
         </div>
         <div id="security-recent-folders" class="security-recent-folders"></div>
+        <div class="inline-form security-search-form">
+          <input id="security-search" type="text" placeholder="Rechercher dans les résultats…">
+        </div>
       </div>
       <div class="productivity-grid">
         <section class="monitor-card">
@@ -346,6 +354,13 @@
           <div class="monitor-card-body productivity-card-body">
             <div class="inline-form">
               <button id="security-scan-secrets" type="button">Analyser les secrets</button>
+            </div>
+            <div class="security-exclusions">
+              <div class="inline-form">
+                <input id="security-exclusion-input" type="text" placeholder="Exclure un dossier/fichier ou *.ext…">
+                <button id="security-exclusion-add" type="button">Exclure</button>
+              </div>
+              <div id="security-exclusions-list" class="security-exclusions-list"></div>
             </div>
             <div id="security-secrets-results" class="monitor-scroll custom-scroll">Sélectionnez un dossier, puis lancez l'analyse.</div>
           </div>

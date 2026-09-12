@@ -1411,7 +1411,6 @@ button.security-finding-file:hover { color: var(--red); text-decoration: underli
    analyse (package.json/lockfile/node_modules), pas juste une lecture,
    merite le meme garde-fou. */
 .security-fix-btn {
-  margin-top: 8px;
   background: rgba(245, 246, 247, 0.06);
   border: 1px solid rgba(245, 246, 247, 0.16);
   border-radius: 4px;
@@ -1465,3 +1464,54 @@ button.security-finding-file:hover { color: var(--red); text-decoration: underli
 .security-history-time { flex-shrink: 0; width: 90px; color: var(--dim); }
 .security-history-message { color: var(--white); }
 .security-history-entry.security-history-entry-echec .security-history-message { color: var(--red); }
+
+/* Recherche textuelle (idee "recherche", retour utilisateur) : meme ligne
+   que les dossiers recents, flex-basis:100% pour sa propre ligne dans
+   .monitor-seuils (flex-wrap) - un champ pleine largeur, pas un jeton. */
+.security-search-form { flex-basis: 100%; margin-bottom: 0; }
+.security-search-form input { width: 100%; }
+
+/* Badges regroupes en tete de trouvaille (motif/gravite + "Nouveau" -
+   idee "comparaison") - remplace le badge de gravite isole, meme gabarit
+   flex que security-finding-header pour ne rien casser d'existant. */
+.security-finding-badges { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.security-badge-nouveau {
+  color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.4); background: rgba(63, 185, 80, 0.1);
+}
+/* Resume nouveaux/resolus (idee "comparaison") - absent au tout premier
+   scan d'un dossier (rien a comparer), voir app.js#ligneComparaison. */
+.security-diff-summary { color: var(--dim); font-size: 11px; margin: 0 0 8px; }
+
+/* Exclusions personnalisees (idee "exclure", retour utilisateur) - jetons
+   retirables, meme gabarit que .security-recent-chip mais avec un bouton
+   de suppression integre (x) plutot qu'un clic sur le jeton entier (qui
+   sert deja a autre chose ailleurs sur la page, ex. dossiers recents). */
+.security-exclusions { margin: 10px 0; }
+.security-exclusions-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.security-exclusion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 246, 247, 0.04);
+  border: 1px solid rgba(245, 246, 247, 0.16);
+  border-radius: 4px;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 3px 6px 3px 8px;
+}
+.security-exclusion-remove {
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+}
+.security-exclusion-remove:hover { color: var(--red); }
+
+/* Lien vers l'avis de securite (idee "avis") - meme registre discret que
+   .security-link-btn (Copier/Ignorer), aligne avec "Corriger" dans les
+   actions du paquet vulnerable. */
+.security-advisory-btn { text-align: left; }

@@ -86,5 +86,11 @@ contextBridge.exposeInMainWorld('aura', {
   // clipboard direct (module Electron, pas l'API web navigator.clipboard) :
   // le gestionnaire de permissions (main.js#setupPermissions) refuse tout
   // sans exception, ce qui aurait bloque un appel navigator.clipboard.
-  copyToClipboard: (texte) => ipcRenderer.invoke('security:copy-to-clipboard', texte)
+  copyToClipboard: (texte) => ipcRenderer.invoke('security:copy-to-clipboard', texte),
+  // Lien vers l'avis de securite (idee "avis") - shell.openExternal cote
+  // main, inaccessible depuis un renderer sandboxe.
+  openExternal: (url) => ipcRenderer.invoke('security:open-external', url),
+  getExclusions: (path) => getJson(`/api/security/exclusions?path=${encodeURIComponent(path)}`),
+  addExclusion: (path, motif) => postJson('/api/security/exclusions', { path, motif }),
+  removeExclusion: (path, motif) => postJson('/api/security/exclusions/remove', { path, motif })
 });

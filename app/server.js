@@ -196,6 +196,24 @@ function startServer() {
     res.json(security.getHistory());
   });
 
+  // Exclusions personnalisees (idee "exclure") - complement manuel au
+  // .gitignore du dossier analyse (voir security.js#ajouterExclusion).
+  server.get('/api/security/exclusions', (req, res) => {
+    res.json(security.getExclusions(req.query.path));
+  });
+
+  server.post('/api/security/exclusions', (req, res) => {
+    try {
+      res.json(security.addExclusion(req.body.path, req.body.motif));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/security/exclusions/remove', (req, res) => {
+    res.json(security.removeExclusion(req.body.path, req.body.motif));
+  });
+
   return new Promise((resolve, reject) => {
     const instance = server.listen(PORT, HOST, () => {
       console.log(`[server] API AURA locale sur http://${HOST}:${PORT}`);
