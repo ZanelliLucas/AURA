@@ -1488,6 +1488,11 @@ function construireLigneRegle(rule) {
     desarmer();
     await window.aura.deleteRule(rule.id);
     journal(`REGLE_SUPPRIMEE : ${rule.name}`);
+    // Si la regle supprimee est celle en cours de modification, le
+    // formulaire restait bloque en mode edition ("Modifier « ... »",
+    // bouton "Enregistrer") pour une regle qui n'existe plus - un
+    // "Enregistrer" ulterieur aurait echoue avec "Regle introuvable.".
+    if (regleEnEdition === rule.id) sortirModeEdition();
     loadRules();
     refreshJournalIfOpen();
   });
