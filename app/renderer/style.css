@@ -857,7 +857,7 @@ html, body {
 /* Logs du systeme (panneau lateral gauche, §16.1) : meme point rouge
    pulsant que .app-page-updated::before - rappelle que ce sont de vraies
    entrees du journal, pas un texte fige. */
-#system-logs-heading { display: flex; align-items: center; gap: 8px; }
+#system-logs-heading { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 #system-logs-heading::before {
   content: '';
   width: 6px;
@@ -867,8 +867,15 @@ html, body {
   box-shadow: 0 0 6px 1px var(--red);
   animation: monitor-pouls 2s ease-in-out infinite;
 }
+/* Colonne flex plutot que le flux bloc par defaut de .side-panel : la
+   liste (flex:1) occupe tout l'espace restant entre le titre et le pied
+   de page, qu'il y ait beaucoup d'entrees ou seulement deux - sans ca,
+   la liste ne prenait que la hauteur de son propre contenu, laissant un
+   grand vide noir entre elle et le bas du panneau. */
+#panel-projects { display: flex; flex-direction: column; }
 .system-logs-list {
-  max-height: calc(100vh - 210px);
+  flex: 1;
+  min-height: 0; /* laisse le flex-item se restreindre - sinon son overflow-y:auto n'a aucun effet, le panneau entier deborderait a la place */
   overflow-y: auto;
   /* overflow-x explicite : sans lui, la specification CSS retombe sur
      overflow-x:auto des que overflow-y n'est pas 'visible' - le contenu
@@ -923,6 +930,7 @@ html, body {
 }
 .system-logs-footer {
   display: flex;
+  flex-shrink: 0;
   justify-content: space-between;
   gap: 10px;
   margin-top: 10px;
