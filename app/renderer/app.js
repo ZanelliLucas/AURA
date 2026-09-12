@@ -723,6 +723,7 @@ function ouvrirPageCategorie(id) {
     chargerDossiersRecents();
     chargerHistoriqueSecurity();
     chargerExclusions(document.getElementById('security-path').value.trim());
+    chargerMotifsSecret(document.getElementById('security-path').value.trim());
     journal('PAGE_OUVERTE : AURA SECURITY');
   }
 }
@@ -1398,6 +1399,7 @@ function resumeAction(action) {
   if (action.type === 'task.create') return `créer tâche « ${params.title || ''} »`;
   if (action.type === 'system.snapshot') return 'instantané système';
   if (action.type === 'security.scan') return `scan de sécurité « ${params.path || ''} »`;
+  if (action.type === 'security.audit_deps') return `audit de dépendances « ${params.path || ''} » (notifie dès ${SEVERITE_LABELS[params.graviteMin] || params.graviteMin})`;
   return '';
 }
 
@@ -1432,6 +1434,15 @@ function lireActionFormulaire() {
   if (type === 'security.scan') {
     return { type: 'security.scan', params: { path: document.getElementById('autonomy-action-security-path').value.trim() } };
   }
+  if (type === 'security.audit_deps') {
+    return {
+      type: 'security.audit_deps',
+      params: {
+        path: document.getElementById('autonomy-action-audit-path').value.trim(),
+        graviteMin: document.getElementById('autonomy-action-audit-gravite').value
+      }
+    };
+  }
   return { type: 'system.snapshot', params: {} };
 }
 
@@ -1448,7 +1459,7 @@ function actualiserApercuRegle() {
   const params = action.params || {};
   if (action.type === 'notify' && !params.message) params.message = '…';
   if (action.type === 'task.create' && !params.title) params.title = '…';
-  if (action.type === 'security.scan' && !params.path) params.path = '…';
+  if ((action.type === 'security.scan' || action.type === 'security.audit_deps') && !params.path) params.path = '…';
   preview.textContent = `${resumeDeclencheur(lireTriggerFormulaire())} → ${resumeAction(action)}`;
 }
 
@@ -1719,6 +1730,9 @@ function remplirFormulaireRegle(rule) {
     document.getElementById('autonomy-action-title').value = params.title || '';
   } else if (rule.action.type === 'security.scan') {
     document.getElementById('autonomy-action-security-path').value = params.path || '';
+  } else if (rule.action.type === 'security.audit_deps') {
+    document.getElementById('autonomy-action-audit-path').value = params.path || '';
+    document.getElementById('autonomy-action-audit-gravite').value = params.graviteMin || 'low';
   }
 
   document.getElementById('autonomy-rule-simulation').checked = rule.mode === 'simulation';
@@ -1806,13 +1820,23 @@ function wireAutonomyPage() {
   wireChampsConditionnels(document.getElementById('autonomy-rule-action-type'), {
     notify: 'autonomy-action-notify',
     'task.create': 'autonomy-action-task',
-    'security.scan': 'autonomy-action-security'
+    'security.scan': 'autonomy-action-security',
+    'security.audit_deps': 'autonomy-action-audit'
   });
   document.getElementById('autonomy-action-security-browse').addEventListener('click', async () => {
     try {
       const dossier = await window.aura.chooseFolder();
       if (dossier) {
         document.getElementById('autonomy-action-security-path').value = dossier;
+        actualiserApercuRegle();
+      }
+    } catch { /* dialogue annule/echoue - champ inchange */ }
+  });
+  document.getElementById('autonomy-action-audit-browse').addEventListener('click', async () => {
+    try {
+      const dossier = await window.aura.chooseFolder();
+      if (dossier) {
+        document.getElementById('autonomy-action-audit-path').value = dossier;
         actualiserApercuRegle();
       }
     } catch { /* dialogue annule/echoue - champ inchange */ }
@@ -2017,6 +2041,31 @@ function renderDepsResults({ resume, paquets, ignoresAppliques, premierScan, nou
   zone.innerHTML = `${avertissements.join('')}<div class="security-summary">${puces}${boutonToutCorriger}</div>${liste}`;
 }
 
+// Scan de l'historique Git (idee "scanner l'historique Git", retour
+// utilisateur) - meme gabarit visuel que les trouvailles du scan normal
+// (.security-finding), mais sans actions "localiser"/"ignorer" : le
+// fichier peut avoir change de contenu ou disparu depuis ce commit, une
+// action dessus n'aurait pas de sens fiable.
+const MAX_COMMITS_HISTORIQUE = 200; // affichage seulement - doit rester coherent avec security.js#MAX_COMMITS_HISTORIQUE
+
+function renderGitHistoryResults({ resultats, tronque }) {
+  const zone = document.getElementById('security-git-history-results');
+  const entete = `<p class="security-diff-summary">Historique Git : ${resultats.length} résultat(s)${tronque ? ' (limite atteinte)' : ''} sur les ${MAX_COMMITS_HISTORIQUE} derniers commits</p>`;
+  if (!resultats.length) {
+    zone.innerHTML = `${entete}<p class="rule-empty">Aucun secret détecté dans les commits passés.</p>`;
+    return;
+  }
+  zone.innerHTML = entete + resultats.map((r) => `
+    <div class="security-finding">
+      <div class="security-finding-header">
+        <span class="security-finding-file" title="${echapperHtml(r.fichier)}">${echapperHtml(r.commit)} · ${echapperHtml(r.fichier)}</span>
+        <span class="security-finding-badges"><span class="security-badge security-sev-critical">${echapperHtml(r.motif)}</span></span>
+      </div>
+      <div class="security-finding-snippet">${r.message ? `${echapperHtml(r.message)}<br>` : ''}${echapperHtml(r.extrait)}</div>
+    </div>
+  `).join('');
+}
+
 // Tendance dans le temps (idee "tendance", retour utilisateur) - un
 // sparkline SVG minimal, construit a partir des memes entrees d'historique
 // que la liste ci-dessous, sans stockage dedie. Trace en polyline (pas de
@@ -2202,6 +2251,22 @@ async function chargerExclusions(dossier) {
   }
 }
 
+// Motifs de secrets personnalises (idee "motifs personnalises", retour
+// utilisateur) - meme principe/gabarit que chargerExclusions ci-dessus.
+async function chargerMotifsSecret(dossier) {
+  const zone = document.getElementById('security-motifs-list');
+  if (!zone) return;
+  if (!dossier) { zone.innerHTML = ''; return; }
+  try {
+    const motifs = await window.aura.getSecretMotifs(dossier);
+    zone.innerHTML = motifs.map((m) => `
+      <span class="security-exclusion-chip">${echapperHtml(m)}<button type="button" class="security-motif-remove" data-motif="${echapperHtml(m)}" aria-label="Retirer le motif ${echapperHtml(m)}">×</button></span>
+    `).join('');
+  } catch {
+    zone.innerHTML = '';
+  }
+}
+
 function wireSecurityPage() {
   document.getElementById('security-back').addEventListener('click', fermerPage);
 
@@ -2211,6 +2276,7 @@ function wireSecurityPage() {
       if (dossier) {
         document.getElementById('security-path').value = dossier;
         chargerExclusions(dossier);
+        chargerMotifsSecret(dossier);
         chargerHistoriqueSecurity();
       }
     } catch (err) {
@@ -2225,6 +2291,7 @@ function wireSecurityPage() {
   // du dernier scan lance.
   document.getElementById('security-path').addEventListener('change', (e) => {
     chargerExclusions(e.target.value.trim());
+    chargerMotifsSecret(e.target.value.trim());
     chargerHistoriqueSecurity();
   });
 
@@ -2367,7 +2434,72 @@ function wireSecurityPage() {
     if (!puce) return;
     document.getElementById('security-path').value = puce.title;
     chargerExclusions(puce.title);
+    chargerMotifsSecret(puce.title);
     chargerHistoriqueSecurity();
+  });
+
+  // Motifs de secrets personnalises (idee "motifs personnalises") - meme
+  // gabarit que les exclusions ci-dessus.
+  document.getElementById('security-motif-add').addEventListener('click', async () => {
+    const chemin = document.getElementById('security-path').value.trim();
+    const champMotif = document.getElementById('security-motif-input');
+    const motif = champMotif.value.trim();
+    if (!chemin || !motif) return;
+    try {
+      await window.aura.addSecretMotif(chemin, motif);
+      champMotif.value = '';
+      journal(`SECURITY_MOTIF_AJOUTE : ${motif}`);
+      await chargerMotifsSecret(chemin);
+    } catch (err) {
+      journal(`SECURITY_MOTIF_ECHEC : ${err.message}`);
+    }
+    refreshJournalIfOpen();
+  });
+
+  document.getElementById('security-motifs-list').addEventListener('click', async (e) => {
+    const bouton = e.target.closest('.security-motif-remove');
+    if (!bouton) return;
+    const chemin = document.getElementById('security-path').value.trim();
+    if (!chemin) return;
+    await window.aura.removeSecretMotif(chemin, bouton.dataset.motif);
+    journal(`SECURITY_MOTIF_RETIRE : ${bouton.dataset.motif}`);
+    await chargerMotifsSecret(chemin);
+    refreshJournalIfOpen();
+  });
+
+  // Scanner l'historique Git (idee "scanner l'historique Git") - action
+  // distincte du scan normal (plus lente, git log sur N commits) : jamais
+  // lancee automatiquement avec "Tout analyser"/"Analyser les secrets".
+  document.getElementById('security-scan-git-history').addEventListener('click', async (e) => {
+    const chemin = document.getElementById('security-path').value.trim();
+    const zone = document.getElementById('security-git-history-results');
+    if (!chemin) { zone.innerHTML = '<p class="rule-empty">Choisissez d’abord un dossier.</p>'; return; }
+    e.target.disabled = true;
+    zone.innerHTML = '<p class="rule-empty">Lecture de l’historique Git en cours…</p>';
+    try {
+      const resultat = await window.aura.scanGitHistory(chemin);
+      renderGitHistoryResults(resultat, chemin);
+      journal(`SECURITY_SCAN_GIT_HISTORY : ${resultat.resultats.length} résultat(s)`);
+      chargerHistoriqueSecurity();
+    } catch (err) {
+      zone.innerHTML = `<p class="rule-empty">${echapperHtml(err.message)}</p>`;
+      journal(`SECURITY_SCAN_GIT_HISTORY_ECHEC : ${err.message}`);
+    }
+    e.target.disabled = false;
+    refreshJournalIfOpen();
+  });
+
+  // Copier le rapport (idee "copier le rapport") - meme rapport que
+  // l'export fichier (respecte les filtres actifs), juste vers le
+  // presse-papier plutot qu'un dialogue de sauvegarde natif.
+  document.getElementById('security-copy-report').addEventListener('click', async () => {
+    try {
+      await window.aura.copyToClipboard(construireRapportSecurite());
+      journal('SECURITY_RAPPORT_COPIE');
+    } catch (err) {
+      journal(`SECURITY_RAPPORT_COPIE_ECHEC : ${err.message}`);
+    }
+    refreshJournalIfOpen();
   });
 
   // Exporter le rapport (idee 4) : dialogue de sauvegarde natif (voir

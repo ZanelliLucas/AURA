@@ -35,6 +35,24 @@ const MOTIFS = [
   { nom: 'Affectation générique de secret', regex: /\b(api[_-]?key|secret[_-]?key|access[_-]?token|password|passwd)['"]?\s*[:=]\s*['"][^'"\s]{8,}['"]/gi }
 ];
 
+// Motif personnalise (idee "motifs personnalises", §5) : un simple mot-cle
+// litteral (jamais une regex fournie par l'utilisateur - RegExp construite
+// a partir d'un mot echappe, pas d'une syntaxe libre, pour ecarter tout
+// risque de ReDoS/injection) - suffisant pour reperer le nom d'une cle
+// interne a l'organisation que la liste MOTIFS ci-dessus ne peut pas
+// connaitre d'avance.
+function echapperRegex(texte) {
+  return texte.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function validerMotifSecretPersonnalise(motif) {
+  if (!motif || !motif.trim()) return 'Motif manquant.';
+  const nettoye = motif.trim();
+  if (nettoye.length < 4) return 'Motif trop court (4 caractères minimum).';
+  if (nettoye.length > 100) return 'Motif trop long.';
+  return null;
+}
+
 function estDossierExclu(nom, gitignore) {
   return DOSSIERS_EXCLUS.has(nom) || nom.startsWith('.') || gitignore.motifsExacts.has(nom);
 }
@@ -164,6 +182,15 @@ async function scanSecrets(dossierCible) {
   // pas besoin de savoir d'ou vient chaque motif.
   appliquerMotifs(store.getCustomExclusions(dossierCible), gitignore.motifsExacts, gitignore.motifsExtension);
   const fichiers = await listerFichiers(dossierCible, gitignore);
+  // Motifs personnalises (idee "motifs personnalises") : ajoutes a la
+  // liste fixe, pas a sa place - la regex est reconstruite a chaque scan
+  // (les Set/regex globales gardent un lastIndex, mieux vaut une instance
+  // fraiche que de la reinitialiser manuellement comme pour MOTIFS).
+  const motifsPerso = store.getCustomSecretMotifs(dossierCible).map((m) => ({
+    nom: `Motif personnalisé : ${m}`,
+    regex: new RegExp(echapperRegex(m), 'gi')
+  }));
+  const motifsActifs = [...MOTIFS, ...motifsPerso];
   // Faux positifs deja marques par l'utilisateur pour ce dossier (idee 1)
   // - filtres avant meme d'atteindre MAX_RESULTATS, pour qu'ils ne
   // prennent pas la place de vraies nouvelles trouvailles dans le plafond.
@@ -186,7 +213,7 @@ async function scanSecrets(dossierCible) {
     const fichierRelatif = path.relative(dossierCible, fichier).split(path.sep).join('/');
     const lignes = contenu.split('\n');
     for (let i = 0; i < lignes.length && resultats.length < MAX_RESULTATS; i++) {
-      for (const motif of MOTIFS) {
+      for (const motif of motifsActifs) {
         motif.regex.lastIndex = 0;
         const match = motif.regex.exec(lignes[i]);
         if (match) {
@@ -398,10 +425,115 @@ function ignoreDependency(dossier, nom, gravite) {
   return store.ignoreFinding(dossier, `dep::${nom}::${gravite}`);
 }
 
+// Motif de secret personnalise (idee "motifs personnalises") - meme
+// principe que ajouterExclusion : validation ici, stockage dans store.js.
+function ajouterMotifSecret(dossier, motif) {
+  const error = validerMotifSecretPersonnalise(motif);
+  if (error) throw new Error(error);
+  return store.addCustomSecretMotif(dossier, motif.trim());
+}
+
+const MAX_COMMITS_HISTORIQUE = 200; // au-dela, un historique Git devient trop long a lire d'un coup (§ meme logique que MAX_FICHIERS)
+const MAX_RESULTATS_HISTORIQUE = 100;
+
+// Scan de l'historique Git (idee "scanner l'historique Git", §5) : le scan
+// normal ne regarde que les fichiers presents aujourd'hui - un secret
+// ajoute puis retire du code reste invisible pour toujours sans regarder
+// aussi les commits passes. Reste une heuristique legere (comme scanSecrets
+// ci-dessus, pas un remplacement de gitleaks) : uniquement les lignes
+// AJOUTEES (diff -U0) des N derniers commits de la branche courante,
+// jamais l'historique complet --all (couteux sur un gros depot).
+function scannerHistoriqueGit(dossierCible) {
+  return new Promise((resolve, reject) => {
+    if (!dossierCible || !dossierCible.trim()) {
+      return reject(new Error('Dossier manquant.'));
+    }
+    if (!fs.existsSync(path.join(dossierCible, '.git'))) {
+      const error = 'Ce dossier n’est pas un dépôt Git (pas de dossier .git).';
+      store.logAction({ typeAction: 'security.scan_git_history', sensibilite: 'lecture', statut: 'echoue', details: { error } });
+      return reject(new Error(error));
+    }
+    // -U0 : aucune ligne de contexte, uniquement les lignes changees -
+    // reduit fortement la taille de la sortie et les faux positifs venant
+    // de lignes de contexte inchangees. execFile (pas exec) : le dossier
+    // passe en cwd, jamais interpole dans une commande.
+    execFile('git', ['log', '--no-color', '-p', '-U0', `--max-count=${MAX_COMMITS_HISTORIQUE}`], {
+      cwd: dossierCible, shell: true, timeout: 30000, maxBuffer: 20 * 1024 * 1024
+    }, (err, stdout) => {
+      if (err && !stdout) {
+        const error = `Lecture de l’historique Git impossible (${err.code === 'ETIMEDOUT' ? 'délai dépassé' : err.message}).`;
+        store.logAction({ typeAction: 'security.scan_git_history', sensibilite: 'lecture', statut: 'echoue', details: { error } });
+        return reject(new Error(error));
+      }
+      const gitignore = lireGitignore(dossierCible);
+      appliquerMotifs(store.getCustomExclusions(dossierCible), gitignore.motifsExacts, gitignore.motifsExtension);
+      const motifsPerso = store.getCustomSecretMotifs(dossierCible).map((m) => ({
+        nom: `Motif personnalisé : ${m}`,
+        regex: new RegExp(echapperRegex(m), 'gi')
+      }));
+      const motifsActifs = [...MOTIFS, ...motifsPerso];
+
+      const resultats = [];
+      const vus = new Set();
+      let commitActuel = null;
+      let messageActuel = '';
+      let fichierActuel = null;
+      const lignes = stdout.split('\n');
+      for (let i = 0; i < lignes.length && resultats.length < MAX_RESULTATS_HISTORIQUE; i++) {
+        const ligne = lignes[i];
+        if (ligne.startsWith('commit ')) {
+          commitActuel = ligne.slice(7, 14);
+          messageActuel = '';
+          fichierActuel = null;
+          continue;
+        }
+        if (!messageActuel && commitActuel && ligne.startsWith('    ')) {
+          messageActuel = ligne.trim();
+          continue;
+        }
+        const matchDiff = /^diff --git a\/.+ b\/(.+)$/.exec(ligne);
+        if (matchDiff) {
+          fichierActuel = matchDiff[1];
+          continue;
+        }
+        // +++ : en-tete de fichier du hunk, pas une ligne ajoutee - a
+        // exclure explicitement (elle commence aussi par '+').
+        if (!ligne.startsWith('+') || ligne.startsWith('+++')) continue;
+        if (!fichierActuel || !commitActuel) continue;
+        if (!EXTENSIONS_TEXTE.has(path.extname(fichierActuel).toLowerCase())) continue;
+        if (estCheminExclu(fichierActuel, gitignore)) continue;
+        const contenuLigne = ligne.slice(1);
+        for (const motif of motifsActifs) {
+          motif.regex.lastIndex = 0;
+          const match = motif.regex.exec(contenuLigne);
+          if (match) {
+            const cle = `${commitActuel}::${fichierActuel}::${motif.nom}`;
+            if (!vus.has(cle)) {
+              vus.add(cle);
+              resultats.push({
+                commit: commitActuel, message: messageActuel, fichier: fichierActuel,
+                motif: motif.nom, extrait: redigerExtrait(contenuLigne, match.index, match[0].length)
+              });
+            }
+            break;
+          }
+        }
+      }
+
+      store.logAction({
+        typeAction: 'security.scan_git_history', sensibilite: 'lecture', statut: 'execute',
+        details: { dossier: dossierCible, resultats: resultats.length }
+      });
+      resolve({ resultats, tronque: resultats.length >= MAX_RESULTATS_HISTORIQUE });
+    });
+  });
+}
+
 module.exports = {
   scanSecrets,
   auditerDependances,
   corrigerDependance,
+  scannerHistoriqueGit,
   getRecentFolders: () => store.getRecentSecurityFolders(),
   ignoreFinding: (dossier, fichier, ligne, motif) => store.ignoreFinding(dossier, `${fichier}::${ligne}::${motif}`),
   clearIgnoredFindings: (dossier) => store.clearIgnoredFindings(dossier),
@@ -410,5 +542,8 @@ module.exports = {
   getHistory,
   getExclusions: (dossier) => store.getCustomExclusions(dossier),
   addExclusion: ajouterExclusion,
-  removeExclusion: (dossier, motif) => store.removeCustomExclusion(dossier, motif)
+  removeExclusion: (dossier, motif) => store.removeCustomExclusion(dossier, motif),
+  getSecretMotifs: (dossier) => store.getCustomSecretMotifs(dossier),
+  addSecretMotif: ajouterMotifSecret,
+  removeSecretMotif: (dossier, motif) => store.removeCustomSecretMotif(dossier, motif)
 };

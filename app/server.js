@@ -203,6 +203,34 @@ function startServer() {
     res.json(security.clearIgnoredDependencies(req.body.path));
   });
 
+  // Historique Git (idee "scanner l'historique Git") - lecture seule
+  // (git log), voir security.js#scannerHistoriqueGit.
+  server.post('/api/security/scan-git-history', async (req, res) => {
+    try {
+      res.json(await security.scannerHistoriqueGit(req.body.path));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Motifs de secrets personnalises (idee "motifs personnalises") - meme
+  // principe que les exclusions ci-dessus.
+  server.get('/api/security/secret-motifs', (req, res) => {
+    res.json(security.getSecretMotifs(req.query.path));
+  });
+
+  server.post('/api/security/secret-motifs', (req, res) => {
+    try {
+      res.json(security.addSecretMotif(req.body.path, req.body.motif));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/security/secret-motifs/remove', (req, res) => {
+    res.json(security.removeSecretMotif(req.body.path, req.body.motif));
+  });
+
   server.get('/api/security/history', (req, res) => {
     res.json(security.getHistory());
   });

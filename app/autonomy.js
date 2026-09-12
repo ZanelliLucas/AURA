@@ -32,7 +32,8 @@ function getEstop() {
 }
 
 const TRIGGER_TYPES = ['interval', 'daily', 'threshold'];
-const ACTION_TYPES = ['notify', 'task.create', 'system.snapshot', 'security.scan'];
+const ACTION_TYPES = ['notify', 'task.create', 'system.snapshot', 'security.scan', 'security.audit_deps'];
+const GRAVITES = ['info', 'low', 'moderate', 'high', 'critical'];
 
 function validateTrigger(trigger) {
   if (!trigger || !TRIGGER_TYPES.includes(trigger.type)) return 'Type de déclencheur invalide.';
@@ -53,7 +54,8 @@ function validateAction(action) {
   const params = action.params || {};
   if (action.type === 'notify' && !(params.message && params.message.trim())) return 'Message de notification manquant.';
   if (action.type === 'task.create' && !(params.title && params.title.trim())) return 'Titre de tâche manquant.';
-  if (action.type === 'security.scan' && !(params.path && params.path.trim())) return 'Dossier à analyser manquant.';
+  if ((action.type === 'security.scan' || action.type === 'security.audit_deps') && !(params.path && params.path.trim())) return 'Dossier à analyser manquant.';
+  if (action.type === 'security.audit_deps' && params.graviteMin && !GRAVITES.includes(params.graviteMin)) return 'Gravité minimale invalide.';
   return null;
 }
 
@@ -181,6 +183,26 @@ async function executeAction(rule, snapshot) {
       }).show();
     }
     return `Scan de sécurité sur "${params.path}" : ${resultat.resultats.length} résultat(s)${detail}`;
+  }
+  if (type === 'security.audit_deps') {
+    // auditerDependances est en lecture seule (security.js, §14.2), meme
+    // raisonnement que security.scan ci-dessus.
+    const resultat = await security.auditerDependances(params.path);
+    const detail = resultat.nouveaux ? ` dont ${resultat.nouveaux} nouveau(x)` : '';
+    // Seuil de gravite (idee "seuil de gravite") : ne notifie que si au
+    // moins une nouvelle vulnerabilite atteint la gravite minimale
+    // configuree - sans ca, une regle automatique frequente redeviendrait
+    // vite du bruit des la premiere vulnerabilite "info"/"low" trouvee.
+    const seuil = GRAVITES.includes(params.graviteMin) ? params.graviteMin : 'low';
+    const seuilIndex = GRAVITES.indexOf(seuil);
+    const nouveauxAuDessusDuSeuil = resultat.paquets.filter((p) => p.nouveau && GRAVITES.indexOf(p.gravite) >= seuilIndex).length;
+    if (nouveauxAuDessusDuSeuil) {
+      new Notification({
+        title: 'AURA SECURITY',
+        body: `${nouveauxAuDessusDuSeuil} nouvelle(s) vulnérabilité(s) (≥ ${seuil}) détectée(s) dans "${params.path}"`
+      }).show();
+    }
+    return `Audit de dépendances sur "${params.path}" : ${resultat.paquets.length} résultat(s)${detail}`;
   }
   throw new Error(`Action inconnue : ${type}`);
 }

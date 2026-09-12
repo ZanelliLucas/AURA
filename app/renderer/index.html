@@ -278,6 +278,7 @@
                       <option value="task.create">Créer une tâche</option>
                       <option value="system.snapshot">Instantané système</option>
                       <option value="security.scan">Scan de sécurité</option>
+                      <option value="security.audit_deps">Audit de dépendances</option>
                     </select>
                   </span>
                   <span id="autonomy-action-notify" class="autonomy-action-fields">
@@ -289,6 +290,18 @@
                   <span id="autonomy-action-security" class="autonomy-action-fields" hidden>
                     <input id="autonomy-action-security-path" type="text" placeholder="Dossier à analyser…">
                     <button type="button" id="autonomy-action-security-browse">Parcourir…</button>
+                  </span>
+                  <span id="autonomy-action-audit" class="autonomy-action-fields" hidden>
+                    <input id="autonomy-action-audit-path" type="text" placeholder="Dossier à analyser…">
+                    <button type="button" id="autonomy-action-audit-browse">Parcourir…</button>
+                    <span class="monitor-select-wrap" title="Ne notifier que si une nouvelle vulnérabilité atteint au moins cette gravité">
+                      <select id="autonomy-action-audit-gravite">
+                        <option value="low">Notifier dès faible</option>
+                        <option value="moderate">Notifier dès modérée</option>
+                        <option value="high">Notifier dès élevée</option>
+                        <option value="critical">Notifier dès critique</option>
+                      </select>
+                    </span>
                   </span>
                 </div>
               </div>
@@ -339,6 +352,7 @@
           <button id="security-browse" type="button">Parcourir…</button>
           <button id="security-scan-all" type="button">Tout analyser</button>
           <button id="security-export" type="button">Exporter le rapport</button>
+          <button id="security-copy-report" type="button">Copier le rapport</button>
         </div>
         <div id="security-recent-folders" class="security-recent-folders"></div>
         <div class="inline-form security-search-form">
@@ -354,6 +368,7 @@
           <div class="monitor-card-body productivity-card-body">
             <div class="inline-form">
               <button id="security-scan-secrets" type="button">Analyser les secrets</button>
+              <button id="security-scan-git-history" type="button" title="Recherche aussi dans les commits passés - un secret retiré du code mais toujours dans l'historique reste invisible au scan normal">Scanner l'historique Git</button>
             </div>
             <div class="security-exclusions">
               <div class="inline-form">
@@ -362,7 +377,15 @@
               </div>
               <div id="security-exclusions-list" class="security-exclusions-list"></div>
             </div>
+            <div class="security-exclusions">
+              <div class="inline-form">
+                <input id="security-motif-input" type="text" placeholder="Détecter aussi ce mot-clé (min. 4 caractères)…">
+                <button id="security-motif-add" type="button">Ajouter</button>
+              </div>
+              <div id="security-motifs-list" class="security-exclusions-list"></div>
+            </div>
             <div id="security-secrets-results" class="monitor-scroll custom-scroll">Sélectionnez un dossier, puis lancez l'analyse.</div>
+            <div id="security-git-history-results" class="monitor-scroll custom-scroll"></div>
           </div>
         </section>
         <section class="monitor-card">

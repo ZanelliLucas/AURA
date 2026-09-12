@@ -84,6 +84,10 @@ contextBridge.exposeInMainWorld('aura', {
   clearIgnoredFindings: (path) => postJson('/api/security/clear-ignores', { path }),
   ignoreDependency: (path, nom, gravite) => postJson('/api/security/ignore-dependency', { path, nom, gravite }),
   clearIgnoredDependencies: (path) => postJson('/api/security/clear-ignored-dependencies', { path }),
+  scanGitHistory: (path) => postJson('/api/security/scan-git-history', { path }),
+  getSecretMotifs: (path) => getJson(`/api/security/secret-motifs?path=${encodeURIComponent(path)}`),
+  addSecretMotif: (path, motif) => postJson('/api/security/secret-motifs', { path, motif }),
+  removeSecretMotif: (path, motif) => postJson('/api/security/secret-motifs/remove', { path, motif }),
   getSecurityHistory: () => getJson('/api/security/history'),
   // clipboard direct (module Electron, pas l'API web navigator.clipboard) :
   // le gestionnaire de permissions (main.js#setupPermissions) refuse tout

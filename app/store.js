@@ -293,6 +293,32 @@ function removeCustomExclusion(dossier, motif) {
   return tout[dossier];
 }
 
+// --- Motifs de secrets personnalises AURA SECURITY (idee "motifs
+// personnalises", §5) ---------------------------------------------------
+// Complement manuel a la liste fixe de security.js#MOTIFS (cles AWS/GitHub/
+// JWT...) - pour un mot-cle propre a l'utilisateur (ex. le nom d'une cle
+// interne a son organisation) que la liste generique ne peut pas connaitre
+// d'avance. Meme forme de stockage/scope par dossier que les exclusions.
+
+function getCustomSecretMotifs(dossier) {
+  const tout = readJson('security-secret-motifs.json', {});
+  return tout[dossier] || [];
+}
+
+function addCustomSecretMotif(dossier, motif) {
+  const tout = readJson('security-secret-motifs.json', {});
+  tout[dossier] = [...new Set([...(tout[dossier] || []), motif])];
+  writeJson('security-secret-motifs.json', tout);
+  return tout[dossier];
+}
+
+function removeCustomSecretMotif(dossier, motif) {
+  const tout = readJson('security-secret-motifs.json', {});
+  tout[dossier] = (tout[dossier] || []).filter((m) => m !== motif);
+  writeJson('security-secret-motifs.json', tout);
+  return tout[dossier];
+}
+
 // --- Journal d'actions (§12.3 actions_log, §5.9) --------------------
 
 function getJournal(limit = 50) {
@@ -340,6 +366,9 @@ module.exports = {
   getCustomExclusions,
   addCustomExclusion,
   removeCustomExclusion,
+  getCustomSecretMotifs,
+  addCustomSecretMotif,
+  removeCustomSecretMotif,
   getJournal,
   logAction
 };
