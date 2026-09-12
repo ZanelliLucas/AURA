@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+let terminalCounter = 0;
+
 // Constantes dupliquees depuis server.js (volontairement, pas un require) :
 // en mode sandbox:true, le preload ne peut pas charger des modules Node
 // complets comme express/server.js - seule une poignee d'API restreintes
@@ -100,5 +102,36 @@ contextBridge.exposeInMainWorld('aura', {
   openExternal: (url) => ipcRenderer.invoke('security:open-external', url),
   getExclusions: (path) => getJson(`/api/security/exclusions?path=${encodeURIComponent(path)}`),
   addExclusion: (path, motif) => postJson('/api/security/exclusions', { path, motif }),
-  removeExclusion: (path, motif) => postJson('/api/security/exclusions/remove', { path, motif })
+  removeExclusion: (path, motif) => postJson('/api/security/exclusions/remove', { path, motif }),
+
+  // AURA TERMINAL (§5) - moteur reel (app/terminal-core), pas une API HTTP :
+  // les blocs de sortie arrivent au fil de l'eau (terminal:block), le
+  // meme geste que l'application TERMINAL d'origine (voir sa propre
+  // preload.js#execute). Pas de gestion d'onglets ici (v1, une seule
+  // session).
+  terminal: {
+    boot: () => ipcRenderer.invoke('terminal:boot'),
+    /**
+     * @param {string} line
+     * @param {(block:Object, index:number) => void} onBlock
+     * @returns {{promise: Promise<Object>, abort: () => void}}
+     */
+    execute(line, onBlock) {
+      terminalCounter += 1;
+      const id = `t${terminalCounter}`;
+      const listener = (event, payload) => {
+        if (payload.id === id && typeof onBlock === 'function') onBlock(payload.block, payload.index);
+      };
+      ipcRenderer.on('terminal:block', listener);
+      // Retire l'ecouteur un tour de boucle plus tard : des "terminal:block"
+      // peuvent encore etre en file quand la reponse de l'invoke arrive.
+      const promise = ipcRenderer.invoke('terminal:execute', { id, line })
+        .finally(() => setTimeout(() => ipcRenderer.removeListener('terminal:block', listener), 0));
+      return { promise, abort: () => ipcRenderer.send('terminal:abort', id) };
+    },
+    confirmation: (line) => ipcRenderer.invoke('terminal:confirmation', line),
+    confirm: (options) => ipcRenderer.invoke('terminal:confirm', options),
+    complete: (line) => ipcRenderer.invoke('terminal:complete', line),
+    reveal: (target) => ipcRenderer.send('terminal:reveal', target)
+  }
 });

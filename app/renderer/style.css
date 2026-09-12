@@ -1051,22 +1051,171 @@ html, body {
   color: var(--red);
 }
 
+/* AURA TERMINAL (§5, "j'ai fini de creer mon Terminal") - rendu des blocs
+   structures produits par le moteur reel (terminal-core), voir app.js#
+   terminalBlocHtml. Partage entre la page dediee (#terminal-page-output)
+   et le popup de la barre du bas (#conversation-output) - meme classe
+   .terminal-output pour les deux, seule .terminal-output-popup ajoute le
+   positionnement propre au popup. */
+.terminal-output {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--white);
+}
+#page-terminal .app-page-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 24px 32px 20px;
+  gap: 10px;
+}
+#terminal-page-output {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* Popup au-dessus de la barre du bas - meme gabarit visuel que
+   .terminal-panel (fond, bordure, ombre), empile juste au-dessus avec un
+   petit espace (margin-bottom), plutot que de reutiliser box-shadow qui
+   se chevaucherait avec celle du panneau lui-meme. */
+.terminal-output-popup {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  margin-bottom: 10px;
+  max-height: min(50vh, 420px);
+  overflow-y: auto;
+  background: rgba(5, 5, 5, 0.97);
+  border: 1px solid rgba(245, 246, 247, 0.14);
+  border-radius: 8px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5);
+  padding: 12px 16px;
+}
+.terminal-output-popup[hidden] { display: none; }
+
+.terminal-entry + .terminal-entry { margin-top: 10px; }
+.terminal-echo { color: var(--dim); }
+.terminal-echo-chevron { color: var(--red); }
+.terminal-entry-body { margin-top: 2px; }
+
+.terminal-line { white-space: pre-wrap; word-break: break-word; }
+.terminal-dim { color: var(--dim); }
+.terminal-accent { color: var(--red); }
+.terminal-error { color: var(--red); font-weight: 600; }
+.terminal-success { color: #3fb950; }
+.terminal-warn { color: #d9a441; }
+
+.terminal-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 6px 0 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(229, 38, 26, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+.terminal-title-note { color: var(--dim); text-transform: none; letter-spacing: normal; font-weight: 400; }
+.terminal-blank { height: 10px; }
+.terminal-rule { border-top: 1px solid var(--line-dim); margin: 6px 0; }
+
+.terminal-kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 16px; margin: 4px 0; }
+.terminal-kv dt { color: var(--dim); }
+.terminal-kv dd { margin: 0; }
+
+.terminal-list { margin: 4px 0; padding-left: 18px; }
+.terminal-list li { margin: 2px 0; }
+
+.terminal-code {
+  background: rgba(245, 246, 247, 0.04);
+  border: 1px solid var(--line-dim);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 4px 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 11px;
+  overflow-x: auto;
+}
+
+.terminal-path-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--white);
+  text-decoration: underline dotted rgba(245, 246, 247, 0.4);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+.terminal-path-link:hover { color: var(--red); text-decoration-color: var(--red); }
+
+.terminal-gauge { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+.terminal-gauge-label { flex-shrink: 0; width: 90px; color: var(--dim); }
+.terminal-gauge-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(245, 246, 247, 0.08);
+  overflow: hidden;
+}
+.terminal-gauge-fill { height: 100%; background: var(--red); border-radius: 3px; }
+.terminal-gauge-fill.terminal-gauge-high { background: #d9a441; }
+.terminal-gauge-note { flex-shrink: 0; color: var(--dim); font-size: 11px; }
+
+.terminal-table-wrap { overflow-x: auto; margin: 4px 0; }
+.terminal-table { border-collapse: collapse; width: 100%; white-space: nowrap; }
+.terminal-table th {
+  text-align: left;
+  color: var(--dim);
+  font-weight: 400;
+  padding: 3px 14px 3px 0;
+  border-bottom: 1px solid var(--line-dim);
+}
+.terminal-table td { padding: 2px 14px 2px 0; }
+.terminal-table .terminal-right { text-align: right; }
+.terminal-tone-error, .terminal-tone-critique { color: var(--red); }
+.terminal-tone-warn, .terminal-tone-attention { color: #d9a441; }
+.terminal-tone-success, .terminal-tone-ok { color: #3fb950; }
+
+.terminal-hint {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+.terminal-status {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  flex-shrink: 0;
+}
+#conversation-hint[hidden], #terminal-page-hint[hidden] { display: none; }
+
+.terminal-input-form { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.terminal-input-prompt { color: var(--red); font-family: 'IBM Plex Mono', monospace; font-size: 14px; }
+#terminal-page-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--white);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  caret-color: var(--red);
+}
+
 .conversation-bubble {
   display: flex;
   align-items: center;
   width: 100%;
   padding: 12px 10px 12px 16px;
   font-family: 'IBM Plex Mono', monospace;
-}
-
-/* Retour visuel bref quand le texte tape ne correspond a aucune
-   categorie connue - pas de blocage, juste un signal discret. */
-.conversation-bubble.pas-trouve {
-  animation: conversation-secousse 0.3s ease;
-}
-@keyframes conversation-secousse {
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
 }
 
 .conversation-prompt {

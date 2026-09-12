@@ -411,16 +411,40 @@
     </div>
   </section>
 
+  <!-- AURA TERMINAL (§5, "j'ai fini de creer mon Terminal") : moteur reel
+       (app/terminal-core, copie de TERMINAL/core), pas une imitation - le
+       coeur recoit une ligne de texte et rend des blocs de sortie
+       structures (voir terminal-core/output.js), rendus ici au style AURA
+       plutot qu'avec l'interface de l'application TERMINAL d'origine.
+       v1 : une seule session (pas d'onglets), pas de console interactive
+       pour `run` (bascule sur sa sortie texte, voir shell.js). -->
+  <section id="page-terminal" class="app-page" hidden>
+    <header class="app-page-header">
+      <button id="terminal-back" type="button" class="app-page-back" aria-label="Retour">←</button>
+      <h1>Terminal</h1>
+      <span id="terminal-page-prompt" class="app-page-updated"></span>
+    </header>
+    <div class="app-page-body">
+      <div id="terminal-page-output" class="terminal-output custom-scroll"></div>
+      <div id="terminal-page-status" class="terminal-status" hidden></div>
+      <div id="terminal-page-hint" class="terminal-hint" hidden></div>
+      <form id="terminal-page-form" class="terminal-input-form" autocomplete="off">
+        <span class="terminal-input-prompt">&gt;</span>
+        <input id="terminal-page-input" type="text" autocomplete="off" spellcheck="false" placeholder="Tapez une commande… (help pour la liste)">
+      </form>
+    </div>
+  </section>
+
   <div id="conversation-panel" class="terminal-panel">
     <!-- Acces rapide aux Somas du globe stellaire (§13.3) : le texte tape
-         est compare aux categories reelles d'AURA (data.js) - une
-         correspondance declenche un zoom de la camera vers le Soma
-         concerne, puis (pour AURA SYSTEM MONITOR, premiere page) l'ecran
-         de contenu correspondant. Les autres categories ne zooment
-         encore que sur le globe (leur page reste a construire).
-         Habillage panneau de Terminal (tete + ligne de commande) plutot
-         que bulle de conversation : une prefiguration du style AXIS
-         (§6), pas AXIS lui-meme. -->
+         est d'abord compare aux categories reelles d'AURA (data.js) - une
+         correspondance EXACTE declenche un zoom de la camera vers le Soma
+         concerne. Sinon (depuis "j'ai fini de creer mon Terminal"), la
+         ligne part au vrai moteur Terminal (terminal-core) et sa sortie
+         s'affiche dans le popup juste au-dessus, sans quitter la page
+         principale - la page AURA TERMINAL (Soma dedie) garde l'historique
+         complet pour un usage plus soutenu. -->
+    <div id="conversation-output" class="terminal-output terminal-output-popup custom-scroll" hidden></div>
     <div class="terminal-panel-header">Terminal</div>
     <form id="conversation-form" class="conversation-bubble" autocomplete="off">
       <span class="conversation-prompt" aria-hidden="true">AURA&gt;</span>
@@ -429,6 +453,7 @@
         <div id="conversation-highlight" class="conversation-bubble-text conversation-highlight" aria-hidden="true"></div>
       </span>
     </form>
+    <div id="conversation-hint" class="terminal-hint" hidden></div>
   </div>
 
   <script src="vendor/three.min.js"></script>

@@ -15,6 +15,8 @@ const NODES = [
     tools: ['CPU / GPU / RAM', 'Stockage & réseau', 'Alertes configurables'] },
   { id: 'autonomy', label: 'AURA AUTONOMY', kind: 'core',
     tools: ['Déclencheurs horaire / seuil', 'Tâches récurrentes', 'Mode simulation', 'Arrêt d’urgence'] },
+  { id: 'terminal', label: 'AURA TERMINAL', kind: 'core',
+    tools: ['Ligne de commande', 'Recherche de fichiers', 'Administration système', 'Serveurs locaux'] },
   { id: 'world', label: 'AURA WORLD', kind: 'core',
     tools: ['Carte 2D mondiale', 'Zoom pays / ville', 'Statut des agents', 'Flux d’événements'] },
 
@@ -51,6 +53,8 @@ const RELATIONS = [
   ['analytics', 'systemMonitor'],
   ['security', 'code'],
   ['security', 'system'],
+  ['terminal', 'system'],
+  ['terminal', 'security'],
   ['creative', 'vision'],
   ['research', 'office'],
   ['education', 'research']

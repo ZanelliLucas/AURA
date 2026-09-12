@@ -36,6 +36,7 @@
       "productivity.js",
       "autonomy.js",
       "security.js",
+      "terminal-core/**/*",
       "connectors/**/*",
       "providers/**/*",
       "renderer/**/*",

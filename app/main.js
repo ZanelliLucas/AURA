@@ -1,9 +1,11 @@
 const { app, BrowserWindow, session, dialog, ipcMain, shell, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { autoUpdater } = require('electron-updater');
 const { startServer } = require('./server');
 const autonomy = require('./autonomy');
+const { createTerminal, fileStorage } = require('./terminal-core');
 
 // .env local de dev uniquement (cle API pour tester sans passer par
 // l'ecran de configuration) - jamais inclus dans le build packagee, voir
@@ -151,6 +153,125 @@ function setupSecurityBridge() {
   });
 }
 
+// AURA TERMINAL (§5, "j'ai fini de creer mon Terminal") : le moteur
+// (app/terminal-core, copie de TERMINAL/core) ne connait ni Electron ni le
+// DOM - il recoit une ligne de texte et rend des blocs de sortie
+// structures (voir terminal-core/output.js), exactement comme l'a concu le
+// projet TERMINAL d'origine pour etre reutilisable par une autre interface
+// que la sienne. Vecu comme un pont, sur le meme principe que
+// setupSecurityBridge : le moteur tourne ici (seul endroit avec acces au
+// disque/systeme), le rendu reste dans le renderer sandboxe.
+let terminal = null;
+
+function getTerminal() {
+  if (terminal) return terminal;
+  terminal = createTerminal({
+    cwd: os.homedir(),
+    // Stockage propre a AURA (historique/alias/variables/serveurs) - pas
+    // partage avec une installation independante de TERMINAL, pour ne
+    // jamais faire ecrire deux processus differents dans le meme fichier.
+    storage: fileStorage(path.join(app.getPath('userData'), 'terminal-session.json')),
+    // `access` : Electron ouvre directement, sans passer par PowerShell -
+    // meme opener que l'application TERMINAL d'origine.
+    opener: async (target) => {
+      if (/^https?:\/\//i.test(target)) {
+        await shell.openExternal(target);
+        return;
+      }
+      const error = await shell.openPath(target);
+      if (error) throw new Error(error);
+    }
+    // console/startup/blackbox/healthWatch/selftest volontairement omis
+    // (v1) : sans eux, `run` bascule sur sa sortie texte non-interactive
+    // (voir terminal-core/commands/shell.js) et `demarrage`/`essai`/
+    // `sante suivi`/`boitenoire` renvoient une erreur claire plutot que de
+    // planter - fonctionnalites a part entiere, pas des trous caches.
+  });
+  return terminal;
+}
+
+/** Executions en cours, pour pouvoir les interrompre depuis l'interface. */
+const terminalRunning = new Map();
+
+function setupTerminalBridge() {
+  ipcMain.handle('terminal:boot', () => {
+    const term = getTerminal();
+    return {
+      name: term.name,
+      version: term.version,
+      banner: term.banner(),
+      cwd: term.session.cwd,
+      display: term.session.promptLabel(),
+      history: term.session.history
+    };
+  });
+
+  // Diffuse les blocs au fil de l'eau (une recherche sur tout le disque
+  // affiche sa progression) - meme principe que terminal:execute dans
+  // l'application TERMINAL d'origine (app/main.js).
+  ipcMain.handle('terminal:execute', async (event, { id, line } = {}) => {
+    const term = getTerminal();
+    const controller = new AbortController();
+    terminalRunning.set(id, controller);
+    try {
+      let index = 0;
+      const result = await term.execute(line, {
+        signal: controller.signal,
+        interactive: true,
+        onBlock: (block) => {
+          if (!event.sender.isDestroyed()) event.sender.send('terminal:block', { id, index: index++, block });
+        }
+      });
+      return {
+        ok: result.ok,
+        durationMs: result.durationMs,
+        command: result.command,
+        offset: result.offset || 0,
+        cwd: term.session.cwd,
+        display: term.session.promptLabel(),
+        blocks: result.blocks
+      };
+    } finally {
+      terminalRunning.delete(id);
+    }
+  });
+
+  ipcMain.on('terminal:abort', (event, id) => {
+    const controller = terminalRunning.get(id);
+    if (controller) controller.abort();
+  });
+
+  ipcMain.handle('terminal:confirmation', (event, line) => getTerminal().confirmation(String(line || '')));
+
+  ipcMain.handle('terminal:complete', async (event, line) => {
+    const completions = await getTerminal().complete(String(line || ''));
+    return Array.isArray(completions) ? completions.slice(0, 200) : [];
+  });
+
+  // Confirmation native pour les commandes marquees "dangereuses" (rm,
+  // kill, run...) - meme geste que l'application TERMINAL d'origine,
+  // plutot qu'un confirm() web (bloquant le fil du renderer, et deja
+  // indisponible dans un contexte sandboxe).
+  ipcMain.handle('terminal:confirm', async (event, { title, message, detail } = {}) => {
+    const resultat = await dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      buttons: ['Annuler', 'Confirmer'],
+      defaultId: 0,
+      cancelId: 0,
+      title: title || 'Confirmation',
+      message: message || 'Confirmer cette action ?',
+      detail: detail || ''
+    });
+    return resultat.response === 1;
+  });
+
+  // Chemin cliquable d'un bloc "path"/"table" (idee reprise de TERMINAL) -
+  // ouvre l'explorateur, comme security:reveal-file.
+  ipcMain.on('terminal:reveal', (event, target) => {
+    if (typeof target === 'string' && target) shell.showItemInFolder(target);
+  });
+}
+
 app.whenReady().then(async () => {
   try {
     apiServer = await startServer();
@@ -159,6 +280,7 @@ app.whenReady().then(async () => {
   }
   setupPermissions();
   setupSecurityBridge();
+  setupTerminalBridge();
   createWindow();
   checkForUpdates();
   startAutonomyTicker();
@@ -182,5 +304,10 @@ function checkForUpdates() {
 app.on('window-all-closed', () => {
   if (apiServer) apiServer.close();
   if (autonomyTickerInterval) clearInterval(autonomyTickerInterval);
+  // Un serveur demarre par `start` (AURA TERMINAL) ne doit pas survivre a
+  // la fenetre - meme regle que "exit" dans l'application TERMINAL
+  // d'origine, sinon un `npm run dev` lance depuis le Terminal resterait
+  // orphelin, port occupe.
+  if (terminal) terminal.servers.stopAll();
   app.quit();
 });

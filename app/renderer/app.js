@@ -98,6 +98,12 @@ function normaliserTexte(texte) {
   return sansAccents.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+// Correspondance EXACTE seulement (idee "Terminal", retour utilisateur) -
+// la barre du bas envoie desormais au vrai Terminal (terminal-core) tout
+// texte qui ne designe pas une page ; un rapprochement approximatif
+// (ancien comportement, "secur" -> AURA SECURITY) avalerait par erreur de
+// vraies commandes courtes (ls, ps...) qui ressemblent vaguement a un nom
+// de page.
 function trouverIndexCategorie(texte) {
   const mots = normaliserTexte(texte).split(' ').filter((m) => m && !MOTS_VIDES_ACCES.includes(m));
   const q = mots.join(' ');
@@ -107,10 +113,7 @@ function trouverIndexCategorie(texte) {
   let index = libelles.findIndex((label) => label === q);
   if (index !== -1) return index;
 
-  index = GRAPH_NODES.findIndex((n) => n.id.toLowerCase() === q.replace(/ /g, ''));
-  if (index !== -1) return index;
-
-  return libelles.findIndex((label) => label.includes(q) || q.includes(label));
+  return GRAPH_NODES.findIndex((n) => n.id.toLowerCase() === q.replace(/ /g, ''));
 }
 
 // Plonge la camera A L'INTERIEUR d'un Soma donne (index dans GRAPH_NODES) -
@@ -725,6 +728,14 @@ function ouvrirPageCategorie(id) {
     chargerExclusions(document.getElementById('security-path').value.trim());
     chargerMotifsSecret(document.getElementById('security-path').value.trim());
     journal('PAGE_OUVERTE : AURA SECURITY');
+  } else if (id === 'terminal') {
+    document.getElementById('page-terminal').hidden = false;
+    // Initialise une seule fois (banniere + historique) : les visites
+    // suivantes retrouvent le flux tel qu'on l'a laisse, comme un vrai
+    // terminal qu'on rouvre plutot qu'on relance a chaque fois.
+    initTerminalPage();
+    document.getElementById('terminal-page-input').focus();
+    journal('PAGE_OUVERTE : AURA TERMINAL');
   }
 }
 
@@ -752,6 +763,7 @@ function wirePages() {
   wireProductivityPage();
   wireAutonomyPage();
   wireSecurityPage();
+  wireTerminalPage();
 }
 
 // Seuils d'alerte configurables (§5.7) : charge les valeurs enregistrees au
@@ -934,30 +946,44 @@ function actualiserSurbrillanceCommande() {
 function wireConversation() {
   const form = document.getElementById('conversation-form');
   const input = document.getElementById('conversation');
-  const bulle = document.querySelector('.conversation-bubble');
+  const popup = document.getElementById('conversation-output');
 
   input.addEventListener('input', actualiserSurbrillanceCommande);
   input.addEventListener('scroll', actualiserSurbrillanceCommande);
 
-  form.addEventListener('submit', (e) => {
+  initTerminalPopup();
+  wireTerminalInput({
+    input,
+    hint: document.getElementById('conversation-hint'),
+    session: terminalPopupSession,
+    // Echap : masque le popup une fois qu'il est ouvert (rien en cours a
+    // interrompre, sinon wireTerminalInput l'a deja fait avant d'arriver
+    // ici - voir sa propre gestion d'Echap).
+    onEchap: () => { popup.hidden = true; }
+  });
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const texte = input.value.trim();
     if (!texte) return;
 
     const index = trouverIndexCategorie(texte);
-    if (index === -1) {
-      bulle.classList.remove('pas-trouve');
-      void bulle.offsetWidth;
-      bulle.classList.add('pas-trouve');
-      journal(`ACCES_CATEGORIE_INTROUVABLE : ${texte}`);
+    if (index !== -1) {
+      journal(`ACCES_CATEGORIE : ${GRAPH_NODES[index].label}`);
+      zoomVersSoma(index);
+      input.value = '';
+      input.blur();
+      actualiserSurbrillanceCommande();
       return;
     }
 
-    journal(`ACCES_CATEGORIE : ${GRAPH_NODES[index].label}`);
-    zoomVersSoma(index);
+    // Ni une commande de navigation exacte (idee "Terminal", retour
+    // utilisateur) : la ligne part au vrai Terminal, sa sortie s'affiche
+    // juste au-dessus, sans quitter la page principale.
+    popup.hidden = false;
     input.value = '';
-    input.blur();
     actualiserSurbrillanceCommande();
+    await terminalPopupSession.soumettre(texte);
   });
 }
 
@@ -2674,6 +2700,314 @@ function wireSecurityPage() {
 }
 
 initGlobe();
+
+// ================= AURA TERMINAL (§5) =================
+// Rendu des blocs structures produits par le moteur reel (terminal-core,
+// copie de TERMINAL/core) - jamais de HTML/ANSI depuis le moteur lui-meme,
+// voir terminal-core/output.js. Deux surfaces partagent ce meme rendu et
+// la meme logique de soumission (creerTerminalSession) : la page AURA
+// TERMINAL (Soma dedie, historique complet) et le popup de la barre du
+// bas (accès rapide, sans quitter la page principale) - chacune sa propre
+// session cote interface, mais le meme moteur/dossier courant cote main.js
+// (pas d'onglets en v1).
+
+const TERMINAL_TONE_CLASS = {
+  normal: '', dim: 'terminal-dim', accent: 'terminal-accent',
+  error: 'terminal-error', success: 'terminal-success', warn: 'terminal-warn'
+};
+
+function terminalTableHtml(bloc) {
+  const thead = bloc.columns.map((c) =>
+    `<th class="${c.align === 'right' ? 'terminal-right' : ''}">${echapperHtml(c.label)}</th>`
+  ).join('');
+  const corps = bloc.rows.map((ligne) => {
+    const cellules = bloc.columns.map((c) => {
+      const valeur = ligne[c.key] == null ? '' : String(ligne[c.key]);
+      const classeTon = c.tone && ligne._tone ? ` terminal-tone-${echapperHtml(String(ligne._tone))}` : '';
+      const classeAlign = c.align === 'right' ? ' terminal-right' : '';
+      if (c.kind === 'path') {
+        return `<td class="${classeAlign}${classeTon}"><button type="button" class="terminal-path-link" data-target="${echapperHtml(ligne._full || valeur)}">${echapperHtml(valeur)}</button></td>`;
+      }
+      return `<td class="${classeAlign}${classeTon}">${echapperHtml(valeur)}</td>`;
+    }).join('');
+    return `<tr>${cellules}</tr>`;
+  }).join('');
+  return `<div class="terminal-table-wrap"><table class="terminal-table"><thead><tr>${thead}</tr></thead><tbody>${corps}</tbody></table></div>`;
+}
+
+// control (clear/frame/progress/exit...) n'est jamais rendu ici : c'est un
+// ordre pour l'interface, gere a part par creerTerminalSession#ajouterBlocs.
+function terminalBlocHtml(bloc) {
+  switch (bloc.type) {
+    case 'text':
+      return `<div class="terminal-line ${TERMINAL_TONE_CLASS[bloc.tone] || ''}">${echapperHtml(bloc.text)}</div>`;
+    case 'title':
+      return `<div class="terminal-title"><span>${echapperHtml(bloc.label)}</span>${bloc.note ? `<span class="terminal-title-note">${echapperHtml(bloc.note)}</span>` : ''}</div>`;
+    case 'blank':
+      return '<div class="terminal-blank"></div>';
+    case 'rule':
+      return '<div class="terminal-rule"></div>';
+    case 'kv':
+      return `<dl class="terminal-kv">${bloc.pairs.map(([k, v]) => `<dt>${echapperHtml(k)}</dt><dd>${echapperHtml(v)}</dd>`).join('')}</dl>`;
+    case 'list':
+      return `<ul class="terminal-list">${bloc.items.map((i) => `<li>${echapperHtml(i)}</li>`).join('')}</ul>`;
+    case 'code':
+      return `<pre class="terminal-code">${echapperHtml(bloc.text)}</pre>`;
+    case 'path':
+      return `<div class="terminal-line"><button type="button" class="terminal-path-link" data-target="${echapperHtml(bloc.path)}">${echapperHtml(bloc.path)}</button></div>`;
+    case 'gauge': {
+      const pct = Math.round(bloc.ratio * 100);
+      return `<div class="terminal-gauge">
+        <span class="terminal-gauge-label">${echapperHtml(bloc.label)}</span>
+        <div class="terminal-gauge-track"><div class="terminal-gauge-fill${bloc.ratio > 0.85 ? ' terminal-gauge-high' : ''}" style="width:${pct}%"></div></div>
+        ${bloc.note ? `<span class="terminal-gauge-note">${echapperHtml(bloc.note)}</span>` : ''}
+      </div>`;
+    }
+    case 'table':
+      return terminalTableHtml(bloc);
+    case 'console':
+      // Console interactive (`run python`) : pas de PTY en v1 (voir main.js#
+      // getTerminal) - `run` bascule alors deja sur sa sortie texte
+      // cote moteur ; ce bloc n'apparait donc pas en pratique aujourd'hui.
+      return '<div class="terminal-line terminal-dim">[console interactive non disponible dans cette version - sortie en texte]</div>';
+    default:
+      return `<div class="terminal-line terminal-dim">[bloc non pris en charge : ${echapperHtml(String(bloc.type))}]</div>`;
+  }
+}
+
+/**
+ * Session Terminal cote interface : soumission, historique de navigation
+ * (fleches), flux de sortie. Le moteur (main.js) ne connait ni onglets ni
+ * "session UI" - c'est purement un regroupement des elements DOM d'une
+ * des deux surfaces (page ou popup) et de leur etat de navigation local.
+ */
+function creerTerminalSession({ output, statut, prompt }) {
+  const etat = { historique: [], curseur: 0, brouillon: '', enCours: null };
+
+  function coller(cible, html) {
+    cible.insertAdjacentHTML('beforeend', html);
+  }
+
+  function nouvelleEntree(ligne) {
+    coller(output, `<div class="terminal-entry"><div class="terminal-echo"><span class="terminal-echo-chevron">&gt;</span> ${echapperHtml(ligne)}</div><div class="terminal-entry-body"></div></div>`);
+    const corps = output.querySelectorAll('.terminal-entry-body');
+    return corps[corps.length - 1];
+  }
+
+  // Ordres adresses a l'interface (idee reprise de TERMINAL, ui/view.js#
+  // handleControl) - jamais affiches comme du contenu.
+  function appliquerControle(bloc, cible) {
+    if (bloc.action === 'clear') { output.replaceChildren(); return; }
+    // `watch` : chaque image remplace la precedente, dans l'entree courante
+    // seulement (pas tout le flux) - meme portee que le moteur (offset).
+    if (bloc.action === 'frame') { cible.replaceChildren(); return; }
+    if (bloc.action === 'progress') {
+      if (!statut) return;
+      const p = bloc.payload || {};
+      statut.textContent = p.done
+        ? `${p.found ?? 0} résultat(s) — ${p.scanned ?? 0} dossier(s) exploré(s)`
+        : `${p.found ?? 0} trouvé(s) — ${p.scanned ?? 0} dossier(s)${p.current ? ` — ${p.current}` : ''}`;
+      statut.hidden = false;
+      return;
+    }
+    if (bloc.action === 'exit') {
+      coller(cible, terminalBlocHtml({ type: 'text', tone: 'dim', text: 'Session terminée (serveurs éventuels arrêtés).' }));
+    }
+    // close-tab, noop : sans effet en v1 (pas d'onglets).
+  }
+
+  function ajouterBlocs(cible, blocs) {
+    const proche = output.scrollHeight - output.scrollTop - output.clientHeight < 60;
+    for (const bloc of blocs) {
+      if (bloc.type === 'control') { appliquerControle(bloc, cible); continue; }
+      coller(cible, terminalBlocHtml(bloc));
+    }
+    if (proche) output.scrollTop = output.scrollHeight;
+  }
+
+  async function soumettre(ligneBrute) {
+    const ligne = String(ligneBrute || '').trim();
+    if (!ligne || etat.enCours) return;
+
+    // Confirmation native pour une commande sensible (rm, kill, run...) -
+    // meme geste que l'application TERMINAL d'origine (dialog natif,
+    // inaccessible depuis un renderer sandboxe sans passer par main.js).
+    let autorise = true;
+    try {
+      const confirmation = await window.aura.terminal.confirmation(ligne);
+      if (confirmation && confirmation.required) {
+        autorise = await window.aura.terminal.confirm({
+          title: 'Confirmation',
+          message: 'Confirmer cette commande ?',
+          detail: confirmation.reasons.join('\n')
+        });
+      }
+    } catch { /* verification indisponible - la commande part quand meme */ }
+
+    const cible = nouvelleEntree(ligne);
+    if (!autorise) {
+      ajouterBlocs(cible, [{ type: 'text', tone: 'warn', text: 'Annulé.' }]);
+      etat.historique.push(ligne);
+      etat.curseur = etat.historique.length;
+      return;
+    }
+    if (statut) statut.hidden = true;
+
+    // Meme logique de rattrapage que ui/view.js#submit (application
+    // TERMINAL d'origine) : les blocs arrivent deux fois (au fil de l'eau,
+    // puis en entier dans la reponse) - `rendu`/`etabli` evitent de les
+    // afficher deux fois sans en perdre si des messages arrivent apres la
+    // fin de l'appel.
+    let rendu = 0;
+    let etabli = false;
+    const handle = window.aura.terminal.execute(ligne, (bloc, index) => {
+      if (etabli || index !== rendu) return;
+      ajouterBlocs(cible, [bloc]);
+      rendu += 1;
+    });
+    etat.enCours = handle;
+
+    let resultat;
+    try {
+      resultat = await handle.promise;
+      const offset = Number(resultat.offset) || 0;
+      const garde = Array.isArray(resultat.blocks) ? resultat.blocks : [];
+      if (offset + garde.length > rendu) {
+        ajouterBlocs(cible, garde.slice(Math.max(rendu - offset, 0)));
+        rendu = offset + garde.length;
+      }
+      etabli = true;
+    } catch (err) {
+      etabli = true;
+      ajouterBlocs(cible, [{ type: 'text', tone: 'error', text: err.message }]);
+      resultat = { ok: false };
+    } finally {
+      etat.enCours = null;
+      if (statut) statut.hidden = true;
+    }
+
+    if (resultat.display && prompt) prompt.textContent = resultat.display;
+
+    etat.historique.push(ligne);
+    etat.curseur = etat.historique.length;
+  }
+
+  // Chemin cliquable (bloc "path", ou colonne kind:"path" d'un tableau) -
+  // delegation sur le conteneur, les blocs etant inseres via innerHTML.
+  output.addEventListener('click', (e) => {
+    const lien = e.target.closest('.terminal-path-link');
+    if (lien) window.aura.terminal.reveal(lien.dataset.target);
+  });
+
+  return { soumettre, etat, output };
+}
+
+/**
+ * Raccourcis clavier d'une ligne de saisie Terminal - fleches (historique),
+ * Tab (completion), Ctrl+L (effacer), Echap (interrompre/masquer). Entree
+ * n'est PAS geree ici : chaque surface a sa propre logique de soumission
+ * (la barre du bas verifie d'abord une correspondance de Soma) et
+ * l'appelle depuis son propre ecouteur `submit` du formulaire englobant -
+ * la gerer aussi ici doublonnerait la soumission ou la court-circuiterait
+ * selon l'ordre des ecouteurs.
+ */
+function wireTerminalInput({ input, hint, session, onEchap }) {
+  input.addEventListener('input', () => { if (hint) hint.hidden = true; });
+
+  input.addEventListener('keydown', async (e) => {
+    if (e.key === 'ArrowUp') {
+      if (!session.etat.historique.length) return;
+      e.preventDefault();
+      if (session.etat.curseur === session.etat.historique.length) session.etat.brouillon = input.value;
+      session.etat.curseur = Math.max(0, session.etat.curseur - 1);
+      input.value = session.etat.historique[session.etat.curseur] || '';
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      if (!session.etat.historique.length) return;
+      e.preventDefault();
+      session.etat.curseur = Math.min(session.etat.historique.length, session.etat.curseur + 1);
+      input.value = session.etat.curseur === session.etat.historique.length ? session.etat.brouillon : session.etat.historique[session.etat.curseur];
+      return;
+    }
+    if (e.key === 'l' && e.ctrlKey) {
+      e.preventDefault();
+      session.output.replaceChildren();
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      if (!hint) return;
+      try {
+        const completions = await window.aura.terminal.complete(input.value);
+        if (completions.length === 1) {
+          const mots = input.value.split(/(\s+)/);
+          mots[mots.length - 1] = completions[0];
+          input.value = `${mots.join('')} `;
+          hint.hidden = true;
+        } else if (completions.length > 1) {
+          hint.textContent = completions.join('   ');
+          hint.hidden = false;
+        }
+      } catch { /* completion indisponible - sans consequence */ }
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (session.etat.enCours) { session.etat.enCours.abort(); return; }
+      if (typeof onEchap === 'function') onEchap();
+    }
+  });
+}
+
+let terminalPageSession = null;
+
+function initTerminalPage() {
+  if (terminalPageSession) return;
+  const session = creerTerminalSession({
+    output: document.getElementById('terminal-page-output'),
+    statut: document.getElementById('terminal-page-status'),
+    prompt: document.getElementById('terminal-page-prompt')
+  });
+  const input = document.getElementById('terminal-page-input');
+  const hint = document.getElementById('terminal-page-hint');
+  wireTerminalInput({ input, hint, session });
+  document.getElementById('terminal-page-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const ligne = input.value;
+    input.value = '';
+    hint.hidden = true;
+    await session.soumettre(ligne);
+  });
+  terminalPageSession = session;
+
+  window.aura.terminal.boot().then((boot) => {
+    document.getElementById('terminal-page-prompt').textContent = boot.display || '';
+    session.etat.historique = Array.isArray(boot.history) ? boot.history.slice() : [];
+    session.etat.curseur = session.etat.historique.length;
+    (boot.banner || []).forEach((bloc) => {
+      document.getElementById('terminal-page-output').insertAdjacentHTML('beforeend', terminalBlocHtml(bloc));
+    });
+  }).catch(() => { /* moteur indisponible - la page reste utilisable, chaque commande le redira */ });
+}
+
+function wireTerminalPage() {
+  document.getElementById('terminal-back').addEventListener('click', fermerPage);
+}
+
+// --- Popup de la barre du bas (idee "Terminal", retour utilisateur) ------
+
+let terminalPopupSession = null;
+
+function initTerminalPopup() {
+  if (terminalPopupSession) return;
+  terminalPopupSession = creerTerminalSession({
+    output: document.getElementById('conversation-output')
+    // Pas de `statut`/`prompt` dedies ici : le popup est deliberement
+    // minimal (progression/dossier courant restent l'affaire de la page
+    // AURA TERMINAL, pensee pour un usage plus soutenu).
+  });
+}
+
 startClock();
 chargerHistorique();
 wirePanels();
