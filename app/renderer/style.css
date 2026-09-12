@@ -1243,5 +1243,45 @@ html, body {
 .row-test-fail { color: var(--red) !important; }
 .rule-empty { color: var(--dim); font-size: 12px; font-style: italic; margin: 4px 0; }
 
+/* AURA SECURITY (§5) - jeton "Dossier" au-dessus des deux cartes,
+   meme habillage que .monitor-seuils (arret d'urgence, AURA AUTONOMY) :
+   un seul dossier cible pour les deux outils en dessous. */
+.security-path-form { margin-bottom: 0; flex: 1; min-width: 320px; }
+/* Chaque trouvaille (secret ou paquet vulnerable) : meme gabarit qu'une
+   ligne de regle (nom/valeur en tete, detail attenue en dessous), mais
+   sans case a cocher ni actions - une lecture seule n'a rien a activer. */
+.security-finding {
+  padding: 8px 2px;
+  border-bottom: 1px solid rgba(245, 246, 247, 0.08);
+  font-size: 12px;
+}
+.security-finding:last-child { border-bottom: none; }
+.security-finding-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.security-finding-file { color: var(--white); word-break: break-all; }
+.security-finding-snippet { color: var(--dim); margin-top: 3px; word-break: break-all; }
+/* Badge de gravite - meme gabarit que .rule-mode (AURA AUTONOMY), rouge
+   pour un secret trouve (toujours grave) ou une gravite npm critique/
+   elevee, ambre pour moderee, gris pour faible/info. */
+.security-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+  line-height: 1.5;
+}
+.security-sev-critical, .security-sev-high {
+  color: var(--red); border: 1px solid rgba(229, 38, 26, 0.4); background: rgba(229, 38, 26, 0.1);
+}
+.security-sev-moderate {
+  color: #d9a441; border: 1px solid rgba(217, 164, 65, 0.4); background: rgba(217, 164, 65, 0.1);
+}
+.security-sev-low, .security-sev-info {
+  color: var(--dim); border: 1px solid rgba(245, 246, 247, 0.16); background: rgba(245, 246, 247, 0.04);
+}
+.security-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.security-summary .security-badge { padding: 3px 8px; font-size: 10px; }
+
 #panel-projects .inline-form { margin-bottom: 16px; }
 #panel-projects .inline-form input, #panel-projects .inline-form select { font-size: 11px; padding: 5px 6px; }

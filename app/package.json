@@ -35,6 +35,7 @@
       "router.js",
       "productivity.js",
       "autonomy.js",
+      "security.js",
       "connectors/**/*",
       "providers/**/*",
       "renderer/**/*",

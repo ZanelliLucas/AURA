@@ -717,6 +717,10 @@ function ouvrirPageCategorie(id) {
     loadRules();
     chargerEstop();
     journal('PAGE_OUVERTE : AURA AUTONOMY');
+  } else if (id === 'security') {
+    document.getElementById('page-security').hidden = false;
+    actualiserHorodatageSecurity();
+    journal('PAGE_OUVERTE : AURA SECURITY');
   }
 }
 
@@ -743,6 +747,7 @@ function wirePages() {
   wireDetailsProcessus();
   wireProductivityPage();
   wireAutonomyPage();
+  wireSecurityPage();
 }
 
 // Seuils d'alerte configurables (§5.7) : charge les valeurs enregistrees au
@@ -981,7 +986,9 @@ const TYPE_LABELS = {
   'autonomy.simulation': 'Règle AUTONOMY (simulation)',
   'rule.create': 'Règle créée',
   'rule.toggle': 'Règle activée/désactivée',
-  'rule.update': 'Règle modifiée'
+  'rule.update': 'Règle modifiée',
+  'security.scan_secrets': 'Analyse de secrets',
+  'security.audit_deps': 'Audit de dépendances'
 };
 
 function formatJournalMessage(entry) {
@@ -993,6 +1000,8 @@ function formatJournalMessage(entry) {
   if (entry.typeAction === 'config.api_key') return `${label} : ${d.provider || ''}`;
   if (entry.typeAction === 'rule.create' || entry.typeAction === 'rule.update') return `${label} : ${d.name || ''}`;
   if (entry.typeAction === 'rule.toggle') return `${label} : ${d.name || ''} (${d.enabled ? 'activée' : 'désactivée'})`;
+  if (entry.typeAction === 'security.scan_secrets') return `${label} : ${d.trouvailles ?? 0} trouvaille(s) sur ${d.fichiersAnalyses ?? 0} fichier(s)`;
+  if (entry.typeAction === 'security.audit_deps') return `${label} : ${d.total ?? 0} vulnérabilité(s)`;
   if (entry.typeAction === 'autonomy.rule_fired' || entry.typeAction === 'autonomy.simulation') {
     return `${label} : ${d.name || ''}${d.summary ? ' — ' + d.summary : ''}`;
   }
@@ -1721,6 +1730,109 @@ function wireAutonomyPage() {
   wireFormulaireRegle();
   wireAutonomyRuleFilter();
   actualiserApercuRegle();
+}
+
+// --- Page AURA SECURITY (§5) --------------------------------------------
+// Analyse en lecture seule d'un dossier choisi par l'utilisateur : secrets
+// en clair et dependances vulnerables (voir security.js). Pas d'etat a
+// charger a l'ouverture (contrairement aux autres pages) - tout part d'un
+// dossier que l'utilisateur choisit lui-meme, rien a afficher avant ca.
+
+const SEVERITE_LABELS = { critical: 'critique', high: 'élevée', moderate: 'modérée', low: 'faible', info: 'info' };
+
+function actualiserHorodatageSecurity() {
+  const el = document.getElementById('security-updated');
+  if (el) el.textContent = new Date().toLocaleTimeString('fr-FR');
+}
+
+function renderSecretsResults({ fichiersAnalyses, resultats, tronque }) {
+  const zone = document.getElementById('security-secrets-results');
+  if (!resultats.length) {
+    zone.innerHTML = `<p class="rule-empty">Aucun secret détecté sur ${fichiersAnalyses} fichier(s) analysé(s).</p>`;
+    return;
+  }
+  const avertissement = tronque ? '<p class="rule-empty">Dossier volumineux : analyse partielle (limite de fichiers atteinte).</p>' : '';
+  zone.innerHTML = avertissement + resultats.map((r) => `
+    <div class="security-finding">
+      <div class="security-finding-header">
+        <span class="security-finding-file">${echapperHtml(r.fichier)}:${r.ligne}</span>
+        <span class="security-badge security-sev-critical">${echapperHtml(r.motif)}</span>
+      </div>
+      <div class="security-finding-snippet">${echapperHtml(r.extrait)}</div>
+    </div>
+  `).join('');
+}
+
+function renderDepsResults({ resume, paquets }) {
+  const zone = document.getElementById('security-deps-results');
+  if (!resume.total) {
+    zone.innerHTML = '<p class="rule-empty">Aucune vulnérabilité connue détectée.</p>';
+    return;
+  }
+  const puces = ['critical', 'high', 'moderate', 'low'].filter((s) => resume[s]).map((s) =>
+    `<span class="security-badge security-sev-${s}">${resume[s]} ${SEVERITE_LABELS[s]}</span>`
+  ).join('');
+  const liste = paquets.map((p) => `
+    <div class="security-finding">
+      <div class="security-finding-header">
+        <span class="security-finding-file">${echapperHtml(p.nom)}</span>
+        <span class="security-badge security-sev-${p.gravite}">${SEVERITE_LABELS[p.gravite] || echapperHtml(p.gravite)}</span>
+      </div>
+      <div class="security-finding-snippet">${p.correctif ? `Correctif : ${echapperHtml(p.correctif)}` : 'Pas de correctif automatique disponible.'}</div>
+    </div>
+  `).join('');
+  zone.innerHTML = `<div class="security-summary">${puces}</div>${liste}`;
+}
+
+function wireSecurityPage() {
+  document.getElementById('security-back').addEventListener('click', fermerPage);
+
+  document.getElementById('security-browse').addEventListener('click', async () => {
+    try {
+      const dossier = await window.aura.chooseFolder();
+      if (dossier) document.getElementById('security-path').value = dossier;
+    } catch (err) {
+      journal(`SECURITY_PARCOURIR_ECHEC : ${err.message}`);
+    }
+  });
+
+  document.getElementById('security-scan-secrets').addEventListener('click', async (e) => {
+    const chemin = document.getElementById('security-path').value.trim();
+    const zone = document.getElementById('security-secrets-results');
+    if (!chemin) { zone.innerHTML = '<p class="rule-empty">Choisissez d’abord un dossier.</p>'; return; }
+    e.target.disabled = true;
+    zone.innerHTML = '<p class="rule-empty">Analyse en cours…</p>';
+    try {
+      const resultat = await window.aura.scanSecrets(chemin);
+      renderSecretsResults(resultat);
+      journal(`SECURITY_SCAN_SECRETS : ${resultat.resultats.length} trouvaille(s) sur ${resultat.fichiersAnalyses} fichier(s)`);
+      actualiserHorodatageSecurity();
+    } catch (err) {
+      zone.innerHTML = `<p class="rule-empty">${echapperHtml(err.message)}</p>`;
+      journal(`SECURITY_SCAN_SECRETS_ECHEC : ${err.message}`);
+    }
+    e.target.disabled = false;
+    refreshJournalIfOpen();
+  });
+
+  document.getElementById('security-audit-deps').addEventListener('click', async (e) => {
+    const chemin = document.getElementById('security-path').value.trim();
+    const zone = document.getElementById('security-deps-results');
+    if (!chemin) { zone.innerHTML = '<p class="rule-empty">Choisissez d’abord un dossier.</p>'; return; }
+    e.target.disabled = true;
+    zone.innerHTML = '<p class="rule-empty">Audit en cours…</p>';
+    try {
+      const resultat = await window.aura.auditDependencies(chemin);
+      renderDepsResults(resultat);
+      journal(`SECURITY_AUDIT_DEPS : ${resultat.paquets.length} paquet(s) concerné(s)`);
+      actualiserHorodatageSecurity();
+    } catch (err) {
+      zone.innerHTML = `<p class="rule-empty">${echapperHtml(err.message)}</p>`;
+      journal(`SECURITY_AUDIT_DEPS_ECHEC : ${err.message}`);
+    }
+    e.target.disabled = false;
+    refreshJournalIfOpen();
+  });
 }
 
 initGlobe();

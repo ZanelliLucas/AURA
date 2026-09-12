@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session } = require('electron');
+const { app, BrowserWindow, session, dialog, ipcMain } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const { startServer } = require('./server');
@@ -86,6 +86,17 @@ function setupPermissions() {
   });
 }
 
+// AURA SECURITY (§5) : seul dialogue natif de l'app - le renderer est en
+// sandbox/contextIsolation et ne peut pas l'ouvrir lui-meme (voir
+// preload.js#chooseFolder). Choix explicite de l'utilisateur a chaque
+// appel, jamais un chemin devine/memorise cote main.
+function setupSecurityBridge() {
+  ipcMain.handle('security:choose-folder', async () => {
+    const resultat = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
+    return resultat.canceled ? null : resultat.filePaths[0];
+  });
+}
+
 app.whenReady().then(async () => {
   try {
     apiServer = await startServer();
@@ -93,6 +104,7 @@ app.whenReady().then(async () => {
     console.error('[server] echec du demarrage de l\'API locale :', err.message);
   }
   setupPermissions();
+  setupSecurityBridge();
   createWindow();
   checkForUpdates();
   startAutonomyTicker();

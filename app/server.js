@@ -9,6 +9,7 @@ const core = require('./core');
 const store = require('./store');
 const productivity = require('./productivity');
 const autonomy = require('./autonomy');
+const security = require('./security');
 const systemMonitor = require('./connectors/systemMonitor');
 
 const PORT = 8420;
@@ -144,6 +145,23 @@ function startServer() {
   server.post('/api/autonomy/rules/:id/run', async (req, res) => {
     try {
       res.json(await autonomy.ruleRunNow(req.params.id));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // AURA SECURITY (§5) - lecture seule (OBSERVE, §14.2)
+  server.post('/api/security/scan-secrets', async (req, res) => {
+    try {
+      res.json(await security.scanSecrets(req.body.path));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  server.post('/api/security/audit-deps', async (req, res) => {
+    try {
+      res.json(await security.auditerDependances(req.body.path));
     } catch (err) {
       res.status(400).json({ error: err.message });
     }

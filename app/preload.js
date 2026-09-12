@@ -1,4 +1,4 @@
-const { contextBridge } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 // Constantes dupliquees depuis server.js (volontairement, pas un require) :
 // en mode sandbox:true, le preload ne peut pas charger des modules Node
@@ -67,5 +67,13 @@ contextBridge.exposeInMainWorld('aura', {
   deleteRule: (id) => delJson(`/api/autonomy/rules/${encodeURIComponent(id)}`),
   runRule: (id) => postJson(`/api/autonomy/rules/${encodeURIComponent(id)}/run`),
 
-  getSystemSnapshot: () => getJson('/api/system/monitor')
+  getSystemSnapshot: () => getJson('/api/system/monitor'),
+
+  // AURA SECURITY (§5) - choix de dossier via le dialogue natif (dialog,
+  // main.js) : seule methode du bridge qui passe par ipcRenderer plutot
+  // que par l'API HTTP locale, aucun autre moyen d'ouvrir ce dialogue
+  // depuis un renderer sandboxe/contextIsolation.
+  chooseFolder: () => ipcRenderer.invoke('security:choose-folder'),
+  scanSecrets: (path) => postJson('/api/security/scan-secrets', { path }),
+  auditDependencies: (path) => postJson('/api/security/audit-deps', { path })
 });
