@@ -2814,8 +2814,23 @@ function creerTerminalSession({ output, statut, promptCibles, cheminCible, onMis
     cible.insertAdjacentHTML('beforeend', html);
   }
 
-  function nouvelleEntree(ligne) {
-    coller(output, `<div class="terminal-entry"><div class="terminal-echo"><span class="terminal-echo-chevron">&gt;</span> ${echapperHtml(ligne)}</div><div class="terminal-entry-body"></div></div>`);
+  // Horodatage (idee "identique a TERMINAL", retour utilisateur) - la
+  // meme heure sert a la fois sur la ligne echo et dans l'entree de
+  // journal correspondante, calculee une seule fois au moment de la
+  // soumission plutot que separement a deux endroits (pourrait sinon
+  // differer de quelques secondes si une confirmation native s'intercale).
+  function heureCourte() {
+    return new Date().toLocaleTimeString('fr-FR', { hour12: false });
+  }
+
+  function nouvelleEntree(ligne, heure) {
+    coller(output, `<div class="terminal-entry">
+      <div class="terminal-echo">
+        <span class="terminal-echo-texte"><span class="terminal-echo-chevron">&gt;</span> ${echapperHtml(ligne)}</span>
+        <span class="terminal-echo-heure">${heure}</span>
+      </div>
+      <div class="terminal-entry-body"></div>
+    </div>`);
     const corps = output.querySelectorAll('.terminal-entry-body');
     return corps[corps.length - 1];
   }
@@ -2870,13 +2885,14 @@ function creerTerminalSession({ output, statut, promptCibles, cheminCible, onMis
       }
     } catch { /* verification indisponible - la commande part quand meme */ }
 
-    const cible = nouvelleEntree(ligne);
+    const heure = heureCourte();
+    const cible = nouvelleEntree(ligne, heure);
     if (!autorise) {
       ajouterBlocs(cible, [{ type: 'text', tone: 'warn', text: 'Annulé.' }]);
       etat.historique.push(ligne);
       etat.curseur = etat.historique.length;
       etat.commandes += 1;
-      etat.journal.push({ ligne, ok: false });
+      etat.journal.push({ ligne, heure, ok: false });
       if (typeof onMiseAJour === 'function') onMiseAJour();
       return;
     }
@@ -2921,7 +2937,7 @@ function creerTerminalSession({ output, statut, promptCibles, cheminCible, onMis
     etat.curseur = etat.historique.length;
     etat.commandes += 1;
     if (!resultat.ok) etat.echecs += 1;
-    etat.journal.push({ ligne, ok: resultat.ok });
+    etat.journal.push({ ligne, heure, ok: resultat.ok });
     if (typeof onMiseAJour === 'function') onMiseAJour();
   }
 
@@ -3009,11 +3025,14 @@ function actualiserTerminalSidebarSession() {
   document.getElementById('terminal-stat-echecs').textContent = String(echecs);
   document.getElementById('terminal-stat-duree').textContent = formatDuree(Math.floor((Date.now() - debut) / 1000));
 
+  // "HH:MM:SS <ligne>" (idee "identique a TERMINAL", retour utilisateur) -
+  // meme format que le journal d'evenements de l'application TERMINAL
+  // d'origine, plutot qu'un simple point colore.
   const zone = document.getElementById('terminal-sidebar-journal');
   if (!journal.length) { zone.textContent = 'Aucune commande pour l’instant.'; return; }
   zone.innerHTML = journal.slice(-8).reverse().map((e) => `
     <div class="terminal-sidebar-journal-entry${e.ok ? '' : ' echoue'}">
-      <span class="terminal-sidebar-journal-dot"></span>
+      <span class="terminal-sidebar-journal-heure">${echapperHtml(e.heure || '')}</span>
       <span class="terminal-sidebar-journal-line">${echapperHtml(e.ligne)}</span>
     </div>
   `).join('');

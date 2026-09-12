@@ -1258,6 +1258,10 @@ html, body {
    lateral (260px) - "RAM" n'a besoin que de sa largeur naturelle. */
 .terminal-sidebar .terminal-gauge-label { width: auto; flex-shrink: 0; }
 .terminal-sidebar-journal-body { font-size: 11px; color: var(--dim); }
+/* "HH:MM:SS <ligne>" (idee "identique a TERMINAL") - heure fixe a
+   gauche (comme le journal d'evenements de l'application TERMINAL
+   d'origine), la couleur du texte distingue reussite/echec plutot qu'un
+   point separe. */
 .terminal-sidebar-journal-entry {
   display: flex;
   align-items: baseline;
@@ -1266,15 +1270,15 @@ html, body {
   border-bottom: 1px solid var(--line-dim);
 }
 .terminal-sidebar-journal-entry:last-child { border-bottom: none; }
-.terminal-sidebar-journal-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: #3fb950; }
-.terminal-sidebar-journal-entry.echoue .terminal-sidebar-journal-dot { background: var(--red); }
+.terminal-sidebar-journal-heure { flex-shrink: 0; color: var(--dim); font-family: 'IBM Plex Mono', monospace; }
 .terminal-sidebar-journal-line {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: 'IBM Plex Mono', monospace;
-  color: var(--dim);
+  color: var(--white);
 }
+.terminal-sidebar-journal-entry.echoue .terminal-sidebar-journal-line { color: var(--red); }
 
 /* Popup au-dessus de la barre du bas - meme gabarit visuel que
    .terminal-panel (fond, bordure, ombre), empile juste au-dessus avec un
@@ -1296,9 +1300,18 @@ html, body {
 }
 .terminal-output-popup[hidden] { display: none; }
 
-.terminal-entry + .terminal-entry { margin-top: 10px; }
-.terminal-echo { color: var(--dim); }
+/* Filet vertical par entree (idee "identique a TERMINAL", retour
+   utilisateur) - chaque commande executee se demarque ainsi du flux
+   general, comme dans l'application TERMINAL d'origine. */
+.terminal-entry {
+  border-left: 2px solid var(--red);
+  padding-left: 10px;
+}
+.terminal-entry + .terminal-entry { margin-top: 14px; }
+.terminal-echo { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; color: var(--dim); }
+.terminal-echo-texte { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .terminal-echo-chevron { color: var(--red); }
+.terminal-echo-heure { flex-shrink: 0; color: var(--dim); font-size: 11px; }
 .terminal-entry-body { margin-top: 2px; }
 
 .terminal-line { white-space: pre-wrap; word-break: break-word; }
