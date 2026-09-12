@@ -171,11 +171,29 @@ function startServer() {
     res.json(security.getRecentFolders());
   });
 
+  // Apercu multi-dossiers (idee "apercu dossiers recents") - compte les
+  // resultats du dernier scan connu de chaque dossier recent, sans rien
+  // relancer (voir security.js#getRecentFoldersResume).
+  server.get('/api/security/recent-folders-resume', (req, res) => {
+    res.json(security.getRecentFoldersResume());
+  });
+
   // security.fix_dependency (idee 5) : Reversible, pas Lecture - modifie
   // reellement le dossier analyse (voir security.js#corrigerDependance).
   server.post('/api/security/fix-dependency', async (req, res) => {
     try {
       res.json(await security.corrigerDependance(req.body.path, req.body.correctif));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Correctif generique (idee "correctif generique") - "npm audit fix"
+  // sans specifier de paquet, pour les vulnerabilites sans correctif
+  // "paquet@version" precis (voir security.js#corrigerAuditGenerique).
+  server.post('/api/security/fix-generic', async (req, res) => {
+    try {
+      res.json(await security.corrigerAuditGenerique(req.body.path));
     } catch (err) {
       res.status(400).json({ error: err.message });
     }

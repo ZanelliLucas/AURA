@@ -1879,16 +1879,26 @@ function nomDossierCourt(chemin) {
   return segments[segments.length - 1] || chemin;
 }
 
-function renderRecentFolders(dossiers) {
+// Apercu multi-dossiers (idee "apercu dossiers recents", retour
+// utilisateur) : un badge par outil sur chaque jeton, tire du dernier scan
+// connu de ce dossier (aucune analyse relancee - voir security.js#
+// getRecentFoldersResume). Absent (null, jamais scanne avec cet outil) ->
+// pas de badge du tout, plutot qu'un "0" qui laisserait croire a un scan
+// propre.
+function renderRecentFolders(resumes) {
   const zone = document.getElementById('security-recent-folders');
-  zone.innerHTML = dossiers.map((d) =>
-    `<button type="button" class="security-recent-chip" title="${echapperHtml(d)}">${echapperHtml(nomDossierCourt(d))}</button>`
-  ).join('');
+  zone.innerHTML = resumes.map(({ dossier, secrets, deps }) => `
+    <button type="button" class="security-recent-chip" title="${echapperHtml(dossier)}">
+      ${echapperHtml(nomDossierCourt(dossier))}
+      ${secrets ? `<span class="security-recent-badge security-recent-badge-secrets" title="${secrets} résultat(s) de secrets au dernier scan">${secrets}</span>` : ''}
+      ${deps ? `<span class="security-recent-badge security-recent-badge-deps" title="${deps} vulnérabilité(s) au dernier audit">${deps}</span>` : ''}
+    </button>
+  `).join('');
 }
 
 async function chargerDossiersRecents() {
   try {
-    renderRecentFolders(await window.aura.getRecentSecurityFolders());
+    renderRecentFolders(await window.aura.getRecentFoldersResume());
   } catch { /* API locale indisponible - la liste reste vide, sans consequence */ }
 }
 
@@ -2012,15 +2022,30 @@ function renderDepsResults({ resume, paquets, ignoresAppliques, premierScan, nou
   // moins deux correctifs precis distincts existent - avec un seul, le
   // bouton "Corriger" de la ligne elle-meme suffit deja (meme logique que
   // les filtres, generes seulement si au moins deux valeurs distinctes).
-  const correctifsUniques = [...new Set(paquets.filter((p) => p.correctif && p.correctif.includes('@')).map((p) => p.correctif))];
+  const paquetsCorrectifPrecis = paquets.filter((p) => p.correctif && p.correctif.includes('@'));
+  const correctifsUniques = [...new Set(paquetsCorrectifPrecis.map((p) => p.correctif))];
+  // Avertissement mise a jour majeure (idee "avertir avant une mise a jour
+  // majeure") : npm signale isSemVerMajor quand le correctif saute une
+  // version majeure - potentiellement incompatible avec le code existant.
+  const contientMajeur = paquetsCorrectifPrecis.some((p) => p.correctifMajeur);
   const boutonToutCorriger = correctifsUniques.length > 1
-    ? `<button type="button" id="security-fix-all" class="security-fix-btn" title="Installe les ${correctifsUniques.length} correctif(s) disponibles dans le dossier analysé">Tout corriger (${correctifsUniques.length})</button>`
+    ? `<button type="button" id="security-fix-all" class="security-fix-btn" title="Installe les ${correctifsUniques.length} correctif(s) disponibles dans le dossier analysé${contientMajeur ? ' - au moins un correctif implique une mise à jour majeure' : ''}">Tout corriger (${correctifsUniques.length})${contientMajeur ? ' ⚠' : ''}</button>`
+    : '';
+
+  // Correctif generique (idee "correctif generique") : "npm audit fix" est
+  // une seule commande qui corrige d'un coup toutes les vulnerabilites
+  // sans version precise proposee - affiche une fois au niveau de la
+  // carte, pas ligne par ligne (contrairement a "Corriger" ci-dessous).
+  const aCorrectifGenerique = paquets.some((p) => p.correctif === 'npm audit fix');
+  const boutonGenerique = aCorrectifGenerique
+    ? '<button type="button" id="security-fix-generic" class="security-fix-btn" title="Lance npm audit fix - corrige automatiquement les vulnérabilités sans version précise proposée">Corriger automatiquement</button>'
     : '';
 
   // Bouton "Corriger" (idee 5) uniquement quand le correctif est une
   // specification precise ("paquet@version", produite par npm audit lui-
   // meme) - le cas generique ("npm audit fix", fixAvailable:true sans
-  // nom/version precis) n'a pas de cible unique a proposer en un clic.
+  // nom/version precis) est couvert par le bouton "Corriger automatiquement"
+  // ci-dessus, pas ligne par ligne.
   const liste = filtres.map((p) => `
     <div class="security-finding">
       <div class="security-finding-header">
@@ -2030,15 +2055,15 @@ function renderDepsResults({ resume, paquets, ignoresAppliques, premierScan, nou
           <span class="security-badge security-sev-${p.gravite}">${SEVERITE_LABELS[p.gravite] || echapperHtml(p.gravite)}</span>
         </span>
       </div>
-      <div class="security-finding-snippet">${p.correctif ? `Correctif : ${echapperHtml(p.correctif)}` : 'Pas de correctif automatique disponible.'}</div>
+      <div class="security-finding-snippet">${p.correctif ? `Correctif : ${echapperHtml(p.correctif)}${p.correctifMajeur ? ' <span class="security-correctif-majeur" title="Mise à jour majeure : peut casser des fonctionnalités existantes">⚠ majeur</span>' : ''}` : 'Pas de correctif automatique disponible.'}</div>
       <div class="security-finding-actions">
         ${p.avisUrl ? `<button type="button" class="security-link-btn security-advisory-btn" data-url="${echapperHtml(p.avisUrl)}">Voir l’avis${p.avisTitre ? ` (${echapperHtml(p.avisTitre)})` : ''}</button>` : ''}
         <button type="button" class="security-link-btn security-ignore-dep-btn" data-nom="${echapperHtml(p.nom)}" data-gravite="${echapperHtml(p.gravite)}">Ignorer (faux positif)</button>
-        ${p.correctif && p.correctif.includes('@') ? `<button type="button" class="security-fix-btn" data-correctif="${echapperHtml(p.correctif)}" data-nom="${echapperHtml(p.nom)}" title="Installe ${echapperHtml(p.correctif)} dans le dossier analysé">Corriger</button>` : ''}
+        ${p.correctif && p.correctif.includes('@') ? `<button type="button" class="security-fix-btn" data-correctif="${echapperHtml(p.correctif)}" data-nom="${echapperHtml(p.nom)}" title="Installe ${echapperHtml(p.correctif)} dans le dossier analysé${p.correctifMajeur ? ' - mise à jour majeure, risque de rupture' : ''}">Corriger</button>` : ''}
       </div>
     </div>
   `).join('');
-  zone.innerHTML = `${avertissements.join('')}<div class="security-summary">${puces}${boutonToutCorriger}</div>${liste}`;
+  zone.innerHTML = `${avertissements.join('')}<div class="security-summary">${puces}${boutonToutCorriger}${boutonGenerique}</div>${liste}`;
 }
 
 // Scan de l'historique Git (idee "scanner l'historique Git", retour
@@ -2536,7 +2561,11 @@ function wireSecurityPage() {
     if (!bouton) return;
     if (!bouton.classList.contains('confirm-armed')) {
       bouton.classList.add('confirm-armed');
-      const texteArme = bouton.id === 'security-fix-all' ? bouton.textContent : 'Corriger';
+      // Seuls les boutons agreges ("Tout corriger", "Corriger
+      // automatiquement") ont un id - les boutons de ligne n'en ont
+      // jamais (juste class + dataset), d'ou ce test plutot qu'une liste
+      // d'ids en dur a maintenir a chaque nouveau bouton agrege.
+      const texteArme = bouton.id ? bouton.textContent : 'Corriger';
       bouton.dataset.texteInitial = texteArme;
       bouton.textContent = 'Confirmer ?';
       bouton.dataset.minuteur = setTimeout(() => {
@@ -2576,6 +2605,22 @@ function wireSecurityPage() {
         }
       }
       journal(`SECURITY_FIX_TOUT : ${ok} correctif(s) appliqué(s)${echecs ? `, ${echecs} échec(s)` : ''}`);
+      await lancerAuditDeps();
+      refreshJournalIfOpen();
+      return;
+    }
+
+    // Correctif generique (idee "correctif generique") : une seule
+    // commande "npm audit fix" pour tout ce qui n'a pas de version
+    // precise proposee - contrairement a "Corriger"/"Tout corriger", pas
+    // de paquet cible unique a passer.
+    if (bouton.id === 'security-fix-generic') {
+      try {
+        await window.aura.fixGenericAudit(chemin);
+        journal('SECURITY_FIX_GENERIQUE');
+      } catch (err) {
+        journal(`SECURITY_FIX_GENERIQUE_ECHEC : ${err.message}`);
+      }
       await lancerAuditDeps();
       refreshJournalIfOpen();
       return;

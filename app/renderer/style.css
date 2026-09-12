@@ -1362,6 +1362,13 @@ button.security-finding-file {
 }
 button.security-finding-file:hover { color: var(--red); text-decoration: underline; }
 .security-finding-snippet { color: var(--dim); margin-top: 3px; word-break: break-all; }
+
+/* Avertissement mise a jour majeure (idee "avertir avant une mise a jour
+   majeure", retour utilisateur) : npm signale isSemVerMajor quand le
+   correctif saute une version majeure - meme couleur ambre que la gravite
+   "moderee"/le badge de dependances des dossiers recents, ni alarmant
+   (rouge, deja utilise pour "toujours grave") ni discret (--dim). */
+.security-correctif-majeur { color: #d9a441; font-weight: 600; }
 /* Badge de gravite - meme gabarit que .rule-mode (AURA AUTONOMY), rouge
    pour un secret trouve (toujours grave) ou une gravite npm critique/
    elevee, ambre pour moderee, gris pour faible/info. */
@@ -1393,6 +1400,9 @@ button.security-finding-file:hover { color: var(--red); text-decoration: underli
    analyse) : reste sans hauteur, pas de jeton "aucun recent" a afficher. */
 .security-recent-folders { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; }
 .security-recent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   background: rgba(245, 246, 247, 0.04);
   border: 1px solid rgba(245, 246, 247, 0.16);
   border-radius: 4px;
@@ -1404,6 +1414,21 @@ button.security-finding-file:hover { color: var(--red); text-decoration: underli
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 .security-recent-chip:hover { color: var(--white); border-color: var(--red); }
+
+/* Apercu multi-dossiers (idee "apercu dossiers recents", retour
+   utilisateur) : un badge chiffre par outil, tire du dernier scan connu
+   (voir app.js#renderRecentFolders) - rouge pour les secrets (toujours
+   graves), ambre pour les dependances (meme couleur que la gravite
+   "moderee"/le sparkline deps), coherent avec le reste de la page. */
+.security-recent-badge {
+  font-size: 9px;
+  line-height: 1.4;
+  padding: 0 5px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.security-recent-badge-secrets { color: var(--red); background: rgba(229, 38, 26, 0.15); }
+.security-recent-badge-deps { color: #d9a441; background: rgba(217, 164, 65, 0.15); }
 
 /* Correctif en un clic (idee 5, retour utilisateur) : meme geste de
    confirmation a deux temps que la suppression d'une regle AURA

@@ -321,6 +321,12 @@ function auditerDependances(dossierCible) {
           correctif: v.fixAvailable && v.fixAvailable.name
             ? `${v.fixAvailable.name}@${v.fixAvailable.version}`
             : (v.fixAvailable === true ? 'npm audit fix' : null),
+          // isSemVerMajor (idee "avertir avant une mise a jour majeure") :
+          // npm le signale quand le correctif implique un saut de version
+          // majeure - potentiellement incompatible avec le code existant,
+          // contrairement a un correctif mineur/patch toujours sans risque
+          // de rupture attendu.
+          correctifMajeur: !!(v.fixAvailable && v.fixAvailable.isSemVerMajor),
           avisUrl: avis ? avis.url : null,
           avisTitre: avis ? avis.title : null
         });
@@ -400,6 +406,44 @@ function corrigerDependance(dossierCible, correctif) {
   });
 }
 
+// Correctif generique (idee "correctif generique") : certaines
+// vulnerabilites n'ont pas de "paquet@version" precis a proposer
+// (fixAvailable === true sans nom/version, ex. correctif transitif) mais
+// restent corrigeables via "npm audit fix" lui-meme - jusqu'ici affichees
+// comme "correctif : npm audit fix" sans aucun bouton pour l'appliquer.
+// Reversible (comme corrigerDependance), aucun argument utilisateur a
+// valider (commande fixe, seul le cwd varie).
+function corrigerAuditGenerique(dossierCible) {
+  return new Promise((resolve, reject) => {
+    if (!dossierCible || !dossierCible.trim()) {
+      return reject(new Error('Dossier manquant.'));
+    }
+    execFile('npm', ['audit', 'fix'], {
+      cwd: dossierCible, shell: true, timeout: 60000, maxBuffer: 10 * 1024 * 1024
+    }, (err, stdout, stderr) => {
+      // npm audit fix sort avec un code non-zero des qu'il reste des
+      // vulnerabilites apres coup (typiquement celles necessitant --force,
+      // qu'on ne veut surtout pas passer automatiquement ici) - meme piege
+      // que npm audit --json dans auditerDependances ci-dessus : le code de
+      // sortie seul ne dit pas si la commande a echoue. stdout non vide ->
+      // npm a bien tourne et produit son rapport, meme partiel.
+      if (err && !stdout) {
+        const error = `npm audit fix indisponible (${err.code === 'ETIMEDOUT' ? 'délai dépassé' : (stderr || err.message).trim().split('\n')[0]})`;
+        store.logAction({
+          typeAction: 'security.fix_dependency', sensibilite: 'reversible', statut: 'echoue',
+          details: { dossier: dossierCible, correctif: 'npm audit fix', error }
+        });
+        return reject(new Error(error));
+      }
+      store.logAction({
+        typeAction: 'security.fix_dependency', sensibilite: 'reversible', statut: 'execute',
+        details: { dossier: dossierCible, correctif: 'npm audit fix' }
+      });
+      resolve({ ok: true });
+    });
+  });
+}
+
 // Historique (idee 5) : reutilise le journal d'actions existant plutot
 // qu'un stockage dedie - filtre juste les entrees security.* sur une
 // fenetre plus large que les 20 dernieres entrees globales
@@ -407,6 +451,25 @@ function corrigerDependance(dossierCible, correctif) {
 // se faire evincer par des actions d'autres pages entre deux analyses.
 function getHistory() {
   return store.getJournal(200).filter((e) => e.typeAction.startsWith('security.'));
+}
+
+// Aperçu sur les dossiers recents (idee "apercu multi-dossiers") : combien
+// de resultats le DERNIER scan de chaque dossier avait trouve, sans
+// relancer aucune analyse - store.getLastScanResult ne stocke deja que les
+// cles des resultats (voir scanSecrets/auditerDependances), leur nombre
+// suffit ici. null (jamais scanne avec cet outil) distingue "pas de
+// probleme connu" de "inconnu" - le rendu ne doit pas afficher "0" dans
+// ce second cas comme s'il s'agissait d'un scan propre.
+function getRecentFoldersResume() {
+  return store.getRecentSecurityFolders().map((dossier) => {
+    const secretsScan = store.getLastScanResult('secrets', dossier);
+    const depsScan = store.getLastScanResult('deps', dossier);
+    return {
+      dossier,
+      secrets: secretsScan ? secretsScan.length : null,
+      deps: depsScan ? depsScan.length : null
+    };
+  });
 }
 
 // Exclusions personnalisees (idee "exclure") - purement du confort d'UI
@@ -533,8 +596,10 @@ module.exports = {
   scanSecrets,
   auditerDependances,
   corrigerDependance,
+  corrigerAuditGenerique,
   scannerHistoriqueGit,
   getRecentFolders: () => store.getRecentSecurityFolders(),
+  getRecentFoldersResume,
   ignoreFinding: (dossier, fichier, ligne, motif) => store.ignoreFinding(dossier, `${fichier}::${ligne}::${motif}`),
   clearIgnoredFindings: (dossier) => store.clearIgnoredFindings(dossier),
   ignoreDependency,
