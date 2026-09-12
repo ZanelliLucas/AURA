@@ -164,7 +164,7 @@ html, body {
   letter-spacing: 1.5px;
   text-transform: uppercase;
   padding: 6px 14px;
-  border-radius: 4px;
+  border-radius: 0;
   margin: 0;
 }
 .terminal-header-path { color: var(--dim); font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
@@ -183,13 +183,23 @@ html, body {
   letter-spacing: 1.5px;
   text-transform: uppercase;
 }
-.terminal-signal-bars { display: flex; align-items: flex-end; gap: 2px; height: 12px; }
-.terminal-signal-bars span { width: 3px; background: var(--red); border-radius: 1px; }
-.terminal-signal-bars span:nth-child(1) { height: 30%; }
-.terminal-signal-bars span:nth-child(2) { height: 50%; }
-.terminal-signal-bars span:nth-child(3) { height: 70%; }
-.terminal-signal-bars span:nth-child(4) { height: 85%; opacity: 0.6; }
-.terminal-signal-bars span:nth-child(5) { height: 100%; opacity: 0.35; }
+/* Texture en barres irregulieres (idee "identique a TERMINAL") plutot
+   qu'un simple escalier a 5 barres - purement decoratif, voir le
+   commentaire dans index.html. */
+.terminal-signal-bars { display: flex; align-items: flex-end; gap: 1px; height: 14px; }
+.terminal-signal-bars span { width: 2px; background: var(--red); border-radius: 0.5px; }
+.terminal-signal-bars span:nth-child(1) { height: 20%; opacity: 0.5; }
+.terminal-signal-bars span:nth-child(2) { height: 38%; opacity: 0.9; }
+.terminal-signal-bars span:nth-child(3) { height: 26%; opacity: 0.6; }
+.terminal-signal-bars span:nth-child(4) { height: 52%; opacity: 1; }
+.terminal-signal-bars span:nth-child(5) { height: 42%; opacity: 0.7; }
+.terminal-signal-bars span:nth-child(6) { height: 66%; opacity: 1; }
+.terminal-signal-bars span:nth-child(7) { height: 56%; opacity: 0.8; }
+.terminal-signal-bars span:nth-child(8) { height: 82%; opacity: 1; }
+.terminal-signal-bars span:nth-child(9) { height: 70%; opacity: 0.9; }
+.terminal-signal-bars span:nth-child(10) { height: 96%; opacity: 1; }
+.terminal-signal-bars span:nth-child(11) { height: 86%; opacity: 0.85; }
+.terminal-signal-bars span:nth-child(12) { height: 100%; opacity: 0.5; }
 
 .terminal-header-clock {
   color: var(--dim);
@@ -1177,19 +1187,20 @@ html, body {
   line-height: 1.6;
   color: var(--white);
 }
-/* Deux colonnes (idee "ressemble a TERMINAL", retour utilisateur) : le
+/* Deux colonnes (idee "identique a TERMINAL", retour utilisateur) : le
    flux/la saisie a gauche, le panneau Session/Machine/Journal a droite -
-   comme la fenetre de l'application TERMINAL d'origine, adapte au gabarit
-   de page d'AURA (.monitor-card) plutot qu'une copie de son interface. */
+   l'espacement avec la colonne de droite vient de son propre filet+
+   padding (.terminal-sidebar), pas d'un gap ici (eviterait un double
+   espacement). */
 .terminal-page-body {
   display: flex;
   overflow: hidden;
   padding: 24px 32px 20px;
-  gap: 24px;
 }
 .terminal-main {
   flex: 1;
   min-width: 0;
+  padding-right: 24px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1200,13 +1211,41 @@ html, body {
   padding-right: 6px;
 }
 
+/* Panneau lateral (idee "identique a TERMINAL") : filet vertical de
+   separation avec le flux principal - l'application TERMINAL d'origine
+   n'encadre pas ce panneau autrement. */
 .terminal-sidebar {
   width: 260px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 26px;
   overflow-y: auto;
+  border-left: 1px solid var(--line-dim);
+  padding-left: 24px;
+}
+/* Sections plates (juste un intitule + filet en dessous), pas des cartes
+   encadrees comme .monitor-card - c'est l'habillage reel de ce panneau
+   dans l'application TERMINAL d'origine (retour utilisateur : les cadres
+   ne doivent PAS apparaitre ici). */
+/* font-size explicite : sans lui, la jauge RAM (directement dans ce bloc,
+   pas dans .terminal-sidebar-kv comme le reste) heritait de la taille par
+   defaut du corps de page, bien plus grande que les 11px du reste du
+   panneau lateral. */
+.terminal-panel-block { display: flex; flex-direction: column; gap: 12px; font-size: 11px; }
+.terminal-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--dim);
 }
 .terminal-sidebar-dot { width: 6px; height: 6px; border-radius: 1px; background: var(--red); flex-shrink: 0; }
 .terminal-sidebar-kv { display: flex; flex-direction: column; gap: 7px; font-size: 11px; }
@@ -1218,7 +1257,7 @@ html, body {
    sortie) prendrait trop de place dans la colonne etroite du panneau
    lateral (260px) - "RAM" n'a besoin que de sa largeur naturelle. */
 .terminal-sidebar .terminal-gauge-label { width: auto; flex-shrink: 0; }
-#terminal-sidebar-journal.monitor-card-body { font-size: 11px; color: var(--dim); }
+.terminal-sidebar-journal-body { font-size: 11px; color: var(--dim); }
 .terminal-sidebar-journal-entry {
   display: flex;
   align-items: baseline;

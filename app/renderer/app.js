@@ -2795,9 +2795,15 @@ function terminalBlocHtml(bloc) {
  * "session UI" - c'est purement un regroupement des elements DOM d'une
  * des deux surfaces (page ou popup) et de leur etat de navigation local.
  */
-function creerTerminalSession({ output, statut, promptCibles, onMiseAJour }) {
-  const actualiserPrompt = (texte) => {
+function creerTerminalSession({ output, statut, promptCibles, cheminCible, onMiseAJour }) {
+  // Deux formats du dossier courant (idee "identique a TERMINAL") : le
+  // chemin complet dans l'en-tete (comme le titre de fenetre de
+  // l'application TERMINAL d'origine), la version abregee ("~") partout
+  // ailleurs (onglet, invite de saisie) - le moteur fournit les deux
+  // separement (cwd brut vs promptLabel()).
+  const actualiserPrompt = (texte, cheminComplet) => {
     (promptCibles || []).forEach((el) => { if (el) el.textContent = texte; });
+    if (cheminCible && cheminComplet) cheminCible.textContent = cheminComplet;
   };
   // commandes/echecs/debut : alimentent le panneau lateral "Session" (idee
   // "ressemble a TERMINAL", retour utilisateur) - propres a cette instance
@@ -2909,7 +2915,7 @@ function creerTerminalSession({ output, statut, promptCibles, onMiseAJour }) {
       if (statut) statut.hidden = true;
     }
 
-    if (resultat.display) actualiserPrompt(resultat.display);
+    if (resultat.display) actualiserPrompt(resultat.display, resultat.cwd);
 
     etat.historique.push(ligne);
     etat.curseur = etat.historique.length;
@@ -3046,16 +3052,16 @@ function initTerminalPage() {
   const session = creerTerminalSession({
     output: document.getElementById('terminal-page-output'),
     statut: document.getElementById('terminal-page-status'),
-    // Trois affichages du meme dossier courant (idee "identique a
-    // TERMINAL", retour utilisateur) : le chemin dans l'en-tete, l'onglet
-    // unique ("~") et le prompt au-dessus de la saisie - tous mis a jour
-    // ensemble a chaque commande, comme les trois zones equivalentes de
-    // l'application TERMINAL d'origine.
+    // Dossier courant affiche a trois endroits (idee "identique a
+    // TERMINAL", retour utilisateur) : abrege ("~") pour l'onglet et
+    // l'invite de saisie, chemin complet pour l'en-tete - comme le titre
+    // de fenetre de l'application TERMINAL d'origine (voir
+    // creerTerminalSession#actualiserPrompt).
     promptCibles: [
-      document.getElementById('terminal-page-prompt'),
       document.getElementById('terminal-tab-label'),
       document.getElementById('terminal-input-cwd')
     ],
+    cheminCible: document.getElementById('terminal-page-prompt'),
     onMiseAJour: actualiserTerminalSidebarSession
   });
   const input = document.getElementById('terminal-page-input');
@@ -3071,7 +3077,7 @@ function initTerminalPage() {
   terminalPageSession = session;
 
   window.aura.terminal.boot().then((boot) => {
-    session.actualiserPrompt(boot.display || '');
+    session.actualiserPrompt(boot.display || '', boot.cwd || '');
     session.etat.historique = Array.isArray(boot.history) ? boot.history.slice() : [];
     session.etat.curseur = session.etat.historique.length;
     (boot.banner || []).forEach((bloc) => {

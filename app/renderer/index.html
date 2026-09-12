@@ -433,7 +433,7 @@
       <div class="terminal-header-right">
         <span class="terminal-signal" aria-hidden="true">
           <span class="terminal-signal-label">Signal</span>
-          <span class="terminal-signal-bars"><span></span><span></span><span></span><span></span><span></span></span>
+          <span class="terminal-signal-bars"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
         </span>
         <span id="terminal-header-clock" class="terminal-header-clock"></span>
         <div class="terminal-window-controls">
@@ -465,40 +465,39 @@
           <input id="terminal-page-input" type="text" autocomplete="off" spellcheck="false" placeholder="help pour la liste des commandes">
         </form>
       </div>
-      <!-- Panneau lateral (idee "ressemble a TERMINAL", retour utilisateur) :
-           meme gabarit visuel que les cartes de AURA SYSTEM MONITOR
-           (.monitor-card), pas une copie de l'interface de l'application
-           TERMINAL d'origine - "Onglets" reste fixe a 1 (v1, pas d'onglets). -->
+      <!-- Panneau lateral (idee "identique a TERMINAL", retour utilisateur) :
+           sections plates (juste un intitule + filet), pas des cartes
+           encadrees comme AURA SYSTEM MONITOR (.monitor-card) - c'est
+           l'habillage reel de l'application TERMINAL d'origine pour ce
+           panneau. "Onglets" reste fixe a 1 (v1, pas d'onglets). -->
       <aside class="terminal-sidebar custom-scroll">
-        <section class="monitor-card">
-          <h2><span>Session</span><span class="terminal-sidebar-dot" aria-hidden="true"></span></h2>
-          <div class="monitor-card-body terminal-sidebar-kv">
+        <section class="terminal-panel-block">
+          <h2 class="terminal-panel-heading"><span>Session</span><span class="terminal-sidebar-dot" aria-hidden="true"></span></h2>
+          <div class="terminal-sidebar-kv">
             <div><span>Commandes</span><strong id="terminal-stat-commandes">0</strong></div>
             <div><span>Échecs</span><strong id="terminal-stat-echecs">0</strong></div>
             <div><span>Onglets</span><strong>1</strong></div>
             <div><span>Ouverte depuis</span><strong id="terminal-stat-duree">0 min</strong></div>
           </div>
         </section>
-        <section class="monitor-card">
-          <h2><span>Machine</span><span class="terminal-sidebar-dot" aria-hidden="true"></span></h2>
-          <div class="monitor-card-body">
-            <div class="terminal-gauge">
-              <span class="terminal-gauge-label">RAM</span>
-              <div class="terminal-gauge-track"><div id="terminal-vitals-ram-fill" class="terminal-gauge-fill"></div></div>
-              <span id="terminal-vitals-ram-pct" class="terminal-gauge-note"></span>
-            </div>
-            <div class="terminal-sidebar-kv terminal-sidebar-kv-spaced">
-              <div><span>Hôte</span><strong id="terminal-vitals-host">—</strong></div>
-              <div><span>Session</span><strong id="terminal-vitals-user">—</strong></div>
-              <div><span>Cœurs</span><strong id="terminal-vitals-cpu">—</strong></div>
-              <div><span>Mémoire</span><strong id="terminal-vitals-mem">—</strong></div>
-              <div><span>Allumé depuis</span><strong id="terminal-vitals-uptime">—</strong></div>
-            </div>
+        <section class="terminal-panel-block">
+          <h2 class="terminal-panel-heading"><span>Machine</span><span class="terminal-sidebar-dot" aria-hidden="true"></span></h2>
+          <div class="terminal-gauge">
+            <span class="terminal-gauge-label">RAM</span>
+            <div class="terminal-gauge-track"><div id="terminal-vitals-ram-fill" class="terminal-gauge-fill"></div></div>
+            <span id="terminal-vitals-ram-pct" class="terminal-gauge-note"></span>
+          </div>
+          <div class="terminal-sidebar-kv terminal-sidebar-kv-spaced">
+            <div><span>Hôte</span><strong id="terminal-vitals-host">—</strong></div>
+            <div><span>Session</span><strong id="terminal-vitals-user">—</strong></div>
+            <div><span>Cœurs</span><strong id="terminal-vitals-cpu">—</strong></div>
+            <div><span>Mémoire</span><strong id="terminal-vitals-mem">—</strong></div>
+            <div><span>Allumé depuis</span><strong id="terminal-vitals-uptime">—</strong></div>
           </div>
         </section>
-        <section class="monitor-card">
-          <h2><span>Journal</span><span class="terminal-sidebar-dot" aria-hidden="true"></span></h2>
-          <div id="terminal-sidebar-journal" class="monitor-card-body">Aucune commande pour l’instant.</div>
+        <section class="terminal-panel-block">
+          <h2 class="terminal-panel-heading"><span>Journal</span><span class="terminal-sidebar-dot" aria-hidden="true"></span></h2>
+          <div id="terminal-sidebar-journal" class="terminal-sidebar-journal-body">Aucune commande pour l’instant.</div>
         </section>
       </aside>
     </div>
