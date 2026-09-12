@@ -1063,17 +1063,64 @@ html, body {
   line-height: 1.6;
   color: var(--white);
 }
-#page-terminal .app-page-body {
+/* Deux colonnes (idee "ressemble a TERMINAL", retour utilisateur) : le
+   flux/la saisie a gauche, le panneau Session/Machine/Journal a droite -
+   comme la fenetre de l'application TERMINAL d'origine, adapte au gabarit
+   de page d'AURA (.monitor-card) plutot qu'une copie de son interface. */
+.terminal-page-body {
   display: flex;
-  flex-direction: column;
   overflow: hidden;
   padding: 24px 32px 20px;
+  gap: 24px;
+}
+.terminal-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 #terminal-page-output {
   flex: 1;
   overflow-y: auto;
   padding-right: 6px;
+}
+
+.terminal-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+.terminal-sidebar-dot { width: 6px; height: 6px; border-radius: 1px; background: var(--red); flex-shrink: 0; }
+.terminal-sidebar-kv { display: flex; flex-direction: column; gap: 7px; font-size: 11px; }
+.terminal-sidebar-kv > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.terminal-sidebar-kv span { color: var(--dim); }
+.terminal-sidebar-kv strong { color: var(--white); font-weight: 600; text-align: right; }
+.terminal-sidebar-kv-spaced { margin-top: 12px; }
+/* Le libelle fixe (90px, pense pour "Dossier(s) explores" dans le flux de
+   sortie) prendrait trop de place dans la colonne etroite du panneau
+   lateral (260px) - "RAM" n'a besoin que de sa largeur naturelle. */
+.terminal-sidebar .terminal-gauge-label { width: auto; flex-shrink: 0; }
+#terminal-sidebar-journal.monitor-card-body { font-size: 11px; color: var(--dim); }
+.terminal-sidebar-journal-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line-dim);
+}
+.terminal-sidebar-journal-entry:last-child { border-bottom: none; }
+.terminal-sidebar-journal-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: #3fb950; }
+.terminal-sidebar-journal-entry.echoue .terminal-sidebar-journal-dot { background: var(--red); }
+.terminal-sidebar-journal-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--dim);
 }
 
 /* Popup au-dessus de la barre du bas - meme gabarit visuel que

@@ -735,6 +735,12 @@ function ouvrirPageCategorie(id) {
     // terminal qu'on rouvre plutot qu'on relance a chaque fois.
     initTerminalPage();
     document.getElementById('terminal-page-input').focus();
+    // Panneau lateral (idee "ressemble a TERMINAL") : rafraichi tout de
+    // suite puis par intervalle, comme AURA SYSTEM MONITOR - "Ouverte
+    // depuis"/"Machine" doivent avancer meme sans taper de commande.
+    actualiserTerminalSidebar();
+    if (intervalTerminalSidebar) clearInterval(intervalTerminalSidebar);
+    intervalTerminalSidebar = setInterval(actualiserTerminalSidebar, 5000);
     journal('PAGE_OUVERTE : AURA TERMINAL');
   }
 }
@@ -742,6 +748,7 @@ function ouvrirPageCategorie(id) {
 function fermerPage() {
   document.querySelectorAll('.app-page').forEach((page) => { page.hidden = true; });
   if (intervalMonitor) { clearInterval(intervalMonitor); intervalMonitor = null; }
+  if (intervalTerminalSidebar) { clearInterval(intervalTerminalSidebar); intervalTerminalSidebar = null; }
   // Sans ceci, une modale (historique ou details processus) laissee
   // ouverte en quittant la page reapparaitrait seule a la prochaine
   // ouverture (elle vit dans le DOM de la page, masquee avec elle par
@@ -2781,8 +2788,11 @@ function terminalBlocHtml(bloc) {
  * "session UI" - c'est purement un regroupement des elements DOM d'une
  * des deux surfaces (page ou popup) et de leur etat de navigation local.
  */
-function creerTerminalSession({ output, statut, prompt }) {
-  const etat = { historique: [], curseur: 0, brouillon: '', enCours: null };
+function creerTerminalSession({ output, statut, prompt, onMiseAJour }) {
+  // commandes/echecs/debut : alimentent le panneau lateral "Session" (idee
+  // "ressemble a TERMINAL", retour utilisateur) - propres a cette instance
+  // d'interface, pas au moteur (qui ne compte rien de tel).
+  const etat = { historique: [], curseur: 0, brouillon: '', enCours: null, commandes: 0, echecs: 0, debut: Date.now(), journal: [] };
 
   function coller(cible, html) {
     cible.insertAdjacentHTML('beforeend', html);
@@ -2849,6 +2859,9 @@ function creerTerminalSession({ output, statut, prompt }) {
       ajouterBlocs(cible, [{ type: 'text', tone: 'warn', text: 'Annulé.' }]);
       etat.historique.push(ligne);
       etat.curseur = etat.historique.length;
+      etat.commandes += 1;
+      etat.journal.push({ ligne, ok: false });
+      if (typeof onMiseAJour === 'function') onMiseAJour();
       return;
     }
     if (statut) statut.hidden = true;
@@ -2890,6 +2903,10 @@ function creerTerminalSession({ output, statut, prompt }) {
 
     etat.historique.push(ligne);
     etat.curseur = etat.historique.length;
+    etat.commandes += 1;
+    if (!resultat.ok) etat.echecs += 1;
+    etat.journal.push({ ligne, ok: resultat.ok });
+    if (typeof onMiseAJour === 'function') onMiseAJour();
   }
 
   // Chemin cliquable (bloc "path", ou colonne kind:"path" d'un tableau) -
@@ -2959,6 +2976,59 @@ function wireTerminalInput({ input, hint, session, onEchap }) {
   });
 }
 
+// Ecrit "24,3 Go" (virgule francaise) a partir d'un nombre d'octets brut -
+// meme convention que les autres pages AURA (System Monitor), a la place
+// du point de os.totalmem()/os.freemem().
+function formatGoVirgule(octets) {
+  return `${(octets / (1024 ** 3)).toFixed(1).replace('.', ',')} Go`;
+}
+
+// Panneau lateral "Session" (idee "ressemble a TERMINAL") - relit
+// directement l'etat de la session UI, mis a jour par creerTerminalSession
+// a chaque soumission (voir son parametre onMiseAJour).
+function actualiserTerminalSidebarSession() {
+  if (!terminalPageSession) return;
+  const { commandes, echecs, debut, journal } = terminalPageSession.etat;
+  document.getElementById('terminal-stat-commandes').textContent = String(commandes);
+  document.getElementById('terminal-stat-echecs').textContent = String(echecs);
+  document.getElementById('terminal-stat-duree').textContent = formatDuree(Math.floor((Date.now() - debut) / 1000));
+
+  const zone = document.getElementById('terminal-sidebar-journal');
+  if (!journal.length) { zone.textContent = 'Aucune commande pour l’instant.'; return; }
+  zone.innerHTML = journal.slice(-8).reverse().map((e) => `
+    <div class="terminal-sidebar-journal-entry${e.ok ? '' : ' echoue'}">
+      <span class="terminal-sidebar-journal-dot"></span>
+      <span class="terminal-sidebar-journal-line">${echapperHtml(e.ligne)}</span>
+    </div>
+  `).join('');
+}
+
+// Panneau lateral "Machine" - constantes vitales (main.js#terminal:vitals,
+// meme principe que l'application TERMINAL d'origine) : uniquement ce que
+// `os` sait donner instantanement, rafraichi par intervalle plutot qu'a
+// chaque commande (independant de l'activite du Terminal).
+async function actualiserTerminalSidebarMachine() {
+  try {
+    const v = await window.aura.terminal.vitals();
+    const pct = Math.round((v.ramUsed / v.ramTotal) * 100);
+    const remplissage = document.getElementById('terminal-vitals-ram-fill');
+    remplissage.style.width = `${pct}%`;
+    remplissage.classList.toggle('terminal-gauge-high', pct > 85);
+    document.getElementById('terminal-vitals-ram-pct').textContent = `${pct} %`;
+    document.getElementById('terminal-vitals-host').textContent = v.host;
+    document.getElementById('terminal-vitals-user').textContent = v.user;
+    document.getElementById('terminal-vitals-cpu').textContent = String(v.cpuCount);
+    document.getElementById('terminal-vitals-mem').textContent = `${formatGoVirgule(v.ramUsed)} / ${formatGoVirgule(v.ramTotal)}`;
+    document.getElementById('terminal-vitals-uptime').textContent = formatDuree(v.uptime);
+  } catch { /* vitals indisponibles - le panneau garde ses dernieres valeurs affichees */ }
+}
+
+function actualiserTerminalSidebar() {
+  actualiserTerminalSidebarSession();
+  actualiserTerminalSidebarMachine();
+}
+
+let intervalTerminalSidebar = null;
 let terminalPageSession = null;
 
 function initTerminalPage() {
@@ -2966,7 +3036,8 @@ function initTerminalPage() {
   const session = creerTerminalSession({
     output: document.getElementById('terminal-page-output'),
     statut: document.getElementById('terminal-page-status'),
-    prompt: document.getElementById('terminal-page-prompt')
+    prompt: document.getElementById('terminal-page-prompt'),
+    onMiseAJour: actualiserTerminalSidebarSession
   });
   const input = document.getElementById('terminal-page-input');
   const hint = document.getElementById('terminal-page-hint');

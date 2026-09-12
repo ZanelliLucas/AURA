@@ -270,6 +270,23 @@ function setupTerminalBridge() {
   ipcMain.on('terminal:reveal', (event, target) => {
     if (typeof target === 'string' && target) shell.showItemInFolder(target);
   });
+
+  // Panneau lateral "Machine" (idee "ressemble a TERMINAL", retour
+  // utilisateur) - memes constantes vitales que l'application TERMINAL
+  // d'origine (app/main.js#vitals) : uniquement ce que `os` sait donner
+  // instantanement, pas de requete PowerShell qui ralentirait le rafraichissement.
+  ipcMain.handle('terminal:vitals', () => {
+    const total = os.totalmem();
+    const free = os.freemem();
+    return {
+      ramUsed: total - free,
+      ramTotal: total,
+      uptime: os.uptime(),
+      cpuCount: os.cpus().length,
+      host: os.hostname(),
+      user: os.userInfo().username
+    };
+  });
 }
 
 app.whenReady().then(async () => {

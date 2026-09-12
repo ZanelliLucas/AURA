@@ -132,6 +132,7 @@ contextBridge.exposeInMainWorld('aura', {
     confirmation: (line) => ipcRenderer.invoke('terminal:confirmation', line),
     confirm: (options) => ipcRenderer.invoke('terminal:confirm', options),
     complete: (line) => ipcRenderer.invoke('terminal:complete', line),
-    reveal: (target) => ipcRenderer.send('terminal:reveal', target)
+    reveal: (target) => ipcRenderer.send('terminal:reveal', target),
+    vitals: () => ipcRenderer.invoke('terminal:vitals')
   }
 });
