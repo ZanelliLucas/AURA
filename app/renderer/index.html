@@ -423,6 +423,25 @@
       <button id="terminal-back" type="button" class="app-page-back" aria-label="Retour">←</button>
       <h1 class="terminal-title-badge">Terminal</h1>
       <span id="terminal-page-prompt" class="terminal-header-path"></span>
+      <!-- Cote droit de l'en-tete (idee "identique a TERMINAL", retour
+           utilisateur) : AURA TERMINAL est une page integree, pas une
+           fenetre a part - "×" revient donc en arriere (meme action que
+           "←"), et reduire/agrandir n'ont pas d'equivalent ici (le disent
+           plutot que de faire semblant). Horloge reelle (meme logique que
+           #clock sur la toile), SIGNAL reste decoratif (la vraie mesure
+           existe deja via la commande `wifi`). -->
+      <div class="terminal-header-right">
+        <span class="terminal-signal" aria-hidden="true">
+          <span class="terminal-signal-label">Signal</span>
+          <span class="terminal-signal-bars"><span></span><span></span><span></span><span></span><span></span></span>
+        </span>
+        <span id="terminal-header-clock" class="terminal-header-clock"></span>
+        <div class="terminal-window-controls">
+          <button type="button" id="terminal-win-min" class="terminal-window-btn" aria-label="Réduire" title="Page intégrée à AURA - rien à réduire">−</button>
+          <button type="button" id="terminal-win-max" class="terminal-window-btn" aria-label="Agrandir" title="Page intégrée à AURA - rien à agrandir">☐</button>
+          <button type="button" id="terminal-win-close" class="terminal-window-btn terminal-window-btn-close" aria-label="Fermer">×</button>
+        </div>
+      </div>
     </header>
     <!-- Bandeau d'onglets (idee "identique a TERMINAL", retour utilisateur) :
          un seul onglet affiche, actif en permanence - v1 n'a pas d'onglets

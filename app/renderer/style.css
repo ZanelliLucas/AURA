@@ -169,6 +169,54 @@ html, body {
 }
 .terminal-header-path { color: var(--dim); font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
 
+/* Cote droit de l'en-tete - purement decoratif/informatif (SIGNAL,
+   horloge) ou aliase sur une action deja existante ("×" = "←") : voir le
+   commentaire dans index.html pour le choix fait sur reduire/agrandir. */
+.terminal-header-right { margin-left: auto; display: flex; align-items: center; gap: 22px; }
+.terminal-signal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.terminal-signal-bars { display: flex; align-items: flex-end; gap: 2px; height: 12px; }
+.terminal-signal-bars span { width: 3px; background: var(--red); border-radius: 1px; }
+.terminal-signal-bars span:nth-child(1) { height: 30%; }
+.terminal-signal-bars span:nth-child(2) { height: 50%; }
+.terminal-signal-bars span:nth-child(3) { height: 70%; }
+.terminal-signal-bars span:nth-child(4) { height: 85%; opacity: 0.6; }
+.terminal-signal-bars span:nth-child(5) { height: 100%; opacity: 0.35; }
+
+.terminal-header-clock {
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.terminal-window-controls { display: flex; align-items: center; gap: 2px; }
+.terminal-window-btn {
+  width: 28px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.terminal-window-btn:hover { color: var(--white); background: rgba(245, 246, 247, 0.08); }
+.terminal-window-btn-close:hover { color: var(--white); background: var(--red); }
+
 /* Bandeau d'onglets - un seul onglet actif en permanence (v1, pas
    d'onglets multiples cote interface). */
 .terminal-tabstrip {

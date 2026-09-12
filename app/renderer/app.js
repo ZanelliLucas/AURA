@@ -996,10 +996,17 @@ function wireConversation() {
 
 function startClock() {
   const clockEl = document.getElementById('clock');
+  // Horloge de l'en-tete AURA TERMINAL (idee "identique a TERMINAL") -
+  // meme tick que l'horloge principale plutot qu'un second intervalle
+  // redondant ; l'element n'existe qu'une fois la page chargee, verifie a
+  // chaque tick (elle est presente des le depart, jamais retiree du DOM).
   const tick = () => {
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
-    clockEl.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const texte = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    clockEl.textContent = texte;
+    const clockTerminal = document.getElementById('terminal-header-clock');
+    if (clockTerminal) clockTerminal.textContent = texte;
   };
   tick();
   setInterval(tick, 1000);
@@ -3080,6 +3087,18 @@ function wireTerminalPage() {
   // le dire plutot que de laisser croire a un bouton casse.
   document.getElementById('terminal-tab-add').addEventListener('click', () => {
     journal('TERMINAL_ONGLET : onglets multiples pas encore disponibles');
+  });
+
+  // Controles de fenetre (idee "identique a TERMINAL") : AURA TERMINAL
+  // est une page integree, pas une fenetre a part - "×" revient donc en
+  // arriere (meme geste que "←"), reduire/agrandir n'ont pas d'equivalent
+  // ici (le disent, comme "+" ci-dessus, plutot que de faire semblant).
+  document.getElementById('terminal-win-close').addEventListener('click', fermerPage);
+  document.getElementById('terminal-win-min').addEventListener('click', () => {
+    journal('TERMINAL_FENETRE : page intégrée à AURA, rien à réduire');
+  });
+  document.getElementById('terminal-win-max').addEventListener('click', () => {
+    journal('TERMINAL_FENETRE : page intégrée à AURA, rien à agrandir');
   });
 }
 
