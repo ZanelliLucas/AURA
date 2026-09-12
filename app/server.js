@@ -167,6 +167,20 @@ function startServer() {
     }
   });
 
+  server.get('/api/security/recent-folders', (req, res) => {
+    res.json(security.getRecentFolders());
+  });
+
+  // security.fix_dependency (idee 5) : Reversible, pas Lecture - modifie
+  // reellement le dossier analyse (voir security.js#corrigerDependance).
+  server.post('/api/security/fix-dependency', async (req, res) => {
+    try {
+      res.json(await security.corrigerDependance(req.body.path, req.body.correctif));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   return new Promise((resolve, reject) => {
     const instance = server.listen(PORT, HOST, () => {
       console.log(`[server] API AURA locale sur http://${HOST}:${PORT}`);

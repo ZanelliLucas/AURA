@@ -720,6 +720,7 @@ function ouvrirPageCategorie(id) {
   } else if (id === 'security') {
     document.getElementById('page-security').hidden = false;
     actualiserHorodatageSecurity();
+    chargerDossiersRecents();
     journal('PAGE_OUVERTE : AURA SECURITY');
   }
 }
@@ -988,7 +989,8 @@ const TYPE_LABELS = {
   'rule.toggle': 'Règle activée/désactivée',
   'rule.update': 'Règle modifiée',
   'security.scan_secrets': 'Analyse de secrets',
-  'security.audit_deps': 'Audit de dépendances'
+  'security.audit_deps': 'Audit de dépendances',
+  'security.fix_dependency': 'Correctif de dépendance'
 };
 
 function formatJournalMessage(entry) {
@@ -1002,6 +1004,7 @@ function formatJournalMessage(entry) {
   if (entry.typeAction === 'rule.toggle') return `${label} : ${d.name || ''} (${d.enabled ? 'activée' : 'désactivée'})`;
   if (entry.typeAction === 'security.scan_secrets') return `${label} : ${d.trouvailles ?? 0} trouvaille(s) sur ${d.fichiersAnalyses ?? 0} fichier(s)`;
   if (entry.typeAction === 'security.audit_deps') return `${label} : ${d.total ?? 0} vulnérabilité(s)`;
+  if (entry.typeAction === 'security.fix_dependency') return `${label} : ${d.correctif || ''}`;
   if (entry.typeAction === 'autonomy.rule_fired' || entry.typeAction === 'autonomy.simulation') {
     return `${label} : ${d.name || ''}${d.summary ? ' — ' + d.summary : ''}`;
   }
@@ -1815,9 +1818,35 @@ const SEVERITE_LABELS = { critical: 'critique', high: 'élevée', moderate: 'mod
 // entre-temps (nouvelle saisie sans relancer l'analyse).
 let dernierDossierSecrets = null;
 
+// Derniers resultats complets de chaque outil (idee 4, export) - permet
+// de composer un rapport meme si un seul des deux a ete lance, sans
+// devoir tout relancer juste pour l'exporter.
+let dernierResultatSecrets = null;
+let dernierResultatDeps = null;
+
 function actualiserHorodatageSecurity() {
   const el = document.getElementById('security-updated');
   if (el) el.textContent = new Date().toLocaleTimeString('fr-FR');
+}
+
+// Nom court d'un dossier (idee 1) - juste le dernier segment du chemin,
+// le chemin complet reste consultable via l'attribut title du jeton.
+function nomDossierCourt(chemin) {
+  const segments = chemin.replace(/[\\/]+$/, '').split(/[\\/]/);
+  return segments[segments.length - 1] || chemin;
+}
+
+function renderRecentFolders(dossiers) {
+  const zone = document.getElementById('security-recent-folders');
+  zone.innerHTML = dossiers.map((d) =>
+    `<button type="button" class="security-recent-chip" title="${echapperHtml(d)}">${echapperHtml(nomDossierCourt(d))}</button>`
+  ).join('');
+}
+
+async function chargerDossiersRecents() {
+  try {
+    renderRecentFolders(await window.aura.getRecentSecurityFolders());
+  } catch { /* API locale indisponible - la liste reste vide, sans consequence */ }
 }
 
 function renderSecretsResults({ fichiersAnalyses, resultats, tronque }) {
@@ -1851,6 +1880,10 @@ function renderDepsResults({ resume, paquets }) {
   const puces = ['critical', 'high', 'moderate', 'low', 'info'].filter((s) => resume[s]).map((s) =>
     `<span class="security-badge security-sev-${s}">${resume[s]} ${SEVERITE_LABELS[s]}</span>`
   ).join('');
+  // Bouton "Corriger" (idee 5) uniquement quand le correctif est une
+  // specification precise ("paquet@version", produite par npm audit lui-
+  // meme) - le cas generique ("npm audit fix", fixAvailable:true sans
+  // nom/version precis) n'a pas de cible unique a proposer en un clic.
   const liste = paquets.map((p) => `
     <div class="security-finding">
       <div class="security-finding-header">
@@ -1858,6 +1891,7 @@ function renderDepsResults({ resume, paquets }) {
         <span class="security-badge security-sev-${p.gravite}">${SEVERITE_LABELS[p.gravite] || echapperHtml(p.gravite)}</span>
       </div>
       <div class="security-finding-snippet">${p.correctif ? `Correctif : ${echapperHtml(p.correctif)}` : 'Pas de correctif automatique disponible.'}</div>
+      ${p.correctif && p.correctif.includes('@') ? `<button type="button" class="security-fix-btn" data-correctif="${echapperHtml(p.correctif)}" data-nom="${echapperHtml(p.nom)}" title="Installe ${echapperHtml(p.correctif)} dans le dossier analysé">Corriger</button>` : ''}
     </div>
   `).join('');
   zone.innerHTML = `<div class="security-summary">${puces}</div>${liste}`;
@@ -1874,9 +1908,11 @@ async function lancerScanSecrets() {
   try {
     const resultat = await window.aura.scanSecrets(chemin);
     dernierDossierSecrets = chemin;
+    dernierResultatSecrets = { dossier: chemin, ...resultat };
     renderSecretsResults(resultat);
     journal(`SECURITY_SCAN_SECRETS : ${resultat.resultats.length} trouvaille(s) sur ${resultat.fichiersAnalyses} fichier(s)`);
     actualiserHorodatageSecurity();
+    chargerDossiersRecents();
   } catch (err) {
     zone.innerHTML = `<p class="rule-empty">${echapperHtml(err.message)}</p>`;
     journal(`SECURITY_SCAN_SECRETS_ECHEC : ${err.message}`);
@@ -1891,14 +1927,48 @@ async function lancerAuditDeps() {
   zone.innerHTML = '<p class="rule-empty">Audit en cours…</p>';
   try {
     const resultat = await window.aura.auditDependencies(chemin);
+    dernierResultatDeps = { dossier: chemin, ...resultat };
     renderDepsResults(resultat);
     journal(`SECURITY_AUDIT_DEPS : ${resultat.paquets.length} paquet(s) concerné(s)`);
     actualiserHorodatageSecurity();
+    chargerDossiersRecents();
   } catch (err) {
     zone.innerHTML = `<p class="rule-empty">${echapperHtml(err.message)}</p>`;
     journal(`SECURITY_AUDIT_DEPS_ECHEC : ${err.message}`);
   }
   refreshJournalIfOpen();
+}
+
+// Rapport texte combinant les deux derniers resultats (idee 4) - simple
+// concatenation lisible, pas de format machine (JSON) : pense pour etre
+// relu/partage tel quel, pas reimporte dans l'app.
+function construireRapportSecurite() {
+  const lignes = [
+    'Rapport de sécurité AURA',
+    `Généré le ${new Date().toLocaleString('fr-FR')}`,
+    ''
+  ];
+  lignes.push('=== Secrets ===');
+  if (!dernierResultatSecrets) {
+    lignes.push('Aucune analyse effectuée.');
+  } else {
+    lignes.push(`Dossier : ${dernierResultatSecrets.dossier}`);
+    lignes.push(`${dernierResultatSecrets.fichiersAnalyses} fichier(s) analysé(s), ${dernierResultatSecrets.resultats.length} trouvaille(s)`);
+    dernierResultatSecrets.resultats.forEach((r) => {
+      lignes.push(`- ${r.fichier}:${r.ligne} [${r.motif}] ${r.extrait}`);
+    });
+  }
+  lignes.push('', '=== Dépendances ===');
+  if (!dernierResultatDeps) {
+    lignes.push('Aucune analyse effectuée.');
+  } else {
+    lignes.push(`Dossier : ${dernierResultatDeps.dossier}`);
+    lignes.push(`${dernierResultatDeps.resume.total || 0} vulnérabilité(s)`);
+    dernierResultatDeps.paquets.forEach((p) => {
+      lignes.push(`- ${p.nom} [${SEVERITE_LABELS[p.gravite] || p.gravite}] ${p.correctif ? `Correctif : ${p.correctif}` : 'Pas de correctif automatique disponible.'}`);
+    });
+  }
+  return lignes.join('\n');
 }
 
 function wireSecurityPage() {
@@ -1950,6 +2020,63 @@ function wireSecurityPage() {
     if (!bouton || !dernierDossierSecrets) return;
     const resultat = await window.aura.revealFile(dernierDossierSecrets, bouton.dataset.fichier);
     if (!resultat.ok) journal(`SECURITY_LOCALISER_ECHEC : ${resultat.error}`);
+  });
+
+  // Dossiers recents (idee 1) : remplit juste le champ, comme "Parcourir…"
+  // - ne relance pas d'analyse automatiquement (choix coherent avec le
+  // reste de la page, ou chaque action est explicite).
+  document.getElementById('security-recent-folders').addEventListener('click', (e) => {
+    const puce = e.target.closest('.security-recent-chip');
+    if (!puce) return;
+    document.getElementById('security-path').value = puce.title;
+  });
+
+  // Exporter le rapport (idee 4) : dialogue de sauvegarde natif (voir
+  // security:export-report, main.js) - l'utilisateur choisit
+  // l'emplacement et confirme via le dialogue de l'OS.
+  document.getElementById('security-export').addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    try {
+      const resultat = await window.aura.exportSecurityReport(construireRapportSecurite());
+      if (resultat.ok) journal(`SECURITY_EXPORT : ${resultat.path}`);
+      else if (!resultat.canceled) journal(`SECURITY_EXPORT_ECHEC : ${resultat.error}`);
+    } catch (err) {
+      journal(`SECURITY_EXPORT_ECHEC : ${err.message}`);
+    }
+    e.target.disabled = false;
+  });
+
+  // Correctif en un clic (idee 5) : confirmation a deux temps, meme
+  // geste que la suppression d'une regle AURA AUTONOMY - action reelle
+  // sur le dossier analyse, pas une simple lecture. Delegation sur le
+  // conteneur pour la meme raison que "localiser" ci-dessus.
+  document.getElementById('security-deps-results').addEventListener('click', async (e) => {
+    const bouton = e.target.closest('.security-fix-btn');
+    if (!bouton) return;
+    if (!bouton.classList.contains('confirm-armed')) {
+      bouton.classList.add('confirm-armed');
+      bouton.textContent = 'Confirmer ?';
+      bouton.dataset.minuteur = setTimeout(() => {
+        bouton.classList.remove('confirm-armed');
+        bouton.textContent = 'Corriger';
+      }, 3000);
+      return;
+    }
+    clearTimeout(Number(bouton.dataset.minuteur));
+    bouton.disabled = true;
+    bouton.textContent = '…';
+    const chemin = document.getElementById('security-path').value.trim();
+    try {
+      await window.aura.fixDependency(chemin, bouton.dataset.correctif);
+      journal(`SECURITY_FIX : ${bouton.dataset.nom} → ${bouton.dataset.correctif}`);
+      await lancerAuditDeps();
+    } catch (err) {
+      journal(`SECURITY_FIX_ECHEC : ${err.message}`);
+      bouton.classList.remove('confirm-armed');
+      bouton.textContent = 'Corriger';
+      bouton.disabled = false;
+    }
+    refreshJournalIfOpen();
   });
 }
 

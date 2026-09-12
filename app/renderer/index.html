@@ -327,13 +327,15 @@
       <span id="security-updated" class="app-page-updated"></span>
     </header>
     <div class="app-page-body custom-scroll">
-      <div class="monitor-seuils" title="Dossier de projet analyse par les deux outils ci-dessous">
+      <div class="monitor-seuils security-toolbar" title="Dossier de projet analyse par les deux outils ci-dessous">
         <span class="monitor-seuils-label">Dossier</span>
         <div class="inline-form security-path-form">
           <input id="security-path" type="text" placeholder="Chemin du dossier à analyser…">
           <button id="security-browse" type="button">Parcourir…</button>
           <button id="security-scan-all" type="button">Tout analyser</button>
+          <button id="security-export" type="button">Exporter le rapport</button>
         </div>
+        <div id="security-recent-folders" class="security-recent-folders"></div>
       </div>
       <div class="productivity-grid">
         <section class="monitor-card">

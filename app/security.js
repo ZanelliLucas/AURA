@@ -90,6 +90,7 @@ async function scanSecrets(dossierCible) {
     store.logAction({ typeAction: 'security.scan_secrets', sensibilite: 'lecture', statut: 'echoue', details: { error: 'Le chemin indiqué n\'est pas un dossier.' } });
     throw new Error('Le chemin indiqué n\'est pas un dossier.');
   }
+  store.addRecentSecurityFolder(dossierCible);
 
   const fichiers = await listerFichiers(dossierCible);
   const resultats = [];
@@ -147,6 +148,7 @@ function auditerDependances(dossierCible) {
       store.logAction({ typeAction: 'security.audit_deps', sensibilite: 'lecture', statut: 'echoue', details: { error } });
       return reject(new Error(error));
     }
+    store.addRecentSecurityFolder(dossierCible);
     // execFile (jamais exec) : le dossier passe en cwd, jamais interpole
     // dans une chaine de commande - shell:true necessaire sur Windows
     // (npm est un .cmd, non executable directement) mais commande/args
@@ -179,4 +181,56 @@ function auditerDependances(dossierCible) {
   });
 }
 
-module.exports = { scanSecrets, auditerDependances };
+// Specification "paquet@version" telle que produite par nous-memes
+// (fixAvailable.name/version de npm audit, jamais tapee librement par
+// l'utilisateur) - validee quand meme avant execFile(shell:true) : ce
+// endpoint est atteignable par tout process local capable de parler a
+// l'API HTTP (127.0.0.1 seulement, mais sans authentification, comme le
+// reste de l'app), et ici la valeur devient un argument de commande
+// (pas juste un cwd comme pour l'audit) - un caractere shell (; | & ` )
+// glisse dans un argument pourrait sinon executer autre chose que
+// "npm install". N'accepte que lettres/chiffres/@/_/./~/- et / - le
+// premier caractere accepte aussi '@' (paquets scopes, ex. @babel/core).
+const REGEX_SPEC_PAQUET = /^[a-zA-Z0-9@][a-zA-Z0-9@/_.~-]*$/;
+
+// security.fix_dependency (§5, idee 5) : Reversible (pas Lecture) - ca
+// modifie reellement package.json/lockfile/node_modules du dossier
+// analyse, contrairement au scan et a l'audit qui ne font qu'observer.
+function corrigerDependance(dossierCible, correctif) {
+  return new Promise((resolve, reject) => {
+    if (!dossierCible || !correctif) {
+      return reject(new Error('Paramètres manquants.'));
+    }
+    if (!REGEX_SPEC_PAQUET.test(correctif)) {
+      store.logAction({
+        typeAction: 'security.fix_dependency', sensibilite: 'reversible', statut: 'echoue',
+        details: { dossier: dossierCible, error: 'Spécification de paquet invalide.' }
+      });
+      return reject(new Error('Spécification de paquet invalide.'));
+    }
+    execFile('npm', ['install', correctif], {
+      cwd: dossierCible, shell: true, timeout: 60000, maxBuffer: 10 * 1024 * 1024
+    }, (err, stdout, stderr) => {
+      if (err) {
+        const error = stderr ? stderr.trim().split('\n')[0] : err.message;
+        store.logAction({
+          typeAction: 'security.fix_dependency', sensibilite: 'reversible', statut: 'echoue',
+          details: { dossier: dossierCible, correctif, error }
+        });
+        return reject(new Error(error));
+      }
+      store.logAction({
+        typeAction: 'security.fix_dependency', sensibilite: 'reversible', statut: 'execute',
+        details: { dossier: dossierCible, correctif }
+      });
+      resolve({ ok: true, correctif });
+    });
+  });
+}
+
+module.exports = {
+  scanSecrets,
+  auditerDependances,
+  corrigerDependance,
+  getRecentFolders: () => store.getRecentSecurityFolders()
+};

@@ -111,6 +111,24 @@ function setupSecurityBridge() {
     shell.showItemInFolder(chemin);
     return { ok: true };
   });
+
+  // Exporter le rapport (idee 4, retour utilisateur) : dialogue natif de
+  // sauvegarde (meme raison que choose-folder - inaccessible depuis un
+  // renderer sandboxe), l'utilisateur choisit lui-meme l'emplacement et
+  // confirme via le dialogue de l'OS.
+  ipcMain.handle('security:export-report', async (event, contenu) => {
+    const resultat = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: 'aura-security-report.txt',
+      filters: [{ name: 'Texte', extensions: ['txt'] }]
+    });
+    if (resultat.canceled) return { ok: false, canceled: true };
+    try {
+      fs.writeFileSync(resultat.filePath, contenu, 'utf8');
+      return { ok: true, path: resultat.filePath };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
 }
 
 app.whenReady().then(async () => {

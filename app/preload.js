@@ -76,5 +76,8 @@ contextBridge.exposeInMainWorld('aura', {
   chooseFolder: () => ipcRenderer.invoke('security:choose-folder'),
   scanSecrets: (path) => postJson('/api/security/scan-secrets', { path }),
   auditDependencies: (path) => postJson('/api/security/audit-deps', { path }),
-  revealFile: (dossier, fichier) => ipcRenderer.invoke('security:reveal-file', dossier, fichier)
+  revealFile: (dossier, fichier) => ipcRenderer.invoke('security:reveal-file', dossier, fichier),
+  getRecentSecurityFolders: () => getJson('/api/security/recent-folders'),
+  fixDependency: (path, correctif) => postJson('/api/security/fix-dependency', { path, correctif }),
+  exportSecurityReport: (contenu) => ipcRenderer.invoke('security:export-report', contenu)
 });

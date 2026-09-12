@@ -194,6 +194,22 @@ function updateRule(id, { name, mode, trigger, action }) {
   return rule;
 }
 
+// --- Dossiers recents AURA SECURITY (§5, idee 1) --------------------
+// Purement du confort d'UI (pas d'action a journaliser) : evite de
+// retaper/re-parcourir le meme dossier de projet a chaque analyse.
+
+const MAX_DOSSIERS_RECENTS = 5;
+
+function getRecentSecurityFolders() {
+  return readJson('security-recents.json', []);
+}
+
+function addRecentSecurityFolder(dossier) {
+  const recents = [dossier, ...getRecentSecurityFolders().filter((d) => d !== dossier)].slice(0, MAX_DOSSIERS_RECENTS);
+  writeJson('security-recents.json', recents);
+  return recents;
+}
+
 // --- Journal d'actions (§12.3 actions_log, §5.9) --------------------
 
 function getJournal(limit = 50) {
@@ -230,6 +246,8 @@ module.exports = {
   deleteRule,
   setRuleEnabled,
   updateRule,
+  getRecentSecurityFolders,
+  addRecentSecurityFolder,
   getJournal,
   logAction
 };

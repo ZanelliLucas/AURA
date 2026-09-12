@@ -1385,3 +1385,43 @@ button.security-finding-file:hover { color: var(--red); text-decoration: underli
 }
 .security-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .security-summary .security-badge { padding: 3px 8px; font-size: 10px; }
+
+/* Dossiers recents (idee 1, retour utilisateur) : jetons discrets sous
+   le champ dossier - flex-basis:100% force sa propre ligne dans
+   .monitor-seuils (flex-wrap), plutot que de se retrouver a cote du
+   champ selon la largeur disponible. Vide (aucun dossier encore
+   analyse) : reste sans hauteur, pas de jeton "aucun recent" a afficher. */
+.security-recent-folders { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+.security-recent-chip {
+  background: rgba(245, 246, 247, 0.04);
+  border: 1px solid rgba(245, 246, 247, 0.16);
+  border-radius: 4px;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.security-recent-chip:hover { color: var(--white); border-color: var(--red); }
+
+/* Correctif en un clic (idee 5, retour utilisateur) : meme geste de
+   confirmation a deux temps que la suppression d'une regle AURA
+   AUTONOMY (.row-delete.confirm-armed) - action reelle sur le projet
+   analyse (package.json/lockfile/node_modules), pas juste une lecture,
+   merite le meme garde-fou. */
+.security-fix-btn {
+  margin-top: 8px;
+  background: rgba(245, 246, 247, 0.06);
+  border: 1px solid rgba(245, 246, 247, 0.16);
+  border-radius: 4px;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.security-fix-btn:hover { color: var(--white); border-color: var(--red); }
+.security-fix-btn.confirm-armed { background: var(--red); border-color: var(--red); color: var(--white); }
+.security-fix-btn:disabled { opacity: 0.5; cursor: default; }
