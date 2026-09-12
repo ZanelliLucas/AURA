@@ -149,6 +149,72 @@ html, body {
   color: var(--white);
   font-weight: 500;
 }
+
+/* AURA TERMINAL (idee "identique a TERMINAL", retour utilisateur) : badge
+   plein (fond rouge) a la place du simple texte de titre des autres
+   pages - reprend le bandeau de titre de l'application TERMINAL
+   d'origine. Reste un <h1> (voir index.html) pour la semantique/
+   l'accessibilite, seul l'habillage change. */
+.terminal-title-badge {
+  background: var(--red);
+  color: var(--white);
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 4px;
+  margin: 0;
+}
+.terminal-header-path { color: var(--dim); font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+
+/* Bandeau d'onglets - un seul onglet actif en permanence (v1, pas
+   d'onglets multiples cote interface). */
+.terminal-tabstrip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 32px;
+  border-bottom: 1px solid var(--line-dim);
+  background: rgba(245, 246, 247, 0.02);
+  flex: none;
+}
+.terminal-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px 7px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  border-radius: 4px 4px 0 0;
+  color: var(--dim);
+}
+.terminal-tab-index { color: var(--dim); font-size: 10px; }
+.terminal-tab-active { color: var(--white); background: rgba(245, 246, 247, 0.05); }
+.terminal-tab-active::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  background: var(--red);
+}
+.terminal-tab-add {
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.terminal-tab-add:hover { color: var(--white); background: rgba(245, 246, 247, 0.06); }
 /* Seuils d'alerte configurables, un par metrique (§5.7) - preference
    d'affichage locale, voir chargerSeuils/definirSeuil, app.js. Panneau
    pose au-dessus de la grille (meme habillage que .monitor-card : fond,
@@ -1244,7 +1310,8 @@ html, body {
 }
 #conversation-hint[hidden], #terminal-page-hint[hidden] { display: none; }
 
-.terminal-input-form { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.terminal-input-form { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.terminal-input-cwd { color: var(--dim); font-family: 'IBM Plex Mono', monospace; font-size: 13px; flex-shrink: 0; }
 .terminal-input-prompt { color: var(--red); font-family: 'IBM Plex Mono', monospace; font-size: 14px; }
 #terminal-page-input {
   flex: 1;

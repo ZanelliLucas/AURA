@@ -2788,7 +2788,10 @@ function terminalBlocHtml(bloc) {
  * "session UI" - c'est purement un regroupement des elements DOM d'une
  * des deux surfaces (page ou popup) et de leur etat de navigation local.
  */
-function creerTerminalSession({ output, statut, prompt, onMiseAJour }) {
+function creerTerminalSession({ output, statut, promptCibles, onMiseAJour }) {
+  const actualiserPrompt = (texte) => {
+    (promptCibles || []).forEach((el) => { if (el) el.textContent = texte; });
+  };
   // commandes/echecs/debut : alimentent le panneau lateral "Session" (idee
   // "ressemble a TERMINAL", retour utilisateur) - propres a cette instance
   // d'interface, pas au moteur (qui ne compte rien de tel).
@@ -2899,7 +2902,7 @@ function creerTerminalSession({ output, statut, prompt, onMiseAJour }) {
       if (statut) statut.hidden = true;
     }
 
-    if (resultat.display && prompt) prompt.textContent = resultat.display;
+    if (resultat.display) actualiserPrompt(resultat.display);
 
     etat.historique.push(ligne);
     etat.curseur = etat.historique.length;
@@ -2916,7 +2919,7 @@ function creerTerminalSession({ output, statut, prompt, onMiseAJour }) {
     if (lien) window.aura.terminal.reveal(lien.dataset.target);
   });
 
-  return { soumettre, etat, output };
+  return { soumettre, etat, output, actualiserPrompt };
 }
 
 /**
@@ -3036,7 +3039,16 @@ function initTerminalPage() {
   const session = creerTerminalSession({
     output: document.getElementById('terminal-page-output'),
     statut: document.getElementById('terminal-page-status'),
-    prompt: document.getElementById('terminal-page-prompt'),
+    // Trois affichages du meme dossier courant (idee "identique a
+    // TERMINAL", retour utilisateur) : le chemin dans l'en-tete, l'onglet
+    // unique ("~") et le prompt au-dessus de la saisie - tous mis a jour
+    // ensemble a chaque commande, comme les trois zones equivalentes de
+    // l'application TERMINAL d'origine.
+    promptCibles: [
+      document.getElementById('terminal-page-prompt'),
+      document.getElementById('terminal-tab-label'),
+      document.getElementById('terminal-input-cwd')
+    ],
     onMiseAJour: actualiserTerminalSidebarSession
   });
   const input = document.getElementById('terminal-page-input');
@@ -3052,7 +3064,7 @@ function initTerminalPage() {
   terminalPageSession = session;
 
   window.aura.terminal.boot().then((boot) => {
-    document.getElementById('terminal-page-prompt').textContent = boot.display || '';
+    session.actualiserPrompt(boot.display || '');
     session.etat.historique = Array.isArray(boot.history) ? boot.history.slice() : [];
     session.etat.curseur = session.etat.historique.length;
     (boot.banner || []).forEach((bloc) => {
@@ -3063,6 +3075,12 @@ function initTerminalPage() {
 
 function wireTerminalPage() {
   document.getElementById('terminal-back').addEventListener('click', fermerPage);
+  // "+" du bandeau d'onglets : v1 n'a qu'une session (terminal-core sait
+  // gerer plusieurs onglets, mais l'interface n'en pilote encore aucun) -
+  // le dire plutot que de laisser croire a un bouton casse.
+  document.getElementById('terminal-tab-add').addEventListener('click', () => {
+    journal('TERMINAL_ONGLET : onglets multiples pas encore disponibles');
+  });
 }
 
 // --- Popup de la barre du bas (idee "Terminal", retour utilisateur) ------

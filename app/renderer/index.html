@@ -421,17 +421,29 @@
   <section id="page-terminal" class="app-page" hidden>
     <header class="app-page-header">
       <button id="terminal-back" type="button" class="app-page-back" aria-label="Retour">←</button>
-      <h1>Terminal</h1>
-      <span id="terminal-page-prompt" class="app-page-updated"></span>
+      <h1 class="terminal-title-badge">Terminal</h1>
+      <span id="terminal-page-prompt" class="terminal-header-path"></span>
     </header>
+    <!-- Bandeau d'onglets (idee "identique a TERMINAL", retour utilisateur) :
+         un seul onglet affiche, actif en permanence - v1 n'a pas d'onglets
+         multiples (voir terminal-core, session par onglet), "+" le rappelle
+         plutot que de faire semblant de fonctionner. -->
+    <div class="terminal-tabstrip">
+      <span class="terminal-tab terminal-tab-active">
+        <span class="terminal-tab-index">1</span>
+        <span id="terminal-tab-label" class="terminal-tab-label">~</span>
+      </span>
+      <button type="button" id="terminal-tab-add" class="terminal-tab-add" aria-label="Nouvel onglet" title="Onglets multiples pas encore disponibles">+</button>
+    </div>
     <div class="app-page-body terminal-page-body">
       <div class="terminal-main">
         <div id="terminal-page-output" class="terminal-output custom-scroll"></div>
         <div id="terminal-page-status" class="terminal-status" hidden></div>
         <div id="terminal-page-hint" class="terminal-hint" hidden></div>
         <form id="terminal-page-form" class="terminal-input-form" autocomplete="off">
-          <span class="terminal-input-prompt">&gt;</span>
-          <input id="terminal-page-input" type="text" autocomplete="off" spellcheck="false" placeholder="Tapez une commande… (help pour la liste)">
+          <span id="terminal-input-cwd" class="terminal-input-cwd">~</span>
+          <span class="terminal-input-prompt">▸</span>
+          <input id="terminal-page-input" type="text" autocomplete="off" spellcheck="false" placeholder="help pour la liste des commandes">
         </form>
       </div>
       <!-- Panneau lateral (idee "ressemble a TERMINAL", retour utilisateur) :
