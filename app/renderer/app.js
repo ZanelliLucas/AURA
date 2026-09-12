@@ -1890,6 +1890,23 @@ function ligneComparaison(premierScan, nouveaux, resolus) {
   return `<p class="security-diff-summary">${nouveaux} nouveau(x) · ${resolus} résolu(s) depuis le dernier scan</p>`;
 }
 
+// Filtrage (categorie + recherche textuelle) factorise hors des fonctions
+// de rendu (idee "export filtré", retour utilisateur) - construireRapportSecurite
+// doit appliquer exactement la meme logique que l'affichage, sans la dupliquer.
+function filtrerResultatsSecrets(resultats) {
+  const parFiltre = filtreSecretsMotif === 'toutes' ? resultats : resultats.filter((r) => r.motif === filtreSecretsMotif);
+  const terme = termeRecherche.toLowerCase();
+  return !terme ? parFiltre : parFiltre.filter((r) =>
+    r.fichier.toLowerCase().includes(terme) || r.motif.toLowerCase().includes(terme) || r.extrait.toLowerCase().includes(terme)
+  );
+}
+
+function filtrerPaquetsDeps(paquets) {
+  const parFiltre = filtreDepsGravite === 'toutes' ? paquets : paquets.filter((p) => p.gravite === filtreDepsGravite);
+  const terme = termeRecherche.toLowerCase();
+  return !terme ? parFiltre : parFiltre.filter((p) => p.nom.toLowerCase().includes(terme));
+}
+
 function renderSecretsResults({ fichiersAnalyses, resultats, tronque, ignoresAppliques, premierScan, nouveaux, resolus }) {
   const zone = document.getElementById('security-secrets-results');
   const zoneFiltres = document.getElementById('security-secrets-filters');
@@ -1904,11 +1921,7 @@ function renderSecretsResults({ fichiersAnalyses, resultats, tronque, ignoresApp
     zone.innerHTML = `<p class="rule-empty">Aucun secret détecté sur ${fichiersAnalyses} fichier(s) analysé(s).</p>`;
     return;
   }
-  const parFiltre = filtreSecretsMotif === 'toutes' ? resultats : resultats.filter((r) => r.motif === filtreSecretsMotif);
-  const terme = termeRecherche.toLowerCase();
-  const filtres = !terme ? parFiltre : parFiltre.filter((r) =>
-    r.fichier.toLowerCase().includes(terme) || r.motif.toLowerCase().includes(terme) || r.extrait.toLowerCase().includes(terme)
-  );
+  const filtres = filtrerResultatsSecrets(resultats);
 
   const avertissements = [ligneComparaison(premierScan, nouveaux, resolus)];
   if (tronque) avertissements.push('<p class="rule-empty">Dossier volumineux : analyse partielle (limite de fichiers atteinte).</p>');
@@ -1938,7 +1951,7 @@ function renderSecretsResults({ fichiersAnalyses, resultats, tronque, ignoresApp
   `).join('');
 }
 
-function renderDepsResults({ resume, paquets, premierScan, nouveaux, resolus }) {
+function renderDepsResults({ resume, paquets, ignoresAppliques, premierScan, nouveaux, resolus }) {
   const zone = document.getElementById('security-deps-results');
   const zoneFiltres = document.getElementById('security-deps-filters');
 
@@ -1960,15 +1973,25 @@ function renderDepsResults({ resume, paquets, premierScan, nouveaux, resolus }) 
     `<span class="security-badge security-sev-${s}">${resume[s]} ${SEVERITE_LABELS[s]}</span>`
   ).join('');
 
-  const parFiltre = filtreDepsGravite === 'toutes' ? paquets : paquets.filter((p) => p.gravite === filtreDepsGravite);
-  const terme = termeRecherche.toLowerCase();
-  const filtres = !terme ? parFiltre : parFiltre.filter((p) => p.nom.toLowerCase().includes(terme));
+  const filtres = filtrerPaquetsDeps(paquets);
 
-  const diff = ligneComparaison(premierScan, nouveaux, resolus);
+  const avertissements = [ligneComparaison(premierScan, nouveaux, resolus)];
+  if (ignoresAppliques) {
+    avertissements.push(`<p class="rule-empty">${ignoresAppliques} résultat(s) marqué(s) faux positif masqué(s) — <button type="button" id="security-reset-ignores-deps" class="security-link-btn">réinitialiser</button></p>`);
+  }
   if (!filtres.length) {
-    zone.innerHTML = `${diff}<div class="security-summary">${puces}</div><p class="rule-empty">Aucun résultat pour ces critères.</p>`;
+    zone.innerHTML = `${avertissements.join('')}<div class="security-summary">${puces}</div><p class="rule-empty">Aucun résultat pour ces critères.</p>`;
     return;
   }
+
+  // "Tout corriger" (idee "tout corriger") : uniquement affiche quand au
+  // moins deux correctifs precis distincts existent - avec un seul, le
+  // bouton "Corriger" de la ligne elle-meme suffit deja (meme logique que
+  // les filtres, generes seulement si au moins deux valeurs distinctes).
+  const correctifsUniques = [...new Set(paquets.filter((p) => p.correctif && p.correctif.includes('@')).map((p) => p.correctif))];
+  const boutonToutCorriger = correctifsUniques.length > 1
+    ? `<button type="button" id="security-fix-all" class="security-fix-btn" title="Installe les ${correctifsUniques.length} correctif(s) disponibles dans le dossier analysé">Tout corriger (${correctifsUniques.length})</button>`
+    : '';
 
   // Bouton "Corriger" (idee 5) uniquement quand le correctif est une
   // specification precise ("paquet@version", produite par npm audit lui-
@@ -1986,11 +2009,72 @@ function renderDepsResults({ resume, paquets, premierScan, nouveaux, resolus }) 
       <div class="security-finding-snippet">${p.correctif ? `Correctif : ${echapperHtml(p.correctif)}` : 'Pas de correctif automatique disponible.'}</div>
       <div class="security-finding-actions">
         ${p.avisUrl ? `<button type="button" class="security-link-btn security-advisory-btn" data-url="${echapperHtml(p.avisUrl)}">Voir l’avis${p.avisTitre ? ` (${echapperHtml(p.avisTitre)})` : ''}</button>` : ''}
+        <button type="button" class="security-link-btn security-ignore-dep-btn" data-nom="${echapperHtml(p.nom)}" data-gravite="${echapperHtml(p.gravite)}">Ignorer (faux positif)</button>
         ${p.correctif && p.correctif.includes('@') ? `<button type="button" class="security-fix-btn" data-correctif="${echapperHtml(p.correctif)}" data-nom="${echapperHtml(p.nom)}" title="Installe ${echapperHtml(p.correctif)} dans le dossier analysé">Corriger</button>` : ''}
       </div>
     </div>
   `).join('');
-  zone.innerHTML = `${diff}<div class="security-summary">${puces}</div>${liste}`;
+  zone.innerHTML = `${avertissements.join('')}<div class="security-summary">${puces}${boutonToutCorriger}</div>${liste}`;
+}
+
+// Tendance dans le temps (idee "tendance", retour utilisateur) - un
+// sparkline SVG minimal, construit a partir des memes entrees d'historique
+// que la liste ci-dessous, sans stockage dedie. Trace en polyline (pas de
+// bibliotheque de graphiques) : quelques points suffisent, pas besoin
+// d'axes/legendes pour "est-ce que ca s'ameliore ou pas" en un coup d'oeil.
+function construireSparkline(valeurs, classeCouleur) {
+  const largeur = 160;
+  const hauteur = 32;
+  const marge = 3;
+  const max = Math.max(...valeurs, 1);
+  const min = Math.min(...valeurs, 0);
+  const echelle = max === min ? 0 : (hauteur - marge * 2) / (max - min);
+  const pas = (largeur - marge * 2) / (valeurs.length - 1);
+  const coord = (v, i) => [marge + i * pas, hauteur - marge - (v - min) * echelle];
+  const points = valeurs.map((v, i) => coord(v, i).map((n) => n.toFixed(1)).join(',')).join(' ');
+  const [dernierX, dernierY] = coord(valeurs[valeurs.length - 1], valeurs.length - 1);
+  return `<svg viewBox="0 0 ${largeur} ${hauteur}" class="security-sparkline ${classeCouleur}" preserveAspectRatio="none">
+    <polyline points="${points}" />
+    <circle cx="${dernierX.toFixed(1)}" cy="${dernierY.toFixed(1)}" r="2.5" />
+  </svg>`;
+}
+
+// N=8 scans les plus recents du dossier courant - au-dela, le sparkline
+// devient illisible (trop de points serres) sans apporter d'information
+// supplementaire utile a "la tendance recente".
+const TENDANCE_MAX_POINTS = 8;
+
+function renderTendanceSecurity(entries) {
+  const zone = document.getElementById('security-trend');
+  if (!zone) return;
+  const dossier = document.getElementById('security-path').value.trim();
+  if (!dossier) { zone.innerHTML = ''; return; }
+
+  const valeursPour = (typeAction, extraireValeur) => entries
+    .filter((e) => e.statut === 'execute' && e.typeAction === typeAction && e.details && e.details.dossier === dossier)
+    .slice(0, TENDANCE_MAX_POINTS)
+    .reverse()
+    .map(extraireValeur);
+
+  const secretsVals = valeursPour('security.scan_secrets', (e) => e.details.trouvailles || 0);
+  const depsVals = valeursPour('security.audit_deps', (e) => e.details.total || 0);
+
+  const morceaux = [];
+  if (secretsVals.length >= 2) {
+    morceaux.push(`<div class="security-trend-item">
+      <span class="security-trend-label">Secrets</span>
+      ${construireSparkline(secretsVals, 'security-sparkline-secrets')}
+      <span class="security-trend-value">${secretsVals[secretsVals.length - 1]}</span>
+    </div>`);
+  }
+  if (depsVals.length >= 2) {
+    morceaux.push(`<div class="security-trend-item">
+      <span class="security-trend-label">Dépendances</span>
+      ${construireSparkline(depsVals, 'security-sparkline-deps')}
+      <span class="security-trend-value">${depsVals[depsVals.length - 1]}</span>
+    </div>`);
+  }
+  zone.innerHTML = morceaux.join('');
 }
 
 // Historique recent (idee 5) - reutilise le journal existant
@@ -1999,6 +2083,7 @@ async function chargerHistoriqueSecurity() {
   const zone = document.getElementById('security-history');
   try {
     const entries = await window.aura.getSecurityHistory();
+    renderTendanceSecurity(entries);
     if (!entries.length) { zone.innerHTML = 'Aucune analyse effectuée.'; return; }
     zone.innerHTML = entries.slice(0, 15).map((e) => `
       <div class="security-history-entry${e.statut === 'echoue' ? ' security-history-entry-echec' : ''}">
@@ -2059,18 +2144,30 @@ async function lancerAuditDeps() {
 // concatenation lisible, pas de format machine (JSON) : pense pour etre
 // relu/partage tel quel, pas reimporte dans l'app.
 function construireRapportSecurite() {
+  // Export filtré (idee "export filtré", retour utilisateur) - respecte la
+  // recherche/les filtres de gravite actuellement affiches a l'ecran plutot
+  // que de toujours tout exporter en bloc : sans filtre actif, le
+  // comportement reste identique a avant (tout exporte).
+  const filtresActifs = !!termeRecherche || filtreSecretsMotif !== 'toutes' || filtreDepsGravite !== 'toutes';
   const lignes = [
     'Rapport de sécurité AURA',
-    `Généré le ${new Date().toLocaleString('fr-FR')}`,
-    ''
+    `Généré le ${new Date().toLocaleString('fr-FR')}`
   ];
-  lignes.push('=== Secrets ===');
+  if (filtresActifs) {
+    const details = [];
+    if (termeRecherche) details.push(`recherche « ${termeRecherche} »`);
+    if (filtreSecretsMotif !== 'toutes') details.push(`motif secrets « ${filtreSecretsMotif} »`);
+    if (filtreDepsGravite !== 'toutes') details.push(`gravité dépendances « ${SEVERITE_LABELS[filtreDepsGravite] || filtreDepsGravite} »`);
+    lignes.push(`Filtré par : ${details.join(', ')}`);
+  }
+  lignes.push('', '=== Secrets ===');
   if (!dernierResultatSecrets) {
     lignes.push('Aucune analyse effectuée.');
   } else {
+    const resultats = filtrerResultatsSecrets(dernierResultatSecrets.resultats);
     lignes.push(`Dossier : ${dernierResultatSecrets.dossier}`);
-    lignes.push(`${dernierResultatSecrets.fichiersAnalyses} fichier(s) analysé(s), ${dernierResultatSecrets.resultats.length} trouvaille(s)`);
-    dernierResultatSecrets.resultats.forEach((r) => {
+    lignes.push(`${dernierResultatSecrets.fichiersAnalyses} fichier(s) analysé(s), ${resultats.length} trouvaille(s)${filtresActifs ? ` (sur ${dernierResultatSecrets.resultats.length} au total)` : ''}`);
+    resultats.forEach((r) => {
       lignes.push(`- ${r.fichier}:${r.ligne} [${r.motif}] ${r.extrait}`);
     });
   }
@@ -2078,9 +2175,10 @@ function construireRapportSecurite() {
   if (!dernierResultatDeps) {
     lignes.push('Aucune analyse effectuée.');
   } else {
+    const paquets = filtrerPaquetsDeps(dernierResultatDeps.paquets);
     lignes.push(`Dossier : ${dernierResultatDeps.dossier}`);
-    lignes.push(`${dernierResultatDeps.resume.total || 0} vulnérabilité(s)`);
-    dernierResultatDeps.paquets.forEach((p) => {
+    lignes.push(`${paquets.length} vulnérabilité(s)${filtresActifs ? ` (sur ${dernierResultatDeps.resume.total || 0} au total)` : ''}`);
+    paquets.forEach((p) => {
       lignes.push(`- ${p.nom} [${SEVERITE_LABELS[p.gravite] || p.gravite}] ${p.correctif ? `Correctif : ${p.correctif}` : 'Pas de correctif automatique disponible.'}`);
     });
   }
@@ -2113,6 +2211,7 @@ function wireSecurityPage() {
       if (dossier) {
         document.getElementById('security-path').value = dossier;
         chargerExclusions(dossier);
+        chargerHistoriqueSecurity();
       }
     } catch (err) {
       journal(`SECURITY_PARCOURIR_ECHEC : ${err.message}`);
@@ -2121,8 +2220,12 @@ function wireSecurityPage() {
 
   // 'change' (pas 'input') : ne recharge qu'une fois la saisie terminee
   // (perte de focus/Entree), comme pour ne pas requeter a chaque frappe.
+  // chargerHistoriqueSecurity() en plus des exclusions : le sparkline de
+  // tendance (idee "tendance") depend du dossier courant, pas seulement
+  // du dernier scan lance.
   document.getElementById('security-path').addEventListener('change', (e) => {
     chargerExclusions(e.target.value.trim());
+    chargerHistoriqueSecurity();
   });
 
   document.getElementById('security-exclusion-add').addEventListener('click', async () => {
@@ -2264,6 +2367,7 @@ function wireSecurityPage() {
     if (!puce) return;
     document.getElementById('security-path').value = puce.title;
     chargerExclusions(puce.title);
+    chargerHistoriqueSecurity();
   });
 
   // Exporter le rapport (idee 4) : dialogue de sauvegarde natif (voir
@@ -2300,10 +2404,12 @@ function wireSecurityPage() {
     if (!bouton) return;
     if (!bouton.classList.contains('confirm-armed')) {
       bouton.classList.add('confirm-armed');
+      const texteArme = bouton.id === 'security-fix-all' ? bouton.textContent : 'Corriger';
+      bouton.dataset.texteInitial = texteArme;
       bouton.textContent = 'Confirmer ?';
       bouton.dataset.minuteur = setTimeout(() => {
         bouton.classList.remove('confirm-armed');
-        bouton.textContent = 'Corriger';
+        bouton.textContent = bouton.dataset.texteInitial;
       }, 3000);
       return;
     }
@@ -2316,6 +2422,33 @@ function wireSecurityPage() {
     // le mauvais dossier (meme logique que dernierDossierSecrets pour
     // "Localiser" ci-dessus).
     const chemin = dernierResultatDeps ? dernierResultatDeps.dossier : '';
+
+    // "Tout corriger" (idee "tout corriger") : applique sequentiellement
+    // chaque correctif distinct disponible sur le dernier audit, pas
+    // seulement ceux actuellement visibles sous les filtres/la recherche -
+    // le sens du bouton ("tout") resterait ambigu sinon.
+    if (bouton.id === 'security-fix-all') {
+      const correctifs = [...new Set(
+        (dernierResultatDeps ? dernierResultatDeps.paquets : [])
+          .filter((p) => p.correctif && p.correctif.includes('@'))
+          .map((p) => p.correctif)
+      )];
+      let ok = 0;
+      let echecs = 0;
+      for (const correctif of correctifs) {
+        try {
+          await window.aura.fixDependency(chemin, correctif);
+          ok++;
+        } catch {
+          echecs++;
+        }
+      }
+      journal(`SECURITY_FIX_TOUT : ${ok} correctif(s) appliqué(s)${echecs ? `, ${echecs} échec(s)` : ''}`);
+      await lancerAuditDeps();
+      refreshJournalIfOpen();
+      return;
+    }
+
     try {
       await window.aura.fixDependency(chemin, bouton.dataset.correctif);
       journal(`SECURITY_FIX : ${bouton.dataset.nom} → ${bouton.dataset.correctif}`);
@@ -2327,6 +2460,39 @@ function wireSecurityPage() {
       bouton.disabled = false;
     }
     refreshJournalIfOpen();
+  });
+
+  // Ignorer/reinitialiser un faux positif cote dependances (idee "ignorer
+  // une dependance") - meme geste que pour les secrets ci-dessus.
+  document.getElementById('security-deps-results').addEventListener('click', async (e) => {
+    const boutonIgnorer = e.target.closest('.security-ignore-dep-btn');
+    if (boutonIgnorer) {
+      if (!dernierResultatDeps) return;
+      try {
+        await window.aura.ignoreDependency(dernierResultatDeps.dossier, boutonIgnorer.dataset.nom, boutonIgnorer.dataset.gravite);
+        journal(`SECURITY_IGNORE_DEP_AJOUTE : ${boutonIgnorer.dataset.nom}`);
+        dernierResultatDeps.paquets = dernierResultatDeps.paquets.filter((p) =>
+          !(p.nom === boutonIgnorer.dataset.nom && p.gravite === boutonIgnorer.dataset.gravite)
+        );
+        renderDepsResults(dernierResultatDeps);
+      } catch (err) {
+        journal(`SECURITY_IGNORE_DEP_ECHEC : ${err.message}`);
+      }
+      refreshJournalIfOpen();
+      return;
+    }
+    const boutonReset = e.target.closest('#security-reset-ignores-deps');
+    if (boutonReset) {
+      if (!dernierResultatDeps) return;
+      try {
+        await window.aura.clearIgnoredDependencies(dernierResultatDeps.dossier);
+        journal('SECURITY_IGNORES_DEP_REINITIALISES');
+        await lancerAuditDeps();
+      } catch (err) {
+        journal(`SECURITY_IGNORES_DEP_REINITIALISATION_ECHEC : ${err.message}`);
+      }
+      refreshJournalIfOpen();
+    }
   });
 }
 

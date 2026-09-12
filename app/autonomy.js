@@ -169,6 +169,17 @@ async function executeAction(rule, snapshot) {
     // la restriction "actions deja sures" des regles AUTONOMY (§14.1).
     const resultat = await security.scanSecrets(params.path);
     const detail = resultat.nouveaux ? ` dont ${resultat.nouveaux} nouveau(x)` : '';
+    // Notification (idee "scan automatique") : sans elle, un resultat
+    // nouveau trouve par une regle automatique passe inapercu tant que
+    // l'utilisateur ne rouvre pas lui-meme la page Security. Seulement si
+    // du nouveau est reellement trouve - pas a chaque execution, sinon la
+    // notification perd tout son sens des la deuxieme execution de la regle.
+    if (resultat.nouveaux) {
+      new Notification({
+        title: 'AURA SECURITY',
+        body: `${resultat.nouveaux} nouveau(x) résultat(s) détecté(s) dans "${params.path}"`
+      }).show();
+    }
     return `Scan de sécurité sur "${params.path}" : ${resultat.resultats.length} résultat(s)${detail}`;
   }
   throw new Error(`Action inconnue : ${type}`);

@@ -222,9 +222,24 @@ function ignoreFinding(dossier, cle) {
   return tout[dossier];
 }
 
+// Les cles ignorees "dependance" (idee "ignorer une dependance") partagent
+// le meme stockage/dossier que celles des secrets, prefixees "dep::" pour
+// ne jamais se confondre avec une cle fichier::ligne::motif. Reinitialiser
+// les faux positifs de secrets ne doit donc retirer que les cles SANS ce
+// prefixe - sinon "reinitialiser" cote secrets effacerait aussi les
+// dependances ignorees du meme dossier, et inversement.
 function clearIgnoredFindings(dossier) {
   const tout = readJson('security-ignores.json', {});
-  delete tout[dossier];
+  tout[dossier] = (tout[dossier] || []).filter((cle) => cle.startsWith('dep::'));
+  if (!tout[dossier].length) delete tout[dossier];
+  writeJson('security-ignores.json', tout);
+  return [];
+}
+
+function clearIgnoredDependencies(dossier) {
+  const tout = readJson('security-ignores.json', {});
+  tout[dossier] = (tout[dossier] || []).filter((cle) => !cle.startsWith('dep::'));
+  if (!tout[dossier].length) delete tout[dossier];
   writeJson('security-ignores.json', tout);
   return [];
 }
@@ -319,6 +334,7 @@ module.exports = {
   getIgnoredFindings,
   ignoreFinding,
   clearIgnoredFindings,
+  clearIgnoredDependencies,
   getLastScanResult,
   setLastScanResult,
   getCustomExclusions,

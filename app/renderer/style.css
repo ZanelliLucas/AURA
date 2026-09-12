@@ -1482,6 +1482,22 @@ button.security-finding-file:hover { color: var(--red); text-decoration: underli
    scan d'un dossier (rien a comparer), voir app.js#ligneComparaison. */
 .security-diff-summary { color: var(--dim); font-size: 11px; margin: 0 0 8px; }
 
+/* Tendance dans le temps (idee "tendance", retour utilisateur) - sparkline
+   SVG minimal par outil, construit a partir de l'historique deja affiche
+   juste en dessous (app.js#renderTendanceSecurity). Vide (:empty) quand
+   moins de deux scans du dossier courant existent - pas de cadre/titre
+   flottant sans contenu, meme logique que #security-secrets-filters:empty. */
+.security-trend { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 10px; }
+.security-trend:empty { display: none; }
+.security-trend-item { display: flex; align-items: center; gap: 8px; }
+.security-trend-label { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; }
+.security-trend-value { color: var(--white); font-size: 12px; font-variant-numeric: tabular-nums; }
+.security-sparkline { width: 80px; height: 16px; overflow: visible; }
+.security-sparkline polyline { fill: none; stroke-width: 1.5; }
+.security-sparkline circle { stroke: none; }
+.security-sparkline-secrets polyline, .security-sparkline-secrets circle { stroke: var(--red); fill: var(--red); }
+.security-sparkline-deps polyline, .security-sparkline-deps circle { stroke: #d9a441; fill: #d9a441; }
+
 /* Exclusions personnalisees (idee "exclure", retour utilisateur) - jetons
    retirables, meme gabarit que .security-recent-chip mais avec un bouton
    de suppression integre (x) plutot qu'un clic sur le jeton entier (qui

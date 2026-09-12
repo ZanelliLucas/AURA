@@ -275,12 +275,20 @@ function auditerDependances(dossierCible) {
         return reject(new Error(error));
       }
       const vulnerabilites = (rapport.metadata && rapport.metadata.vulnerabilities) || {};
-      const paquets = Object.values(rapport.vulnerabilities || {}).map((v) => {
+      // Faux positifs deja marques par l'utilisateur pour ce dossier (idee
+      // "ignorer une dependance") - meme stockage que les secrets, prefixe
+      // "dep::" (voir store.js#clearIgnoredFindings) pour ne jamais se
+      // confondre avec une cle fichier::ligne::motif.
+      const ignoresDeps = new Set(store.getIgnoredFindings(dossierCible).filter((c) => c.startsWith('dep::')));
+      let ignoresAppliques = 0;
+      const paquets = [];
+      Object.values(rapport.vulnerabilities || {}).forEach((v) => {
+        if (ignoresDeps.has(`dep::${v.name}::${v.severity}`)) { ignoresAppliques++; return; }
         // v.via melange des chaines (dependance transitive, sans detail
         // propre) et des objets (l'avis lui-meme, avec url/title) - on ne
         // cherche un lien que parmi ces derniers (idee "avis de securite").
         const avis = Array.isArray(v.via) ? v.via.find((x) => x && typeof x === 'object' && x.url) : null;
-        return {
+        paquets.push({
           nom: v.name,
           gravite: v.severity,
           correctif: v.fixAvailable && v.fixAvailable.name
@@ -288,12 +296,14 @@ function auditerDependances(dossierCible) {
             : (v.fixAvailable === true ? 'npm audit fix' : null),
           avisUrl: avis ? avis.url : null,
           avisTitre: avis ? avis.title : null
-        };
+        });
       });
 
       // Comparaison avec l'audit precedent (idee "comparaison") - meme
       // principe que scanSecrets, cle nom::gravite (une remontee de
       // gravite sur le meme paquet compte comme une nouvelle alerte).
+      // Un paquet ignore (faux positif) qui disparait des resultats n'est
+      // pas "resolu" pour autant - meme logique que scanSecrets/estCheminExclu.
       const clesActuelles = paquets.map((p) => `${p.nom}::${p.gravite}`);
       const clesPrecedentes = store.getLastScanResult('deps', dossierCible);
       let nouveaux = 0;
@@ -303,7 +313,7 @@ function auditerDependances(dossierCible) {
         const actuellesSet = new Set(clesActuelles);
         paquets.forEach((p, i) => { p.nouveau = !precedentesSet.has(clesActuelles[i]); });
         nouveaux = paquets.filter((p) => p.nouveau).length;
-        resolus = clesPrecedentes.filter((c) => !actuellesSet.has(c)).length;
+        resolus = clesPrecedentes.filter((c) => !actuellesSet.has(c) && !ignoresDeps.has(`dep::${c}`)).length;
       }
       store.setLastScanResult('deps', dossierCible, clesActuelles);
 
@@ -311,7 +321,7 @@ function auditerDependances(dossierCible) {
         typeAction: 'security.audit_deps', sensibilite: 'lecture', statut: 'execute',
         details: { dossier: dossierCible, total: vulnerabilites.total || 0, gravites: vulnerabilites }
       });
-      resolve({ resume: vulnerabilites, paquets, premierScan: !clesPrecedentes, nouveaux, resolus });
+      resolve({ resume: vulnerabilites, paquets, ignoresAppliques, premierScan: !clesPrecedentes, nouveaux, resolus });
     });
   });
 }
@@ -381,6 +391,13 @@ function ajouterExclusion(dossier, motif) {
   return store.addCustomExclusion(dossier, motif.trim());
 }
 
+// Faux positif cote dependances (idee "ignorer une dependance") - meme
+// principe que ignoreFinding pour les secrets : purement du confort d'UI,
+// pas journalise. Cle prefixee "dep::" (voir store.js#clearIgnoredFindings).
+function ignoreDependency(dossier, nom, gravite) {
+  return store.ignoreFinding(dossier, `dep::${nom}::${gravite}`);
+}
+
 module.exports = {
   scanSecrets,
   auditerDependances,
@@ -388,6 +405,8 @@ module.exports = {
   getRecentFolders: () => store.getRecentSecurityFolders(),
   ignoreFinding: (dossier, fichier, ligne, motif) => store.ignoreFinding(dossier, `${fichier}::${ligne}::${motif}`),
   clearIgnoredFindings: (dossier) => store.clearIgnoredFindings(dossier),
+  ignoreDependency,
+  clearIgnoredDependencies: (dossier) => store.clearIgnoredDependencies(dossier),
   getHistory,
   getExclusions: (dossier) => store.getCustomExclusions(dossier),
   addExclusion: ajouterExclusion,

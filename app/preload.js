@@ -82,6 +82,8 @@ contextBridge.exposeInMainWorld('aura', {
   exportSecurityReport: (contenu) => ipcRenderer.invoke('security:export-report', contenu),
   ignoreFinding: (path, fichier, ligne, motif) => postJson('/api/security/ignore-finding', { path, fichier, ligne, motif }),
   clearIgnoredFindings: (path) => postJson('/api/security/clear-ignores', { path }),
+  ignoreDependency: (path, nom, gravite) => postJson('/api/security/ignore-dependency', { path, nom, gravite }),
+  clearIgnoredDependencies: (path) => postJson('/api/security/clear-ignored-dependencies', { path }),
   getSecurityHistory: () => getJson('/api/security/history'),
   // clipboard direct (module Electron, pas l'API web navigator.clipboard) :
   // le gestionnaire de permissions (main.js#setupPermissions) refuse tout

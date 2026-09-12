@@ -192,6 +192,17 @@ function startServer() {
     res.json(security.clearIgnoredFindings(req.body.path));
   });
 
+  // Faux positifs cote dependances (idee "ignorer une dependance") - meme
+  // principe que les deux routes ci-dessus, pour l'audit npm.
+  server.post('/api/security/ignore-dependency', (req, res) => {
+    const { path: dossier, nom, gravite } = req.body;
+    res.json(security.ignoreDependency(dossier, nom, gravite));
+  });
+
+  server.post('/api/security/clear-ignored-dependencies', (req, res) => {
+    res.json(security.clearIgnoredDependencies(req.body.path));
+  });
+
   server.get('/api/security/history', (req, res) => {
     res.json(security.getHistory());
   });
