@@ -2065,7 +2065,12 @@ function wireSecurityPage() {
     clearTimeout(Number(bouton.dataset.minuteur));
     bouton.disabled = true;
     bouton.textContent = '…';
-    const chemin = document.getElementById('security-path').value.trim();
+    // dernierResultatDeps.dossier (le dossier reellement audite), pas le
+    // champ #security-path live : si l'utilisateur a tape un autre
+    // chemin depuis l'audit sans relancer, "Corriger" agirait sinon sur
+    // le mauvais dossier (meme logique que dernierDossierSecrets pour
+    // "Localiser" ci-dessus).
+    const chemin = dernierResultatDeps ? dernierResultatDeps.dossier : '';
     try {
       await window.aura.fixDependency(chemin, bouton.dataset.correctif);
       journal(`SECURITY_FIX : ${bouton.dataset.nom} → ${bouton.dataset.correctif}`);
