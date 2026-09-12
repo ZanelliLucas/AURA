@@ -39,6 +39,23 @@
   --dim: #8A93A0;
   --line: rgba(245, 246, 247, 0.28);
   --line-dim: rgba(245, 246, 247, 0.10);
+
+  /* Palette d'AURA TERMINAL (idee "memes couleurs que le Terminal",
+     retour utilisateur) - tokens propres a cette page, jamais partages
+     avec le reste d'AURA qui a deja fait des choix differents et
+     deliberes ailleurs (--red-hover vaut --red partout ailleurs, voir
+     plus haut) : valeurs reprises telles quelles de ui/view.css
+     (application TERMINAL d'origine, --tv-*). */
+  --term-ok: #4ADE80;
+  --term-warn: #FBBF24;
+  --term-dimmer: #5A616B;
+  --term-bg-raise: #0d0d0f;
+  --term-line-soft: rgba(245, 246, 247, 0.06);
+  --term-red-hover: #F03D2E;
+  --term-red-glow: rgba(229, 38, 26, 0.55);
+  --term-red-wash: rgba(229, 38, 26, 0.08);
+  --term-code-text: #D6D9DD;
+  --term-stderr: #E7A59E;
 }
 
 * { box-sizing: border-box; }
@@ -1308,92 +1325,139 @@ html, body {
   padding-left: 10px;
 }
 .terminal-entry + .terminal-entry { margin-top: 14px; }
-.terminal-echo { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; color: var(--dim); }
+/* Annonce sans commande (sante/boite noire, idee "surveillance sante du
+   PC en arriere-plan") - filet ambre plutot que rouge, comme
+   l'application TERMINAL d'origine (.tv-entry.tv-notice) : la distingue
+   d'une commande reellement tapee. */
+.terminal-entry.terminal-notice { border-left-color: var(--term-warn); }
+.terminal-echo { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; color: var(--term-dimmer); }
 .terminal-echo-texte { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .terminal-echo-chevron { color: var(--red); }
-.terminal-echo-heure { flex-shrink: 0; color: var(--dim); font-size: 11px; }
+/* La ligne reellement tapee ressort en blanc (idee "memes couleurs que
+   le Terminal") - seuls le chevron et l'heure restent en gris fonce,
+   comme .tv-echo-line/.tv-echo-time dans l'application TERMINAL d'origine. */
+.terminal-echo-ligne { color: var(--white); font-weight: 500; }
+.terminal-echo-heure { flex-shrink: 0; color: var(--term-dimmer); font-size: 11px; }
 .terminal-entry-body { margin-top: 2px; }
 
 .terminal-line { white-space: pre-wrap; word-break: break-word; }
 .terminal-dim { color: var(--dim); }
-.terminal-accent { color: var(--red); }
-.terminal-error { color: var(--red); font-weight: 600; }
-.terminal-success { color: #3fb950; }
-.terminal-warn { color: #d9a441; }
+.terminal-accent { color: var(--red); font-weight: 600; letter-spacing: 0.1em; }
+.terminal-error { color: var(--red); }
+.terminal-success { color: var(--term-ok); }
+.terminal-warn { color: var(--term-warn); }
+/* Prefixe ASCII (idee "memes couleurs que le Terminal") - !/~/+ devant
+   chaque ligne error/warn/success, comme dans l'application TERMINAL
+   d'origine (ui/view.css#tv-b-text). */
+.terminal-error::before, .terminal-warn::before, .terminal-success::before {
+  display: inline-block;
+  width: 1.4em;
+  font-weight: 700;
+}
+.terminal-error::before { content: '!'; color: var(--red); }
+.terminal-warn::before { content: '~'; color: var(--term-warn); }
+.terminal-success::before { content: '+'; color: var(--term-ok); }
 
 .terminal-title {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
-  margin: 6px 0 4px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(229, 38, 26, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  margin: 6px 0 8px;
+  color: var(--white);
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
 }
-.terminal-title-note { color: var(--dim); text-transform: none; letter-spacing: normal; font-weight: 400; }
+/* Filet degrade (pas un trait plein) - meme effet "qui s'estompe" que le
+   titre de l'application TERMINAL d'origine. */
+.terminal-title::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, var(--red), transparent);
+}
+.terminal-title-note { order: 3; flex: 0 0 auto; color: var(--term-dimmer); text-transform: none; letter-spacing: 0.08em; font-weight: 400; }
 .terminal-blank { height: 10px; }
-.terminal-rule { border-top: 1px solid var(--line-dim); margin: 6px 0; }
+.terminal-rule { border-top: 1px solid var(--line); margin: 6px 0; }
 
-.terminal-kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 16px; margin: 4px 0; }
+.terminal-kv { display: grid; grid-template-columns: minmax(90px, max-content) 1fr; gap: 3px 16px; margin: 4px 0; }
 .terminal-kv dt { color: var(--dim); }
 .terminal-kv dd { margin: 0; }
 
-.terminal-list { margin: 4px 0; padding-left: 18px; }
-.terminal-list li { margin: 2px 0; }
+/* Puce en tiret rouge (idee "memes couleurs que le Terminal") plutot que
+   les puces rondes par defaut du navigateur. */
+.terminal-list { margin: 4px 0; padding-left: 16px; list-style: none; }
+.terminal-list li { position: relative; margin: 2px 0; }
+.terminal-list li::before { content: '-'; position: absolute; left: -14px; color: var(--red); }
 
 .terminal-code {
-  background: rgba(245, 246, 247, 0.04);
-  border: 1px solid var(--line-dim);
-  border-radius: 4px;
+  background: var(--term-bg-raise);
+  border: 1px solid var(--term-line-soft);
+  border-left: 2px solid var(--red-dim);
+  border-radius: 0;
   padding: 8px 10px;
   margin: 4px 0;
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 11px;
   overflow-x: auto;
+  color: var(--term-code-text);
 }
+/* stderr n'est pas forcement une erreur (git y ecrit sa progression) : on
+   le distingue sans l'alarmer, comme l'application TERMINAL d'origine. */
+.terminal-code[data-lang="stderr"] { color: var(--term-stderr); }
 
+/* Bloc "path" isole (pas une cellule de tableau) : encadre d'un filet a
+   gauche, le lien reste habille comme .terminal-path-link. */
+.terminal-path-block { border-left: 2px solid var(--red-dim); padding-left: 9px; margin: 4px 0; }
 .terminal-path-link {
   background: none;
   border: none;
+  border-bottom: 1px dotted transparent;
   padding: 0;
-  color: var(--white);
-  text-decoration: underline dotted rgba(245, 246, 247, 0.4);
+  color: var(--dim);
   font-family: inherit;
   font-size: inherit;
   cursor: pointer;
 }
-.terminal-path-link:hover { color: var(--red); text-decoration-color: var(--red); }
+.terminal-path-link:hover { color: var(--red); border-bottom-color: var(--red-dim); }
 
 .terminal-gauge { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
 .terminal-gauge-label { flex-shrink: 0; width: 90px; color: var(--dim); }
 .terminal-gauge-track {
   flex: 1;
   height: 6px;
-  border-radius: 3px;
-  background: rgba(245, 246, 247, 0.08);
+  border-radius: 0;
+  background: var(--term-bg-raise);
+  border: 1px solid var(--term-line-soft);
   overflow: hidden;
 }
-.terminal-gauge-fill { height: 100%; background: var(--red); border-radius: 3px; }
-.terminal-gauge-fill.terminal-gauge-high { background: #d9a441; }
+.terminal-gauge-fill { height: 100%; background: var(--red); box-shadow: 0 0 10px var(--term-red-glow); }
+.terminal-gauge-fill.terminal-gauge-high { background: var(--term-red-hover); }
 .terminal-gauge-note { flex-shrink: 0; color: var(--dim); font-size: 11px; }
 
 .terminal-table-wrap { overflow-x: auto; margin: 4px 0; }
 .terminal-table { border-collapse: collapse; width: 100%; white-space: nowrap; }
 .terminal-table th {
   text-align: left;
-  color: var(--dim);
-  font-weight: 400;
-  padding: 3px 14px 3px 0;
-  border-bottom: 1px solid var(--line-dim);
+  color: var(--term-dimmer);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  padding: 3px 14px 5px 0;
+  border-bottom: 1px solid var(--line);
 }
-.terminal-table td { padding: 2px 14px 2px 0; }
-.terminal-table .terminal-right { text-align: right; }
-.terminal-tone-error, .terminal-tone-critique { color: var(--red); }
-.terminal-tone-warn, .terminal-tone-attention { color: #d9a441; }
-.terminal-tone-success, .terminal-tone-ok { color: #3fb950; }
+.terminal-table td { padding: 2px 14px 2px 0; border-bottom: 1px solid var(--term-line-soft); vertical-align: top; }
+.terminal-table .terminal-right { text-align: right; padding-right: 14px; }
+/* Survol de ligne (idee "memes couleurs que le Terminal") - meme lavis
+   rouge tres attenue + filet sur la premiere cellule que l'application
+   TERMINAL d'origine. */
+.terminal-table tbody tr:hover td { background: var(--term-red-wash); }
+.terminal-table tbody tr:hover td:first-child { box-shadow: inset 2px 0 0 var(--red); }
+.terminal-tone-error, .terminal-tone-critique { color: var(--red); font-weight: 700; }
+.terminal-tone-warn, .terminal-tone-attention { color: var(--term-warn); font-weight: 600; }
+.terminal-tone-success, .terminal-tone-ok { color: var(--term-ok); font-weight: 600; }
+.terminal-tone-dim { color: var(--dim); }
 
 .terminal-hint {
   font-family: 'IBM Plex Mono', monospace;

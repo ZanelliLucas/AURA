@@ -2766,9 +2766,13 @@ function terminalBlocHtml(bloc) {
     case 'list':
       return `<ul class="terminal-list">${bloc.items.map((i) => `<li>${echapperHtml(i)}</li>`).join('')}</ul>`;
     case 'code':
-      return `<pre class="terminal-code">${echapperHtml(bloc.text)}</pre>`;
+      // data-lang="stderr" (idee "memes couleurs que le Terminal") : la
+      // sortie d'erreur d'un programme (`run`) n'est pas forcement une
+      // vraie erreur (git y ecrit sa progression) - distinguee sans
+      // l'alarmer, comme l'application TERMINAL d'origine.
+      return `<pre class="terminal-code"${bloc.lang ? ` data-lang="${echapperHtml(bloc.lang)}"` : ''}>${echapperHtml(bloc.text)}</pre>`;
     case 'path':
-      return `<div class="terminal-line"><button type="button" class="terminal-path-link" data-target="${echapperHtml(bloc.path)}">${echapperHtml(bloc.path)}</button></div>`;
+      return `<div class="terminal-path-block"><button type="button" class="terminal-path-link" data-target="${echapperHtml(bloc.path)}">${echapperHtml(bloc.path)}</button></div>`;
     case 'gauge': {
       const pct = Math.round(bloc.ratio * 100);
       return `<div class="terminal-gauge">
@@ -2826,7 +2830,7 @@ function creerTerminalSession({ output, statut, promptCibles, cheminCible, onMis
   function nouvelleEntree(ligne, heure) {
     coller(output, `<div class="terminal-entry">
       <div class="terminal-echo">
-        <span class="terminal-echo-texte"><span class="terminal-echo-chevron">&gt;</span> ${echapperHtml(ligne)}</span>
+        <span class="terminal-echo-texte"><span class="terminal-echo-chevron">&gt;</span> <span class="terminal-echo-ligne">${echapperHtml(ligne)}</span></span>
         <span class="terminal-echo-heure">${heure}</span>
       </div>
       <div class="terminal-entry-body"></div>
@@ -2953,7 +2957,12 @@ function creerTerminalSession({ output, statut, promptCibles, cheminCible, onMis
   // dans le flux, sans ligne "> commande" qui precede (rien n'a ete tape),
   // exactement comme dans l'application TERMINAL d'origine.
   function ajouterNotice(blocs) {
-    ajouterBlocs(output, blocs);
+    // Filet ambre (pas rouge) : distingue une annonce non sollicitee
+    // (sante/boite noire) d'une commande reellement tapee, comme
+    // l'application TERMINAL d'origine (.tv-entry.tv-notice).
+    coller(output, '<div class="terminal-entry terminal-notice"><div class="terminal-entry-body"></div></div>');
+    const corps = output.querySelectorAll('.terminal-notice .terminal-entry-body');
+    ajouterBlocs(corps[corps.length - 1], blocs);
   }
 
   return { soumettre, etat, output, actualiserPrompt, ajouterNotice };
